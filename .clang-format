@@ -1,0 +1,30 @@
+BasedOnStyle: llvm
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  BeforeElse: true
+  BeforeCatch: true
+
+AccessModifierOffset: -4
+AlignEscapedNewlines: Right
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AlwaysBreakTemplateDeclarations: true
+BinPackArguments: false
+BinPackParameters: false
+BreakConstructorInitializers: BeforeColon
+ColumnLimit: 90
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+IndentWidth: 4
+NamespaceIndentation: None
+PointerAlignment: Left
+SortIncludes: true
+SortUsingDeclarations: true
+SpacesBeforeTrailingComments: 2
+SpacesInSquareBrackets: false
+SpaceAfterCStyleCast: true
+SpaceAfterTemplateKeyword: false
+
+PenaltyBreakAssignment: 60
+PenaltyBreakBeforeFirstCallParameter: 175
