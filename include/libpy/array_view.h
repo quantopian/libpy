@@ -412,25 +412,6 @@ public:
         return const_reverse_iterator(this->m_buffer + stride, stride);
     }
 
-    /** Create an iterator that starts at index `pos`.
-
-        @param pos The index to start the iterator at.
-        @return The new iterator.
-     */
-    iterator iterator_at(std::size_t pos) {
-        return iterator(&this->m_buffer[this->pos_to_index({pos})], this->m_strides[0]);
-    }
-
-    /** Create an iterator that starts at index `pos`.
-
-        @param pos The index to start the iterator at.
-        @return The new iterator.
-     */
-    const_iterator iterator_at(std::size_t pos) const {
-        return const_iterator(&this->m_buffer[this->pos_to_index({pos})],
-                              this->m_strides[0]);
-    }
-
     /**  Access the element at the given index without bounds checking.
 
          @param pos The index to lookup.

@@ -14,6 +14,7 @@ public:
     int a;
     float b;
 
+    custom_object() = default;
     custom_object(int a) : a(a), b(a / 2.0) {};
 
     bool operator==(const custom_object& other) const {
@@ -38,6 +39,8 @@ void from_container() {
     for (std::size_t n = 0; n < c.size(); ++n) {
         EXPECT_EQ(view[n], c[n]);
         EXPECT_EQ(view(n), c[n]);
+        EXPECT_EQ(view.at(n), c[n]);
+        EXPECT_EQ(view.at({n}), c[n]);
     }
 };
 
@@ -78,11 +81,33 @@ TYPED_TEST_P(array_view, reverse_iterator) {
 
 }
 
+TYPED_TEST_P(array_view, _2d_indexing) {
+    std::array<std::array<TypeParam, 3>, 4> arr;
+    std::size_t value = 1;
+    for (std::size_t row = 0; row < 4; ++row) {
+        for (std::size_t col = 0; col < 3; ++col) {
+            arr[row][col] = value++;
+        }
+    }
+    py::ndarray_view<TypeParam, 2> view(reinterpret_cast<char*>(arr.data()),
+                                        {4, 3},
+                                        {sizeof(TypeParam) * 3, sizeof(TypeParam)});
+
+    for (std::size_t row = 0; row < 4; ++row) {
+        for (std::size_t col = 0; col < 3; ++col) {
+            EXPECT_EQ(view(row, col), arr[row][col]);
+            EXPECT_EQ(view.at(row, col), arr[row][col]);
+            EXPECT_EQ(view.at({row, col}), arr[row][col]);
+        }
+    }
+}
+
 REGISTER_TYPED_TEST_CASE_P(array_view,
                            from_std_array,
                            from_std_vector,
                            iterator,
-                           reverse_iterator);
+                           reverse_iterator,
+                           _2d_indexing);
 
 using array_view_types =
     testing::Types<char, unsigned char, int, float, double, custom_object>;
