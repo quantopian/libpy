@@ -5,6 +5,7 @@
                            "../include"
                            "../../include"
                            "../../../include"
+                           "../submodules/googletest/googletest/include"
                            (expand-file-name "~/.virtualenvs/fundamentals/include/python3.6m")
                            (expand-file-name "~/.virtualenvs/fundamentals/lib/python3.6/site-packages/numpy/core/include")
                            "/usr/include/python3.6m")))
@@ -16,6 +17,7 @@
                              "../include"
                              "../../include"
                              "../../../include"
+                             "../submodules/googletest/googletest/include"
                              (expand-file-name "~/.virtualenvs/fundamentals/include/python3.6m")
                              (expand-file-name "~/.virtualenvs/fundamentals/lib/python3.6/site-packages/numpy/core/include")
                              "/usr/include/python3.6m")))

@@ -22,7 +22,7 @@ protected:
     std::array<std::int64_t, ndim> m_strides;
     char* m_buffer;
 
-    std::size_t pos_to_index(const std::array<std::size_t, ndim> pos) const {
+    std::size_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
         std::size_t ix = 0;
 
         for (std::size_t n = 0; n < ndim; ++n) {
@@ -75,7 +75,7 @@ public:
                  const std::array<std::int64_t, ndim>& strides)
         : m_shape(shape), m_strides(strides), m_buffer(buffer) {
         // assert the pointer is aligned
-        assert(static_cast<std::size_t>(buffer) % alignof(T) == 0);
+        assert(reinterpret_cast<std::size_t>(buffer) % alignof(T) == 0);
     }
 
     ndarray_view(const ndarray_view& cpfrom)
@@ -133,7 +133,7 @@ public:
         return (*this)({ixs...});
     }
 
-    const T& operator()(std::array<std::size_t, ndim> ixs) const {
+    const T& operator()(const std::array<std::size_t, ndim>& ixs) const {
         return *reinterpret_cast<T*>(&m_buffer[pos_to_index(ixs)]);
     }
 
@@ -142,8 +142,8 @@ public:
         return (*this)({ixs...});
     }
 
-    T& operator()(std::array<std::size_t, ndim> ixs) {
-        *reinterpret_cast<T*>(&m_buffer[pos_to_index(ixs)]);
+    T& operator()(const std::array<std::size_t, ndim>& ixs) {
+        return *reinterpret_cast<T*>(&m_buffer[pos_to_index(ixs)]);
     }
 
     /** Create a view over a subsection of the viewed memory.
@@ -358,51 +358,58 @@ public:
     }
 
     const_iterator cbegin() {
-        return const_iterator(this->buffer, this->strides[0]);
+        return const_iterator(this->m_buffer, this->m_strides[0]);
     }
 
     const_iterator begin() const {
-        return const_iterator(this->buffer, this->strides[0]);
+        return const_iterator(this->m_buffer, this->m_strides[0]);
     }
 
     iterator end() {
-        return iterator(this->buffer + pos_to_index(this->shape[0]), this->strides[0]);
+        return iterator(this->m_buffer + this->pos_to_index(this->m_shape),
+                        this->m_strides[0]);
     }
 
     const_iterator end() const {
-        return const_iterator(this->buffer + pos_to_index(this->shape[0]),
-                              this->strides[0]);
+        return const_iterator(this->m_buffer + this->pos_to_index(this->m_shape),
+                              this->m_strides[0]);
     }
 
     const_iterator cend() {
-        return const_iterator(this->buffer + pos_to_index(this->shape[0]),
-                              this->strides[0]);
+        return const_iterator(this->m_buffer + this->pos_to_index(this->m_shape),
+                              this->m_strides[0]);
     }
 
     reverse_iterator rbegin() {
-        return reverse_iterator(&this->buffer[this->shape[0] - 1], -this->strides[0]);
+        return reverse_iterator(this->m_buffer + this->pos_to_index({this->size() - 1}),
+                                -this->m_strides[0]);
     }
 
     const_reverse_iterator crbegin() {
-        return const_reverse_iterator(&this->buffer[this->shape[0] - 1],
-                                      -this->strides[0]);
+        return const_reverse_iterator(this->m_buffer +
+                                          this->pos_to_index({this->size() - 1}),
+                                      -this->m_strides[0]);
     }
 
     const_reverse_iterator rbegin() const {
-        return const_reverse_iterator(&this->buffer[this->shape[0] - 1],
-                                      -this->strides[0]);
+        return const_reverse_iterator(this->m_buffer +
+                                          this->pos_to_index({this->size() - 1}),
+                                      -this->m_strides[0]);
     }
 
     reverse_iterator rend() {
-        return reverse_iterator(this->buffer - 1, -this->strides[0]);
+        auto stride = -this->m_strides[0];
+        return reverse_iterator(this->m_buffer + stride, stride);
     }
 
     const_reverse_iterator rend() const {
-        return const_reverse_iterator(this->buffer - 1, -this->strides[0]);
+        auto stride = -this->m_strides[0];
+        return const_reverse_iterator(this->m_buffer + stride, stride);
     }
 
     const_reverse_iterator crend() {
-        return const_reverse_iterator(this->buffer - 1, -this->strides[0]);
+        auto stride = -this->m_strides[0];
+        return const_reverse_iterator(this->m_buffer + stride, stride);
     }
 
     /** Create an iterator that starts at index `pos`.
@@ -411,7 +418,7 @@ public:
         @return The new iterator.
      */
     iterator iterator_at(std::size_t pos) {
-        return iterator(&this->buffer[this->pos_to_index(pos)], this->strides[0]);
+        return iterator(&this->m_buffer[this->pos_to_index({pos})], this->m_strides[0]);
     }
 
     /** Create an iterator that starts at index `pos`.
@@ -420,7 +427,8 @@ public:
         @return The new iterator.
      */
     const_iterator iterator_at(std::size_t pos) const {
-        return const_iterator(&this->buffer[this->pos_to_index(pos)], this->strides[0]);
+        return const_iterator(&this->m_buffer[this->pos_to_index({pos})],
+                              this->m_strides[0]);
     }
 
     /**  Access the element at the given index without bounds checking.
