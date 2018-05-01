@@ -48,16 +48,15 @@ public:
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
-    static constexpr std::size_t npos = -1;
-
     /** Create a virtual array of length ``size`` holding the scalar ``value``.
 
         @param value The value to fill the array with.
-        @param size The size of the array.
+        @param shape The shape of the array.
         @return The new mutable array view.
      */
-    static ndarray_view virtual_array(T& value, std::size_t size) {
-        return {reinterpret_cast<char*>(std::addressof(value)), size, 0};
+    static ndarray_view virtual_array(T& value,
+                                      const std::array<std::size_t, ndim>& shape) {
+        return {reinterpret_cast<char*>(std::addressof(value)), shape, {0}};
     }
 
     /** Default constructor creates an empty view over nothing.
@@ -146,40 +145,6 @@ public:
         return *reinterpret_cast<T*>(&m_buffer[pos_to_index(ixs)]);
     }
 
-    /** Create a view over a subsection of the viewed memory.
-
-        @param start The start index of the slice.
-        @param stop The stop index of the slice, exclusive.
-        @param step The value to increment each index by.
-        @return A view over a subset of the memory.
-     */
-    ndarray_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
-        std::array<std::size_t, ndim> new_shape;
-        std::array<std::int64_t, ndim> new_strides;
-
-        new_shape[0] = (stop == npos) ? m_shape[0] - start : stop - start;
-        new_strides[0] = m_strides[0] * step;
-
-        for (std::size_t ix = 1; ix < ndim; ++ix) {
-            new_shape[ix - 1] = m_shape[ix];
-            new_strides[ix - 1] = m_strides[ix];
-        }
-
-        return ndarray_view(&m_buffer[pos_to_index(start)], new_shape, new_strides);
-    }
-
-    /** Create a view over a subsection of the viewed memory.
-
-        @param start The start index of the slice.
-        @param stop The stop index of the slice, exclusive.
-        @param step The value to increment each index by.
-        @return A view over a subset of the memory.
-     */
-    const ndarray_view
-    slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
-        return const_cast<ndarray_view*>(this)->slice(start, stop, step);
-    }
-
     /** The number of elements in this array.
      */
     std::size_t size() const {
@@ -204,13 +169,13 @@ public:
 
     /** The underlying buffer for this array view.
      */
-    T* data() {
+    char* buffer() {
         return m_buffer;
     }
 
     /** The underlying buffer of characters for this string array.
      */
-    const T* data() const {
+    char* buffer() const {
         return m_buffer;
     }
 };
@@ -341,6 +306,10 @@ public:
     using reverse_iterator = iterator;
     using const_reverse_iterator = const_iterator;
 
+    static constexpr std::size_t npos = -1;
+
+    using generic_ndarray_impl::ndarray_view;
+
     /** Create a view over an arbitrary contiguous container of `T`s.
 
         @param contiguous_container The container to take a view of.
@@ -352,6 +321,27 @@ public:
         : generic_ndarray_impl(reinterpret_cast<char*>(contiguous_container.data()),
                                {contiguous_container.size()},
                                {sizeof(T)}) {}
+
+    /** Create a virtual array of length ``size`` holding the scalar ``value``.
+
+        @param value The value to fill the array with.
+        @param shape The shape of the array.
+        @return The new mutable array view.
+     */
+    static ndarray_view virtual_array(T& value,
+                                      const std::array<std::size_t, 1>& shape) {
+        return {reinterpret_cast<char*>(std::addressof(value)), shape, {0}};
+    }
+
+    /** Create a virtual array of length ``size`` holding the scalar ``value``.
+
+        @param value The value to fill the array with.
+        @param size The size of the array.
+        @return The new mutable array view.
+     */
+    static ndarray_view virtual_array(T& value, std::size_t size) {
+        return {reinterpret_cast<char*>(std::addressof(value)), {size}, {0}};
+    }
 
     iterator begin() {
         return iterator(this->m_buffer, this->m_strides[0]);
@@ -432,6 +422,32 @@ public:
         return *reinterpret_cast<T*>(&this->m_buffer[this->pos_to_index({pos})]);
     }
 
+        /** Create a view over a subsection of the viewed memory.
+
+        @param start The start index of the slice.
+        @param stop The stop index of the slice, exclusive.
+        @param step The value to increment each index by.
+        @return A view over a subset of the memory.
+     */
+    ndarray_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
+        std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
+        std::int64_t stride = this->m_strides[0] * step;
+        return ndarray_view(this->m_buffer + this->pos_to_index({start}),
+                            {size},
+                            {stride});
+    }
+
+    /** Create a view over a subsection of the viewed memory.
+
+        @param start The start index of the slice.
+        @param stop The stop index of the slice, exclusive.
+        @param step The value to increment each index by.
+        @return A view over a subset of the memory.
+     */
+    const ndarray_view
+    slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
+        return const_cast<ndarray_view*>(this)->slice(start, stop, step);
+    }
 };
 
 template<typename T>

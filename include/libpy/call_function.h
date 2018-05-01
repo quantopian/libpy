@@ -9,6 +9,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
+#include "libpy/to_object.h"
 #include "libpy/scoped_ref.h"
 
 namespace py {
@@ -20,13 +21,8 @@ scoped_ref<PyObject> build_pyargs_tuple(std::index_sequence<ixs...>, Args&&... a
         return nullptr;
     }
 
-    (,
-     ...,
-     PyTuple_SET_ITEM(out,
-                      ixs,
-                      py::to_object<std::remove_cv_t<std::remove_reference_t<Args>>>(
-                          std::forward<Args>(args))
-                          .escape()));
+    (...,
+     PyTuple_SET_ITEM(out.get(), ixs, py::to_object(std::forward<Args>(args)).escape()));
     return out;
 }
 }  // namespace detail
@@ -40,7 +36,7 @@ scoped_ref<PyObject> build_pyargs_tuple(std::index_sequence<ixs...>, Args&&... a
  */
 template<typename... Args>
 scoped_ref<PyObject> call_function(PyObject* function, Args&&... args) {
-    auto pyargs = detail::build_pyargs_tuple(std::index_sequence_for<args...>{},
+    auto pyargs = detail::build_pyargs_tuple(std::index_sequence_for<Args...>{},
                                              std::forward<Args>(args)...);
     return scoped_ref(PyObject_CallObject(function, pyargs.get()));
 }

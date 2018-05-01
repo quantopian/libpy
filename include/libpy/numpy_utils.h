@@ -267,13 +267,13 @@ struct from_object<ndarray_view<T, ndim>> {
                             PyArray_DTYPE(array));
         }
 
-        std::array<std::size_t, ndim> shape;
-        std::array<std::int64_t, ndim> strides;
+        std::array<std::size_t, ndim> shape{0};
+        std::array<std::int64_t, ndim> strides{0};
 
         std::copy_n(PyArray_SHAPE(array), ndim, shape.begin());
         std::copy_n(PyArray_STRIDES(array), ndim, strides.begin());
 
-        return {PyArray_BYTES(array), shape, strides};
+        return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides);
     }
 };
 
@@ -419,15 +419,15 @@ scoped_ref<PyObject> move_to_numpy_array(std::vector<T>&& values,
         return nullptr;
     }
 
-    auto arr = scoped_ref(
-        PyArray_NewFromDescr(&PyArray_Type,
-                             descr.get(),
-                             ndim,
-                             reinterpret_cast<npy_intp*>(shape.data()),
-                             nullptr,
-                             vector.data(),
-                             NPY_ARRAY_CARRAY,
-                             reinterpret_cast<npy_intp*>(strides.data())));
+    auto arr = scoped_ref(PyArray_NewFromDescr(
+        &PyArray_Type,
+        descr.get(),
+        ndim,
+        const_cast<npy_intp*>(reinterpret_cast<const npy_intp*>(shape.data())),
+        const_cast<npy_intp*>(reinterpret_cast<const npy_intp*>(strides.data())),
+        vector.data(),
+        NPY_ARRAY_CARRAY,
+        nullptr));
     if (!arr) {
         return nullptr;
     }
@@ -448,6 +448,6 @@ scoped_ref<PyObject> move_to_numpy_array(std::vector<T>&& values,
 
 template<typename T>
 scoped_ref<PyObject> move_to_numpy_array(std::vector<T>&& values) {
-    return move_to_numpy_array(std::move(values), {values.size()}, {sizeof(T)});
+    return move_to_numpy_array<T, 1>(std::move(values), {values.size()}, {sizeof(T)});
 }
 }  // namespace py

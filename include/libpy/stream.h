@@ -81,10 +81,10 @@ public:
         Py_INCREF(file);
     }
 
-    basic_ostream(const scoped_ref<PyObject>& file) : m_buf(file), std::ios(0) {
+    basic_ostream(const scoped_ref<PyObject>& file) : std::ios(0), m_buf(file) {
         this->rdbuf(&m_buf);
     }
-    basic_ostream(scoped_ref<PyObject>&& file) : m_buf(std::move(file)), std::ios(0) {
+    basic_ostream(scoped_ref<PyObject>&& file) : std::ios(0), m_buf(std::move(file)) {
         this->rdbuf(&m_buf);
     }
 

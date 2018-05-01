@@ -67,10 +67,6 @@ struct to_object<scoped_ref<T>> {
     }
 };
 
-/** Convert a `py::string` into a unicode object.
-
-    This method is memoized to reduce the number of objects it creates.
-*/
 template<>
 struct to_object<std::string> {
     static PyObject* f(const std::string& cs) {
@@ -92,8 +88,6 @@ struct to_object<char[n]> {
     }
 };
 
-/** Convert a `std::size_t` into an int object.
- */
 template<>
 struct to_object<std::size_t> {
     static PyObject* f(std::size_t value) {
@@ -101,8 +95,6 @@ struct to_object<std::size_t> {
     }
 };
 
-/** Convert a `npy_int64` into an int object.
- */
 template<>
 struct to_object<std::int64_t> {
     static PyObject* f(std::int64_t value) {
@@ -110,8 +102,6 @@ struct to_object<std::int64_t> {
     }
 };
 
-/** Convert an `unordered_map` or `dense_hash_map` to a `PyObject*` as a `dict`.
- */
 template<typename M>
 struct map_to_object {
     static PyObject* f(const M& m) {
@@ -169,8 +159,6 @@ template<typename K, typename V, typename Hash, typename KeyEqual>
 struct to_object<std::unordered_map<K, V, Hash, KeyEqual>>
     : public map_to_object<std::unordered_map<K, V, Hash, KeyEqual>> {};
 
-/** Convert a `vector` to a `PyObject*` as a `list`.
- */
 template<typename T>
 struct to_object<std::vector<T>> {
     static PyObject* f(const std::vector<T>& v) {
@@ -214,8 +202,6 @@ struct to_object<std::vector<T>> {
     }
 };
 
-/** Convert an unordered_set into a `PyObject*` as a `set`.
- */
 template<typename T>
 struct to_object<std::unordered_set<T>> {
     static PyObject* f(const std::unordered_set<T>& s) {
@@ -259,8 +245,6 @@ struct to_object<std::unordered_set<T>> {
     }
 };
 
-/** Convert a tuple of convertable objects into a `PyObject*` as a `tuple`.
- */
 template<typename... Ts>
 struct to_object<std::tuple<Ts...>> {
 private:
@@ -314,9 +298,6 @@ public:
 };
 
 
-/** Convert an optional value where `std::nullopt` becomes `None` and non-none is just
-    the regular value.
- */
 template<typename T>
 struct to_object<std::optional<T>> {
     static PyObject* f(const std::optional<T>& maybe_value) {

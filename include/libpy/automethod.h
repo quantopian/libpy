@@ -26,8 +26,10 @@ template<typename R, typename Self, typename... Args>
 struct remove_cref_traits {
 private:
     template<std::size_t... ixs>
-    std::tuple<Args...> inner_build_arg_tuple(PyObject* t, std::index_sequence<ixs...>) {
-        return {py::from_object<Args>(PyTuple_GET_ITEM(t, ixs))...};
+    static std::tuple<Self, Args...> inner_build_arg_tuple(Self self,
+                                                     PyObject* t,
+                                                     std::index_sequence<ixs...>) {
+        return {self, py::from_object<Args>(PyTuple_GET_ITEM(t, ixs))...};
     }
 
 public:
@@ -36,10 +38,8 @@ public:
     static constexpr std::size_t arity = sizeof...(Args);
     static constexpr auto flags = arity ? METH_VARARGS : METH_NOARGS;
 
-    std::tuple<Args...> build_arg_tuple(Self self, PyObject* t) {
-        return std::tuple_cat(std::make_tuple(self),
-                              inner_build_arg_tuple(t,
-                                                    std::index_sequence_for<Args...>{}));
+    static std::tuple<Self, Args...> build_arg_tuple(Self self, PyObject* t) {
+        return inner_build_arg_tuple(self, t, std::index_sequence_for<Args...>{});
     }
 };
 
@@ -65,7 +65,9 @@ struct automethodwrapper_impl {
             return nullptr;
         }
 
-        return py::to_object(std::apply(impl, f::build_arg_tuple(self, args)));
+        auto cxx_args = f::build_arg_tuple(self, args);
+        auto result = std::apply(impl, cxx_args);
+        return py::to_object(result).escape();
     }
 };
 
@@ -74,7 +76,8 @@ struct automethodwrapper_impl {
 template<auto impl, typename Self>
 struct automethodwrapper_impl<0, impl, Self> {
     static PyObject* f(Self self, PyObject*) {
-        return py::to_object(impl(self));
+        auto result = impl(self);
+        return py::to_object(result).escape();
     }
 };
 
