@@ -51,7 +51,7 @@ struct to_object<std::array<char, n>> {
 template<>
 struct to_object<PyObject*> {
     static PyObject* f(PyObject* ob) {
-        Py_INCREF(ob);
+        Py_XINCREF(ob);
         return ob;
     }
 };
@@ -62,7 +62,7 @@ template<typename T>
 struct to_object<scoped_ref<T>> {
     static PyObject* f(scoped_ref<T>& ob) {
         PyObject* out = ob.get();
-        Py_INCREF(out);
+        Py_XINCREF(out);
         return out;
     }
 };

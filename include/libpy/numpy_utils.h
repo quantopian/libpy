@@ -237,9 +237,7 @@ template<typename T, std::size_t ndim>
 struct from_object<ndarray_view<T, ndim>> {
     static ndarray_view<T, ndim> f(PyObject* ob) {
         if (!PyArray_Check(ob)) {
-            throw exception(PyExc_TypeError,
-                            "argument must be an ndarray, got: ",
-                            Py_TYPE(ob));
+            throw invalid_conversion::make<ndarray_view<T, ndim>>(ob);
         }
 
         auto array = reinterpret_cast<PyArrayObject*>(ob);
@@ -281,9 +279,7 @@ template<>
 struct from_object<datetime64ns> {
     static datetime64ns f(PyObject* ob) {
         if (!PyArray_CheckScalar(ob)) {
-            throw exception(PyExc_TypeError,
-                            "argument must be an array scalar, got:",
-                            Py_TYPE(ob));
+            throw invalid_conversion::make<datetime64ns>(ob);
         }
 
         auto array = scoped_ref(
@@ -307,6 +303,17 @@ struct from_object<datetime64ns> {
         datetime64ns out;
         PyArray_ScalarAsCtype(ob, &out);
         return out;
+    }
+};
+
+template<>
+struct from_object<py_bool> {
+    static py_bool f(PyObject* ob) {
+        if (!PyBool_Check(ob)) {
+            throw invalid_conversion::make<py_bool>(ob);
+        }
+
+        return ob == Py_True;
     }
 };
 

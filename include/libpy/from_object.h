@@ -113,6 +113,34 @@ struct from_object<std::array<char, n>> {
     }
 };
 
+template<>
+struct from_object<char> {
+    static char f(PyObject* cs) {
+        char* data;
+        Py_ssize_t size;
+
+        if (PyBytes_Check(cs)) {
+            size = PyBytes_GET_SIZE(cs);
+            data = PyBytes_AS_STRING(cs);
+        }
+        else if (PyUnicode_Check(cs)) {
+            if (!(data = PyUnicode_AsUTF8AndSize(cs, &size))) {
+                throw py::exception("failed to convert unicode to string");
+            }
+        }
+        else {
+            throw invalid_conversion::make<char>(cs);
+        }
+
+        if (size != 1) {
+            throw invalid_conversion::make<char>(cs);
+        }
+
+        return data[0];
+    }
+};
+
+
 /** Identity conversion for `PyObject*`.
  */
 template<>
@@ -180,6 +208,17 @@ struct from_object<std::int64_t> {
         std::int64_t out = PyLong_AsLongLong(value);
         if (PyErr_Occurred()) {
             throw invalid_conversion::make<std::size_t>(value);
+        }
+        return out;
+    }
+};
+
+template<>
+struct from_object<double> {
+    static double f(PyObject* value) {
+        double out = PyFloat_AsDouble(value);
+        if (out == -1.0 && PyErr_Occurred()) {
+            throw invalid_conversion::make<double>(value);
         }
         return out;
     }
