@@ -52,7 +52,7 @@ template<typename T>
 struct new_dtype;
 
 template<>
-struct new_dtype<npy_int8> {
+struct new_dtype<std::int8_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_INT8);
         if (!ob) {
@@ -64,7 +64,7 @@ struct new_dtype<npy_int8> {
 };
 
 template<>
-struct new_dtype<npy_int16> {
+struct new_dtype<std::int16_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_INT16);
         if (!ob) {
@@ -76,7 +76,7 @@ struct new_dtype<npy_int16> {
 };
 
 template<>
-struct new_dtype<npy_int32> {
+struct new_dtype<std::int32_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_INT32);
         if (!ob) {
@@ -88,7 +88,7 @@ struct new_dtype<npy_int32> {
 };
 
 template<>
-struct new_dtype<npy_int64> {
+struct new_dtype<std::int64_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_INT64);
         if (!ob) {
@@ -100,10 +100,7 @@ struct new_dtype<npy_int64> {
 };
 
 template<>
-struct new_dtype<std::int64_t> : public new_dtype<npy_int64> {};
-
-template<>
-struct new_dtype<npy_uint8> {
+struct new_dtype<std::uint8_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_UINT8);
         if (!ob) {
@@ -115,7 +112,7 @@ struct new_dtype<npy_uint8> {
 };
 
 template<>
-struct new_dtype<npy_uint16> {
+struct new_dtype<std::uint16_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_UINT16);
         if (!ob) {
@@ -127,7 +124,7 @@ struct new_dtype<npy_uint16> {
 };
 
 template<>
-struct new_dtype<npy_uint32> {
+struct new_dtype<std::uint32_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_UINT32);
         if (!ob) {
@@ -139,7 +136,7 @@ struct new_dtype<npy_uint32> {
 };
 
 template<>
-struct new_dtype<npy_uint64> {
+struct new_dtype<std::uint64_t> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_UINT64);
         if (!ob) {
@@ -151,7 +148,7 @@ struct new_dtype<npy_uint64> {
 };
 
 template<>
-struct new_dtype<npy_float64> {
+struct new_dtype<double> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_FLOAT64);
         if (!ob) {
