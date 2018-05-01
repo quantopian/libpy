@@ -102,12 +102,26 @@ TYPED_TEST_P(array_view, _2d_indexing) {
     }
 }
 
+TYPED_TEST_P(array_view, virtual_array) {
+    TypeParam value(1);
+
+    auto view = py::array_view<TypeParam>::virtual_array(value, 10);
+    EXPECT_EQ(view.size(), 10ul);
+    EXPECT_EQ(view.strides()[0], 0);
+
+    for (const auto& element : view) {
+        EXPECT_EQ(element, value);
+        EXPECT_EQ(std::addressof(element), std::addressof(value));
+    }
+}
+
 REGISTER_TYPED_TEST_CASE_P(array_view,
                            from_std_array,
                            from_std_vector,
                            iterator,
                            reverse_iterator,
-                           _2d_indexing);
+                           _2d_indexing,
+                           virtual_array);
 
 using array_view_types =
     testing::Types<char, unsigned char, int, float, double, custom_object>;
