@@ -100,6 +100,9 @@ struct new_dtype<npy_int64> {
 };
 
 template<>
+struct new_dtype<std::int64_t> : public new_dtype<npy_int64> {};
+
+template<>
 struct new_dtype<npy_uint8> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_UINT8);
