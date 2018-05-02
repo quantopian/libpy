@@ -14,6 +14,5 @@ make clean
 # Run the test suite with checks and assertions
 SANITIZE_ADDRESS=1 SANITIZE_UNDEFINED=1 make test
 
-echo $OUTPUT_DIR/libpy_report.xml
 # Run tests with a release build
 GTEST_OUTPUT="xml:$OUTPUT_DIR/libpy_report.xml" make test
