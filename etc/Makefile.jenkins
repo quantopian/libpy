@@ -1,0 +1,7 @@
+CXX := g++-7
+CC := gcc-7
+GCOV := gcov-7
+ASAN_SYMBOLIZER_PATH := llvm-symbolizer-6
+CLANG_TIDY := clang-tidy-6
+CLANG_FORMAT := clang-format-6
+PYTHON := python3.6

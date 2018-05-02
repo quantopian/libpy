@@ -70,6 +70,7 @@ EXAMPLE_OBJECTS := $(EXAMPLE_SOURCES:.cc=.o)
 EXAMPLE_DFILES :=  $(EXAMPLE_SOURCES:.cc=.d)
 EXAMPLES := $(EXAMPLE_SOURCES:.cc=)
 
+GTEST_OUTPUT ?=
 GTEST_ROOT:= submodules/googletest
 GTEST_DIR := $(GTEST_ROOT)/googletest
 GTEST_HEADERS := $(wildcard $(GTEST_DIR)/include/gtest/*.h) \
@@ -83,18 +84,6 @@ TEST_OBJECTS := $(TEST_SOURCES:.cc=.o)
 TEST_HEADERS := $(wildcard tests/*.h) $(GTEST_HEADERS)
 TEST_INCLUDE := -I tests -I $(GTEST_DIR)/include
 TESTRUNNER := tests/run
-
-GBENCHMARK_DIR := submodules/benchmark
-GBENCHMARK_HEADERS := $(wildcard $(GBENCHMARK_DIR)/src/*.h)
-GBENCHMARK_SRCS := $(wildcard $(GBENCHMARK_DIR)/src/*.cc)
-LIBGBENCHMARK := $(GBENCHMARK_DIR)/build/src/libbenchmark.a
-
-BENCH_SOURCES := $(wildcard bench/*.cc)
-BENCH_DFILES := $(BENCH_SOURCES:.cc=.d)
-BENCH_OBJECTS := $(BENCH_SOURCES:.cc=.o)
-BENCH_HEADERS := $(wildcard bench/*.h)  $(GBENCHMARK_HEADERS)
-BENCH_INCLUDE := -I bench -I $(GBENCHMARK_DIR)/include
-BENCHRUNNER := bench/run
 
 ALL_SOURCES := $(SOURCES) $(EXAMPLE_SOURCES) $(TEST_SOURCES)
 ALL_HEADERS := include/$(LIBRARY)/**.h
@@ -137,7 +126,10 @@ example-%: examples/%
 
 .PHONY: test
 test: $(TESTRUNNER)
-	@LD_LIBRARY_PATH=. LSAN_OPTIONS=$(LSAN_OPTIONS) $<
+	@GTEST_OUTPUT=$(GTEST_OUTPUT) \
+		LD_LIBRARY_PATH=. \
+		LSAN_OPTIONS=$(LSAN_OPTIONS) \
+		$<
 
 .PHONY: gdbtest
 gdbtest: $(TESTRUNNER)
@@ -160,26 +152,6 @@ gtest.o: $(GTEST_SRCS) .compiler_flags
 
 gtest.a: gtest.o
 	$(AR) $(ARFLAGS) $@ $^
-
-
-.PHONY: benchmark
-benchmark: $(BENCHRUNNER)
-	@LD_LIBRARY_PATH=. $<
-
-bench/%.o: bench/%.cc .compiler_flags
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $(BENCH_INCLUDE) -MD -fPIC -c $< -o $@
-
-
-$(LIBGBENCHMARK): $(GBENCHMARK_SRCS) $(GBENCHMARK_HEADERS)
-	cd $(GBENCHMARK_DIR) && mkdir -p build
-	cd $(GBENCHMARK_DIR)/build && cmake .. \
-		-DCMAKE_BUILD_TYPE=RELEASE \
-		-DBENCHMARK_ENABLE_GTEST_TESTS=OFF
-	make -C $(GBENCHMARK_DIR)/build
-
-$(BENCHRUNNER): $(LIBGBENCHMARK) $(BENCH_OBJECTS) $(SONAME)
-	$(CXX) -o $@ $(BENCH_OBJECTS) $(BENCH_LDFLAGS) $(BENCH_INCLUDE) \
-		$(LIBGBENCHMARK) -lpthread -L. -l$(LIBRARY) $(LDFLAGS)
 
 .PHONY: tidy
 tidy:
@@ -207,9 +179,7 @@ clean:
 		$(EXAMPLES) $(EXAMPLE_OBJECTS) $(EXAMPLE_DFILES) \
 		$(TESTRUNNER) $(TEST_OBJECTS) $(TEST_DFILES) \
 		gtest.o gtest.a gtest.gcda gtest.gcno \
-		$(BENCHRUNNER) $(BENCH_OBJECTS) $(BENCH_DFILES) \
-		$(COVERAGE_FILES) \
-	@make -C $(GBENCHMARK_DIR)/build clean > /dev/null
+		$(COVERAGE_FILES)
 
 -include $(DFILES) $(TEST_DFILES)
 
