@@ -46,16 +46,6 @@ struct to_object<std::array<char, n>> {
     }
 };
 
-/** Identity conversion for `PyObject*`.
- */
-template<>
-struct to_object<PyObject*> {
-    static PyObject* f(PyObject* ob) {
-        Py_XINCREF(ob);
-        return ob;
-    }
-};
-
 /** Identity conversion for `scoped_ref`.
  */
 template<typename T>
