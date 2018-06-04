@@ -67,7 +67,12 @@ struct automethodwrapper_impl {
 
         auto cxx_args = f::build_arg_tuple(self, args);
         auto result = std::apply(impl, cxx_args);
-        return py::to_object(result).escape();
+        if constexpr (std::is_same_v<decltype(result), PyObject*>) {
+            return result;
+        }
+        else {
+            return py::to_object(result).escape();
+        }
     }
 };
 
@@ -77,7 +82,12 @@ template<auto impl, typename Self>
 struct automethodwrapper_impl<0, impl, Self> {
     static PyObject* f(Self self, PyObject*) {
         auto result = impl(self);
-        return py::to_object(result).escape();
+        if constexpr (std::is_same_v<decltype(result), PyObject*>) {
+            return result;
+        }
+        else {
+            return py::to_object(result).escape();
+        }
     }
 };
 
