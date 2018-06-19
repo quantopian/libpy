@@ -228,6 +228,14 @@ void parse_element_into_vector(std::vector<T>& out,
     }
 }
 
+/** Marker type to indicate a column that should be ignored.
+ */
+struct skip {};
+
+void parse_element_into_vector(const skip&,
+                               std::vector<py::py_bool>&,
+                               const std::string_view&) {}
+
 /** The type of a vector to store parsed values.
  */
 using value_vector = std::variant<std::vector<std::array<char, 1>>,
@@ -240,7 +248,8 @@ using value_vector = std::variant<std::vector<std::array<char, 1>>,
                                   std::vector<std::array<char, 40>>,
                                   std::vector<py::datetime64ns>,
                                   std::vector<py::py_bool>,
-                                  std::vector<double>>;
+                                  std::vector<double>,
+                                  skip>;
 
 /** The type of the vector of (value, pair) tuples.
  */
@@ -431,9 +440,19 @@ bool dtype_eq(PyObject* a, py::scoped_ref<PyArray_Descr>& b) {
     return result;
 }
 
+
+template<typename T>
+scoped_ref<PyObject> to_numpy_array(std::vector<T>& v){
+    return py::move_to_numpy_array(std::move(v));
+}
+
+scoped_ref<PyObject> to_numpy_array(skip&) {
+    throw std::runtime_error("skipped column should not be converted to numpy array");
+}
+
 /** Python CSV parsing function.
 
-    @param dtypes A Python dictionary from column name to dtype.
+    @param dtypes A Python dictionary from column name to dtype. Columns not present are ignored.
     @param data The string data to parse as a CSV.
     @param delimiter The delimiter between cells.
     @param line_ending The separator between line.
@@ -467,14 +486,13 @@ PyObject* parse_csv(PyObject*,
 
     auto callback = [&](const std::string& cell) {
         auto as_pystring = py::to_object(cell);
+        std::vector<py::py_bool> mask;
+
         PyObject* dtype = PyDict_GetItem(dtypes, as_pystring.get());
         if (!dtype) {
-            py::raise(PyExc_KeyError) << as_pystring;
-            throw std::runtime_error("unknown column");
+            vectors.emplace_back(skip{}, mask);
         }
-
-        std::vector<py::py_bool> mask;
-        if (dtype_eq(dtype, possible_dtypes[0])) {
+        else if (dtype_eq(dtype, possible_dtypes[0])) {
             vectors.emplace_back(std::vector<std::array<char, 1>>{}, mask);
         }
         else if (dtype_eq(dtype, possible_dtypes[1])) {
@@ -521,18 +539,22 @@ PyObject* parse_csv(PyObject*,
     if (dtypes_size < 0) {
         return nullptr;
     }
-    if (header.size() != static_cast<std::size_t>(dtypes_size)) {
-        auto keys = py::scoped_ref(PyDict_Keys(dtypes));
-        if (!keys) {
+
+    // Ensure that each key in dtypes has a corresponding column in the CSV header.
+    auto keys = py::scoped_ref(PyDict_Keys(dtypes));
+    Py_ssize_t keys_count = PyList_Size(keys.get());
+    for (Py_ssize_t key_i = 0; key_i < keys_count; ++key_i){
+        auto key = PyList_GetItem(keys.get(), key_i);
+
+        if(std::find_if(header.begin(),
+                        header.end(),
+                        [key](auto& str) { return PyUnicode_Compare(str.get(), key) == 0; }) == header.end()) {
+            auto pyheader = py::to_object(header);
+
+            py::raise(PyExc_ValueError)
+                << "dtype keys not present in header. dtype keys: " << keys << " header: " << pyheader;
             return nullptr;
         }
-        auto pyheader = py::to_object(header);
-        if (!pyheader) {
-            return nullptr;
-        }
-        py::raise(PyExc_ValueError)
-            << "mismatched headers and dtypes: " << pyheader << " != " << keys;
-        return nullptr;
     }
 
     // advance_past the line ending
@@ -548,8 +570,12 @@ PyObject* parse_csv(PyObject*,
     for (auto [name, values_and_mask] : py::zip(header, vectors)) {
         auto& [boxed_vector, mask] = values_and_mask;
 
+        if (std::holds_alternative<skip>(boxed_vector)){
+            continue;
+        }
+
         auto values = std::visit(
-            [](auto& vector) { return py::move_to_numpy_array(std::move(vector)); },
+            [](auto& vector) { return to_numpy_array(vector); },
             boxed_vector);
         if (!values) {
             return nullptr;
