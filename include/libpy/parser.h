@@ -33,8 +33,7 @@ std::runtime_error formatted_error(Ts&&... msg) {
 template<typename... Ts>
 std::runtime_error
 position_formatted_error(std::size_t row, std::size_t col, Ts&&... msg) {
-    return formatted_error(
-        "line ", row, " column ", col, ": ", std::forward<Ts>(msg)...);
+    return formatted_error("line ", row, " column ", col, ": ", std::forward<Ts>(msg)...);
 }
 
 namespace dispatch {
@@ -130,8 +129,7 @@ private:
     }
 
 public:
-    static py::datetime64ns
-    f(const std::string_view& raw) {
+    static py::datetime64ns f(const std::string_view& raw) {
         if (!raw.size()) {
             return py::datetime64ns{};
         }
@@ -141,7 +139,6 @@ public:
         }
 
         int year = parse_int<4>(raw.data());
-
 
         if (raw[4] != '-') {
             throw formatted_error("expected hyphen at index 4: ", raw);
@@ -176,8 +173,7 @@ public:
 
 template<>
 struct parse<py::py_bool> {
-    static py::py_bool
-    f(const std::string_view& data) {
+    static py::py_bool f(const std::string_view& data) {
         if (data.size() != 1) {
             throw formatted_error("bool is not 0 or 1: ", data);
         }
@@ -423,7 +419,6 @@ void parse_csv_from_header(const std::string_view& data,
         // get the rest of the data after the final newline if there is any
         parse_row(++row, line, delimiter, vectors);
     }
-
 }
 
 /** Check if two dtypes are equal. If a Python exception is raised, throw a C++ exception.
@@ -440,9 +435,8 @@ bool dtype_eq(PyObject* a, py::scoped_ref<PyArray_Descr>& b) {
     return result;
 }
 
-
 template<typename T>
-scoped_ref<PyObject> to_numpy_array(std::vector<T>& v){
+scoped_ref<PyObject> to_numpy_array(std::vector<T>& v) {
     return py::move_to_numpy_array(std::move(v));
 }
 
@@ -452,7 +446,8 @@ scoped_ref<PyObject> to_numpy_array(skip&) {
 
 /** Python CSV parsing function.
 
-    @param dtypes A Python dictionary from column name to dtype. Columns not present are ignored.
+    @param dtypes A Python dictionary from column name to dtype. Columns not present are
+   ignored.
     @param data The string data to parse as a CSV.
     @param delimiter The delimiter between cells.
     @param line_ending The separator between line.
@@ -543,16 +538,17 @@ PyObject* parse_csv(PyObject*,
     // Ensure that each key in dtypes has a corresponding column in the CSV header.
     auto keys = py::scoped_ref(PyDict_Keys(dtypes));
     Py_ssize_t keys_count = PyList_Size(keys.get());
-    for (Py_ssize_t key_i = 0; key_i < keys_count; ++key_i){
+    for (Py_ssize_t key_i = 0; key_i < keys_count; ++key_i) {
         auto key = PyList_GetItem(keys.get(), key_i);
 
-        if(std::find_if(header.begin(),
-                        header.end(),
-                        [key](auto& str) { return PyUnicode_Compare(str.get(), key) == 0; }) == header.end()) {
+        if (std::find_if(header.begin(), header.end(), [key](auto& str) {
+                return PyUnicode_Compare(str.get(), key) == 0;
+            }) == header.end()) {
             auto pyheader = py::to_object(header);
 
             py::raise(PyExc_ValueError)
-                << "dtype keys not present in header. dtype keys: " << keys << " header: " << pyheader;
+                << "dtype keys not present in header. dtype keys: " << keys
+                << " header: " << pyheader;
             return nullptr;
         }
     }
@@ -570,13 +566,12 @@ PyObject* parse_csv(PyObject*,
     for (auto [name, values_and_mask] : py::zip(header, vectors)) {
         auto& [boxed_vector, mask] = values_and_mask;
 
-        if (std::holds_alternative<skip>(boxed_vector)){
+        if (std::holds_alternative<skip>(boxed_vector)) {
             continue;
         }
 
-        auto values = std::visit(
-            [](auto& vector) { return to_numpy_array(vector); },
-            boxed_vector);
+        auto values = std::visit([](auto& vector) { return to_numpy_array(vector); },
+                                 boxed_vector);
         if (!values) {
             return nullptr;
         }
