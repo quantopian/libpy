@@ -146,7 +146,6 @@ struct from_object<char> {
 template<>
 struct from_object<PyObject*> {
     static PyObject* f(PyObject* ob) {
-        Py_INCREF(ob);
         return ob;
     }
 };
