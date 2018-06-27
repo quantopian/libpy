@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -36,41 +37,189 @@ position_formatted_error(std::size_t row, std::size_t col, Ts&&... msg) {
     return formatted_error("line ", row, " column ", col, ": ", std::forward<Ts>(msg)...);
 }
 
-namespace dispatch {
-/** Dispatched parser type to allow for partial template specialization.
+/** The state of the row parser, either quoted or not quoted.
  */
+enum class quote_state {
+    quoted,
+    not_quoted,
+};
+
+/** Error thrown when processing quoted cells fails.
+ */
+class quote_error : public std::runtime_error {
+public:
+    template<typename... Ts>
+    quote_error(Ts&&... msg)
+        : std::runtime_error(format_string(std::forward<Ts>(msg)...)) {}
+};
+
+class cell_parser {
+protected:
+    char m_delim;
+public:
+    cell_parser(char delim) : m_delim(delim) {}
+
+    virtual std::tuple<std::size_t, bool> chomp(const std::string_view&, std::size_t) = 0;
+
+    virtual py::scoped_ref<PyObject> move_to_python_tuple() && {
+        Py_INCREF(Py_None);
+        return py::scoped_ref(Py_None);
+    }
+};
+
 template<typename T>
-struct parse;
+struct typed_cell_parser_base : public cell_parser {
+protected:
+    std::vector<T> m_parsed;
+    std::vector<py::py_bool> m_mask;
+
+public:
+    using type = T;
+
+    typed_cell_parser_base(char delim) : cell_parser(delim) {}
+
+    const std::vector<T>& parsed() const {
+        return m_parsed;
+    }
+
+    py::scoped_ref<PyObject> move_to_python_tuple() && {
+        auto values = py::move_to_numpy_array(std::move(m_parsed));
+        if (!values) {
+            return nullptr;
+        }
+
+        auto mask_array = py::move_to_numpy_array(std::move(m_mask));
+        if (!mask_array) {
+            return nullptr;
+        }
+
+        return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
+    }
+};
+
+template<typename T>
+struct typed_cell_parser;
+
+template<typename F>
+std::tuple<std::size_t, bool>
+chomp_quoted_string(F&& f, char delim, const std::string_view& row, std::size_t offset) {
+    quote_state st = quote_state::not_quoted;
+        std::size_t started_quote;
+
+        auto cell = row.substr(offset);
+
+        std::size_t ix;
+        for (ix = 0; ix < cell.size(); ++ix) {
+            char c = cell[ix];
+
+            if (c == '\\') {
+                if (++ix == cell.size()) {
+                    throw formatted_error("line ",
+                                          cell,
+                                          ": row ends with escape character: ",
+                                          row);
+                }
+
+                f(cell[ix]);
+                continue;
+            }
+
+            switch (st) {
+            case quote_state::not_quoted:
+                if (c == '"') {
+                    st = quote_state::quoted;
+                    started_quote = ix;
+                }
+                else if (c == delim) {
+                    return {ix + 1, true};
+                }
+                else {
+                    f(cell[ix]);
+                }
+                break;
+            case quote_state::quoted:
+                if (c == '"') {
+                    st = quote_state::not_quoted;
+                }
+                else {
+                    f(cell[ix]);
+                }
+            }
+        }
+
+        if (st == quote_state::quoted) {
+            started_quote += offset;
+            std::string underline(started_quote + 2, ' ');
+            underline[0] = '\n';
+            underline[underline.size() - 1] = '^';
+            throw formatted_error("row ends while quoted, quote begins at index ",
+                                  started_quote,
+                                  ":\n",
+                                  row,
+                                  underline);
+        }
+
+        return {ix, false};
+}
 
 template<std::size_t n>
-struct parse<std::array<char, n>> {
-    static std::array<char, n> f(const std::string_view& data) {
-        std::array<char, n> out{0};
-        std::copy_n(data.begin(), std::min(out.size(), data.size()), out.begin());
-        return out;
+class typed_cell_parser<std::array<char, n>>
+    : public typed_cell_parser_base<std::array<char, n>> {
+public:
+    typed_cell_parser(char delim) : typed_cell_parser_base<std::array<char, n>>(delim) {}
+
+    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
+                                                std::size_t offset) {
+        this->m_parsed.emplace_back(std::array<char, n>{0});
+        auto& cell = this->m_parsed.back();
+        std::size_t cell_ix = 0;
+        auto ret = chomp_quoted_string(
+            [&](char c) {
+                if (cell_ix < cell.size()) {
+                    cell[cell_ix++] = c;
+                }
+            },
+            this->m_delim,
+            row,
+            offset);
+        this->m_mask.emplace_back(cell_ix > 0);
+        return ret;
     }
 };
 
 template<>
-struct parse<double> {
-    static double f(const std::string_view& data) {
-        std::size_t pos;
-        double out;
-        try {
-            out = std::stod(std::string(data), &pos);
+class typed_cell_parser<double> : public typed_cell_parser_base<double> {
+public:
+    typed_cell_parser(char delim) : typed_cell_parser_base<double>(delim) {}
+
+    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row, std::size_t offset) {
+        const char* first = &row.data()[offset];
+        char* last;
+        this->m_parsed.emplace_back(std::strtod(first, &last));
+
+        std::size_t size = last - first;
+        if (*last != this->m_delim && size != row.size() - offset) {
+            std::string_view cell;
+            auto end = std::memchr(first, this->m_delim, row.size() - offset);
+            if (end) {
+                cell = row.substr(offset, reinterpret_cast<const char*>(end) - first);
+            }
+            else {
+                cell = row.substr(offset);
+            }
+            throw formatted_error("invalid digit in double: ", cell);
         }
-        catch (const std::exception&) {
-            throw formatted_error("error in stod: ", data);
-        }
-        if (pos != data.size()) {
-            throw formatted_error("invalid digit in double: ", data);
-        }
-        return out;
+
+        this->m_mask.emplace_back(size > 0);
+
+        bool more = *last == this->m_delim;
+        return {size + more, more};
     }
 };
 
 template<>
-struct parse<py::datetime64ns> {
+class typed_cell_parser<py::datetime64ns>
+    : public typed_cell_parser_base<py::datetime64ns> {
 private:
     /** The number of days in each month for non-leap years.
      */
@@ -129,16 +278,36 @@ private:
     }
 
 public:
-    static py::datetime64ns f(const std::string_view& raw) {
+    typed_cell_parser(char delim) : typed_cell_parser_base<py::datetime64ns>(delim) {}
+
+    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
+                                                std::size_t offset) {
+        std::string_view raw;
+
+        auto subrow = row.substr(offset);
+        const void* loc = std::memchr(subrow.data(), this->m_delim, subrow.size());
+        std::size_t size;
+        std::size_t consumed;
+        if (loc) {
+            size = reinterpret_cast<const char*>(loc) - subrow.data();
+            consumed = size + 1;
+        }
+        else {
+            size = consumed = subrow.size();
+        }
+
+        raw = subrow.substr(0, size);
         if (!raw.size()) {
-            return py::datetime64ns{};
+            this->m_parsed.emplace_back();
+            this->m_mask.emplace_back(false);
+            return {consumed, loc};
         }
 
         if (raw.size() != 10) {
             throw formatted_error("date string is not exactly 10 characters: ", raw);
         }
 
-        int year = parse_int<4>(raw.data());
+        int year = parse_int<4>(raw);
 
         if (raw[4] != '-') {
             throw formatted_error("expected hyphen at index 4: ", raw);
@@ -167,70 +336,164 @@ public:
 
         // adapt to a `std::chrono::time_point` to properly handle time unit
         // conversions and time since epoch
-        return std::chrono::system_clock::from_time_t(seconds);
+        this->m_parsed.emplace_back(std::chrono::system_clock::from_time_t(seconds));
+        this->m_mask.emplace_back(true);
+        return {consumed, loc};
     }
 };
 
 template<>
-struct parse<py::py_bool> {
-    static py::py_bool f(const std::string_view& data) {
-        if (data.size() != 1) {
-            throw formatted_error("bool is not 0 or 1: ", data);
-        }
+class typed_cell_parser<py::py_bool> : public typed_cell_parser_base<py::py_bool> {
+public:
+    typed_cell_parser(char delim) : typed_cell_parser_base<py::py_bool>(delim) {}
 
-        if (data[0] == '0') {
-            return false;
-        }
-        else if (data[0] == '1') {
-            return true;
+    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
+                                                std::size_t offset) {
+        std::size_t size;
+        std::size_t consumed;
+        auto subrow = row.substr(offset);
+        const void* loc = std::memchr(subrow.data(), this->m_delim, subrow.size());
+        if (loc) {
+            size = reinterpret_cast<const char*>(loc) - subrow.data();
+            consumed = size + 1;
         }
         else {
-            throw formatted_error("bool is not 0 or 1: ", data);
+            size = consumed = subrow.size();
         }
+
+        if (size == 0) {
+            this->m_parsed.emplace_back(false);
+            this->m_mask.emplace_back(false);
+            return {consumed, loc};
+        }
+        if (size != 1) {
+            throw formatted_error("bool is not 0 or 1: ", subrow.substr(0, size));
+        }
+
+        bool value;
+        if (subrow[0] == '0') {
+            value = false;
+        }
+        else if (subrow[0] == '1') {
+            value = true;
+        }
+        else {
+            throw formatted_error("bool is not 0 or 1: ", subrow[0]);
+        }
+
+        this->m_parsed.emplace_back(value);
+        this->m_mask.emplace_back(true);
+        return {consumed, loc};
     }
 };
-}  // namespace dispatch
 
-/** Parse the data as the given type.
+class header_parser : public cell_parser {
+protected:
+    std::vector<std::string> m_parsed;
+public:
+    header_parser(char delim) : cell_parser(delim) {}
 
-    @tparam T The type to parse as.
+    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
+                                                std::size_t offset) {
+        this->m_parsed.emplace_back();
+        auto& cell = this->m_parsed.back();
+        return chomp_quoted_string([&](char c) { cell.push_back(c); },
+                                   this->m_delim,
+                                   row,
+                                   offset);
+    }
+
+    const std::vector<std::string>& parsed() const {
+        return m_parsed;
+    }
+};
+
+class skip_parser : public cell_parser {
+public:
+    skip_parser(char delim) : cell_parser(delim) {}
+
+    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
+                                                std::size_t offset) {
+        return chomp_quoted_string([](char) {}, this->m_delim, row, offset);
+    }
+};
+
+using parser_types = std::vector<std::unique_ptr<cell_parser>>;
+
+/** Parse a single row and store the values in the vectors.
+
     @param row The row index.
-    @param col The column index.
-    @param data The data to parse.
-    @return The parsed value.
+    @param data The view over the row to parse.
+    @param parsers The cell parsers.
  */
-template<typename T>
-T parse_element(const std::string_view& data) {
-    return dispatch::parse<T>::f(data);
+void parse_row(std::size_t row,
+               const std::string_view& data,
+               parser_types& parsers) {
+
+    std::size_t col = 0;
+    std::size_t consumed = 0;
+    bool more = true;
+
+    for (auto& parser : parsers) {
+        if (!more) {
+            throw formatted_error("line ",
+                                  row,
+                                  ": less columns than expected, got ",
+                                  col,
+                                  " but expected ",
+                                  parsers.size());
+        }
+        try {
+            auto [new_consumed, new_more] = parser->chomp(data, consumed);
+            consumed += new_consumed;
+            more = new_more;
+        }
+        catch (const std::exception& e) {
+            throw position_formatted_error(row, col, e.what());
+        }
+
+        ++col;
+    }
+
+    if (consumed != data.size()) {
+        throw formatted_error("line ",
+                              row,
+                              ": more columns than expected, expected ",
+                              parsers.size());
+    }
 }
 
-/** Parse a value and set the mask.
+/** Parse a full CSV given the header and the types of the columns.
 
-    @param out The output value vector.
-    @param mask The output mask.
-    @param data The data to parse.
+    @param data The CSV to parse.
+    @param parsers The cell parsers.
+    @param line_ending The string to split lines on.
  */
-template<typename T>
-void parse_element_into_vector(std::vector<T>& out,
-                               std::vector<py::py_bool>& mask,
-                               const std::string_view& data) {
-    if (data.size()) {
-        out.emplace_back(parse_element<T>(data));
-        mask.emplace_back(true);
+void parse_csv_from_header(const std::string_view& data,
+                           parser_types& parsers,
+                           const std::string_view& line_ending) {
+    // rows are 1 indexed for csv
+    std::size_t row = 1;
+
+    // The current position into the input.
+    std::string_view::size_type pos = 0;
+    // The index of the next newline.
+    std::string_view::size_type end;
+
+    while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
+        std::string_view line = data.substr(pos, end - pos);
+        parse_row(++row, line, parsers);
+
+        // advance past line ending
+        pos = end + line_ending.size();
     }
-    else {
-        out.emplace_back(T{});
-        mask.emplace_back(false);
+
+    std::string_view line = data.substr(pos);
+    if (line.size()) {
+        // get the rest of the data after the final newline if there is any
+        parse_row(++row, line, parsers);
     }
 }
-
-/** Marker type to indicate a column that should be ignored.
- */
-struct skip {};
-
-void parse_element_into_vector(const skip&,
-                               std::vector<py::py_bool>&,
-                               const std::string_view&) {}
 
 /** The types that can be parsed. To add support for a new type, just add it to this
     tuple.
@@ -248,204 +511,6 @@ using possible_types = std::tuple<std::array<char, 1>,
                                   py::datetime64ns,
                                   py::py_bool,
                                   double>;
-
-namespace detail {
-template<typename>
-struct value_vector_from_possible_types;
-
-template<typename... Ts>
-struct value_vector_from_possible_types<std::tuple<Ts...>> {
-    using type = std::variant<std::vector<Ts>..., skip>;
-};
-}  // namespace detail
-
-/** The type of a vector to store parsed values.
- */
-using value_vector =
-    typename detail::value_vector_from_possible_types<possible_types>::type;
-
-/** The type of the vector of (value, pair) tuples.
- */
-using vectors_type = std::vector<std::tuple<value_vector, std::vector<py::py_bool>>>;
-
-/** The state of the row parser, either quoted or not quoted.
- */
-enum class quote_state {
-    quoted,
-    not_quoted,
-};
-
-/** Error thrown when processing quoted cells fails.
- */
-class quote_error : public std::runtime_error {
-public:
-    template<typename... Ts>
-    quote_error(Ts&&... msg)
-        : std::runtime_error(format_string(std::forward<Ts>(msg)...)) {}
-};
-
-/** Process cells with escaping.
-
-    @param data The row to process.
-    @param delimiter The delimiter between cells.
-    @param f The function to call on each unquoted cell.
- */
-template<typename F>
-void process_quoted_cells(std::size_t row,
-                          const std::string_view& data,
-                          char delimiter,
-                          F&& f) {
-    std::string cell;
-    quote_state st = quote_state::not_quoted;
-
-    std::size_t started_quote;
-
-    for (std::size_t ix = 0; ix < data.size(); ++ix) {
-        char c = data[ix];
-
-        if (c == '\\') {
-            if (++ix == data.size()) {
-                throw formatted_error("line ",
-                                      row,
-                                      ": row ends with escape character: ",
-                                      data);
-            }
-
-            cell.push_back(data[ix]);
-            continue;
-        }
-
-        switch (st) {
-        case quote_state::not_quoted:
-            if (c == '"') {
-                st = quote_state::quoted;
-                started_quote = ix;
-            }
-            else if (c == delimiter) {
-                f(cell);
-                cell.clear();
-            }
-            else {
-                cell.push_back(c);
-            }
-            break;
-        case quote_state::quoted:
-            if (c == '"') {
-                st = quote_state::not_quoted;
-            }
-            else {
-                cell.push_back(c);
-            }
-        }
-    }
-
-    f(cell);
-
-    if (st == quote_state::quoted) {
-        std::string underline(started_quote + 2, ' ');
-        underline[0] = '\n';
-        underline[underline.size() - 1] = '^';
-        throw formatted_error("line ",
-                              row,
-                              ": row ends while quoted, quote begins at index ",
-                              started_quote,
-                              ":\n",
-                              data,
-                              underline);
-    }
-}
-
-/** Parse a single row and store the values in the vectors.
-
-    @param row The row index.
-    @param data The view over the row to parse.
-    @param delimiter The delimiter between cells.
-    @param vectors The output vectors.
- */
-void parse_row(std::size_t row,
-               const std::string_view& data,
-               char delimiter,
-               vectors_type& vectors) {
-
-    auto vectors_it = vectors.begin();
-    std::size_t col = 0;
-
-    auto callback = [&](const std::string_view& cell) {
-        if (vectors_it == vectors.end()) {
-            throw formatted_error("line ",
-                                  row,
-                                  ": more columns than expected, expected ",
-                                  vectors.size());
-        }
-
-        auto& [boxed_vector, mask] = *vectors_it++;
-        std::visit(
-            [&](auto& vector) {
-                try {
-                    parse_element_into_vector(vector, mask, cell);
-                }
-                catch (const std::exception& e) {
-                    throw position_formatted_error(row, col, e.what());
-                }
-
-                ++col;
-            },
-            boxed_vector);
-    };
-
-    process_quoted_cells(row, data, delimiter, callback);
-
-    if (vectors_it != vectors.end()) {
-        throw formatted_error("line ",
-                              row,
-                              ": less columns than expected, got ",
-                              std::distance(vectors.begin(), vectors_it),
-                              " but expected ",
-                              vectors.size());
-    }
-}
-
-/** Parse a full CSV given the header and the types of the columns.
-
-    @param vectors The output vectors.
-    @param data The CSV to parse.
-    @param delimiter The delimiter between cells in a row.
- */
-void parse_csv_from_header(const std::string_view& data,
-                           vectors_type& vectors,
-                           char delimiter,
-                           const std::string_view& line_ending) {
-    // rows are 1 indexed for csv
-    std::size_t row = 1;
-
-    // The current position into the input.
-    std::string_view::size_type pos = 0;
-    // The index of the next newline.
-    std::string_view::size_type end;
-
-    while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
-        std::string_view line = data.substr(pos, end - pos);
-        parse_row(++row, line, delimiter, vectors);
-
-        // advance past line ending
-        pos = end + line_ending.size();
-    }
-
-    std::string_view line = data.substr(pos);
-    if (line.size()) {
-        // get the rest of the data after the final newline if there is any
-        parse_row(++row, line, delimiter, vectors);
-    }
-}
-
-template<typename T>
-scoped_ref<PyObject> to_numpy_array(std::vector<T>& v) {
-    return py::move_to_numpy_array(std::move(v));
-}
-
-scoped_ref<PyObject> to_numpy_array(skip&) {
-    throw std::runtime_error("skipped column should not be converted to numpy array");
-}
 
 namespace detail {
 template<typename T>
@@ -466,34 +531,35 @@ struct dtype_option {
         return result;
     }
 
-    static void create_vector(vectors_type& vectors) {
-        vectors.emplace_back(std::vector<T>{}, std::vector<py::py_bool>{});
+    static void
+    create_vector(char delimiter, parser_types& parsers) {
+        parsers.emplace_back(std::make_unique<typed_cell_parser<T>>(delimiter));
     }
 };
 
 template<typename T>
-struct initialize_vector;
+struct initialize_parser;
 
 template<typename T, typename... Ts>
-struct initialize_vector<std::tuple<T, Ts...>> {
-    static void f(PyObject* dtype, vectors_type& vectors) {
+struct initialize_parser<std::tuple<T, Ts...>> {
+    static void f(PyObject* dtype, char delimiter, parser_types& parsers) {
         using option = dtype_option<T>;
         if (!option::matches(dtype)) {
-            initialize_vector<std::tuple<Ts...>>::f(dtype, vectors);
+            initialize_parser<std::tuple<Ts...>>::f(dtype, delimiter, parsers);
             return;
         }
 
-        option::create_vector(vectors);
+        option::create_vector(delimiter, parsers);
     }
 };
 
 template<>
-struct initialize_vector<std::tuple<>> {
-    static void f(PyObject*, vectors_type&) {
+struct initialize_parser<std::tuple<>> {
+    static void f(PyObject*, char, parser_types&) {
         throw std::runtime_error("unknown dtype");
     }
 };
-}
+}  // namespace detail
 
 /** Python CSV parsing function.
 
@@ -511,83 +577,89 @@ PyObject* parse_csv(PyObject*,
                     const std::string_view& line_ending) {
     py::valgrind::callgrind profile("parse_csv");
 
-    std::vector<py::scoped_ref<PyObject>> header;
-    vectors_type vectors;
+    if (PyDict_Size(dtypes) < 0) {
+        // ensure this is a dict with a reasonable error message
+        return nullptr;
+    }
 
     auto line_end = data.find(line_ending, 0);
     auto line = data.substr(0, line_end);
 
-    auto callback = [&](const std::string& cell) {
+    header_parser header_parser(delimiter);
+
+    for (auto [consumed, more] = std::make_tuple(0, true); more;) {
+        auto [new_consumed, new_more] = header_parser.chomp(line, consumed);
+        consumed += new_consumed;
+        more = new_more;
+    }
+
+    std::vector<py::scoped_ref<PyObject>> header;
+    parser_types parsers;
+
+    for (const auto& cell : header_parser.parsed()) {
         auto as_pystring = py::to_object(cell);
+
         PyObject* dtype = PyDict_GetItem(dtypes, as_pystring.get());
         if (!dtype) {
-            vectors.emplace_back(skip{}, std::vector<py::py_bool>{});
+            parsers.emplace_back(std::make_unique<skip_parser>(delimiter));
         }
         else {
-            // push back a new vector of the proper static type into `vectors` given the
+            // push back a new parser of the proper static type into `parsers` given the
             // runtime `dtype`
-            detail::initialize_vector<possible_types>::f(dtype, vectors);
+            detail::initialize_parser<possible_types>::f(dtype, delimiter, parsers);
         }
 
         header.emplace_back(std::move(as_pystring));
     };
 
-    process_quoted_cells(1, line, delimiter, callback);
-
-    Py_ssize_t dtypes_size = PyDict_Size(dtypes);
-    if (dtypes_size < 0) {
+    // Ensure that each key in dtypes has a corresponding column in the CSV header.
+    auto expected_keys = py::scoped_ref(PySet_New(dtypes));
+    if (!expected_keys) {
         return nullptr;
     }
-
-    // Ensure that each key in dtypes has a corresponding column in the CSV header.
-    auto keys = py::scoped_ref(PyDict_Keys(dtypes));
-    Py_ssize_t keys_count = PyList_Size(keys.get());
-    for (Py_ssize_t key_i = 0; key_i < keys_count; ++key_i) {
-        auto key = PyList_GetItem(keys.get(), key_i);
-
-        if (std::find_if(header.begin(), header.end(), [key](auto& str) {
-                return PyUnicode_Compare(str.get(), key) == 0;
-            }) == header.end()) {
-            auto pyheader = py::to_object(header);
-
-            py::raise(PyExc_ValueError)
-                << "dtype keys not present in header. dtype keys: " << keys
-                << " header: " << pyheader;
+    auto actual_keys = py::to_object(header);
+    if (!actual_keys) {
+        return nullptr;
+    }
+    auto actual_keys_set = py::scoped_ref(PySet_New(actual_keys.get()));
+    if (!actual_keys_set) {
+        return nullptr;
+    }
+    auto diff = py::scoped_ref(
+        PyNumber_Subtract(expected_keys.get(), actual_keys_set.get()));
+    if (!diff) {
+        return nullptr;
+    }
+    if (PySet_GET_SIZE(diff.get())) {
+        auto as_list = py::scoped_ref(PySequence_List(diff.get()));
+        if (PyList_Sort(as_list.get()) < 0) {
             return nullptr;
         }
+        py::raise(PyExc_ValueError) << "dtype keys not present in header: " << as_list
+                                    << "\nheader: " << actual_keys;
+        return nullptr;
     }
 
     // advance_past the line ending
     parse_csv_from_header(data.substr(line_end + line_ending.size()),
-                          vectors,
-                          delimiter,
+                          parsers,
                           line_ending);
 
     auto out = py::scoped_ref(PyDict_New());
     if (!out) {
         return nullptr;
     }
-    for (auto [name, values_and_mask] : py::zip(header, vectors)) {
-        auto& [boxed_vector, mask] = values_and_mask;
 
-        if (std::holds_alternative<skip>(boxed_vector)) {
-            continue;
-        }
+    for (std::size_t ix = 0; ix < header.size(); ++ix) {
+        auto& name = header[ix];
+        auto& parser = parsers[ix];
 
-        auto values = std::visit([](auto& vector) { return to_numpy_array(vector); },
-                                 boxed_vector);
-        if (!values) {
-            return nullptr;
-        }
-
-        auto mask_array = py::move_to_numpy_array(std::move(mask));
-        if (!mask_array) {
-            return nullptr;
-        }
-
-        auto value = py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
+        auto value = std::move(*parser).move_to_python_tuple();
         if (!value) {
             return nullptr;
+        }
+        if (value.get() == Py_None) {
+            continue;
         }
 
         if (PyDict_SetItem(out.get(), name.get(), value.get())) {
