@@ -77,4 +77,6 @@ public:
         }
     };
 };
+
+thread_local PyThreadState* gil::m_save;
 }  // namespace py

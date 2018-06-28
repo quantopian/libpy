@@ -3,15 +3,19 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <exception>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <variant>
 #include <vector>
 
 #include "libpy/datetime64ns.h"
 #include "libpy/exception.h"
+#include "libpy/gil.h"
 #include "libpy/itertools.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/scoped_ref.h"
@@ -19,6 +23,25 @@
 #include "libpy/valgrind.h"
 
 namespace py::parser {
+constexpr std::size_t min_group_size = 4096;
+
+/** The types that can be parsed. To add support for a new type, just add it to this
+    tuple.
+ */
+using possible_types = std::tuple<std::array<char, 1>,
+                                  std::array<char, 2>,
+                                  std::array<char, 3>,
+                                  std::array<char, 4>,
+                                  std::array<char, 6>,
+                                  std::array<char, 8>,
+                                  std::array<char, 9>,
+                                  std::array<char, 12>,
+                                  std::array<char, 30>,
+                                  std::array<char, 40>,
+                                  py::datetime64ns,
+                                  py::py_bool,
+                                  double>;
+
 template<typename... Ts>
 std::string format_string(Ts&&... msg) {
     std::stringstream s;
@@ -59,7 +82,10 @@ protected:
 public:
     cell_parser(char delim) : m_delim(delim) {}
 
-    virtual std::tuple<std::size_t, bool> chomp(const std::string_view&, std::size_t) = 0;
+    virtual void set_num_lines(std::size_t) {}
+
+    virtual std::tuple<std::size_t, bool>
+    chomp(std::size_t, const std::string_view&, std::size_t) = 0;
 
     virtual py::scoped_ref<PyObject> move_to_python_tuple() && {
         Py_INCREF(Py_None);
@@ -80,6 +106,11 @@ public:
 
     const std::vector<T>& parsed() const {
         return m_parsed;
+    }
+
+    virtual void set_num_lines(std::size_t nrows) {
+        m_parsed.resize(nrows);
+        m_mask.resize(nrows);
     }
 
     py::scoped_ref<PyObject> move_to_python_tuple() && {
@@ -168,10 +199,9 @@ class typed_cell_parser<std::array<char, n>>
 public:
     typed_cell_parser(char delim) : typed_cell_parser_base<std::array<char, n>>(delim) {}
 
-    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
-                                                std::size_t offset) {
-        this->m_parsed.emplace_back(std::array<char, n>{0});
-        auto& cell = this->m_parsed.back();
+    virtual std::tuple<std::size_t, bool>
+    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
+        auto& cell = this->m_parsed[ix];
         std::size_t cell_ix = 0;
         auto ret = chomp_quoted_string(
             [&](char c) {
@@ -182,7 +212,7 @@ public:
             this->m_delim,
             row,
             offset);
-        this->m_mask.emplace_back(cell_ix > 0);
+        this->m_mask[ix] = cell_ix > 0;
         return ret;
     }
 };
@@ -192,10 +222,11 @@ class typed_cell_parser<double> : public typed_cell_parser_base<double> {
 public:
     typed_cell_parser(char delim) : typed_cell_parser_base<double>(delim) {}
 
-    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row, std::size_t offset) {
+    virtual std::tuple<std::size_t, bool>
+    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         const char* first = &row.data()[offset];
         char* last;
-        this->m_parsed.emplace_back(std::strtod(first, &last));
+        this->m_parsed[ix] = std::strtod(first, &last);
 
         std::size_t size = last - first;
         if (*last != this->m_delim && size != row.size() - offset) {
@@ -210,7 +241,7 @@ public:
             throw formatted_error("invalid digit in double: ", cell);
         }
 
-        this->m_mask.emplace_back(size > 0);
+        this->m_mask[ix] = size > 0;
 
         bool more = *last == this->m_delim;
         return {size + more, more};
@@ -280,8 +311,8 @@ private:
 public:
     typed_cell_parser(char delim) : typed_cell_parser_base<py::datetime64ns>(delim) {}
 
-    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
-                                                std::size_t offset) {
+    virtual std::tuple<std::size_t, bool>
+    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         std::string_view raw;
 
         auto subrow = row.substr(offset);
@@ -298,8 +329,6 @@ public:
 
         raw = subrow.substr(0, size);
         if (!raw.size()) {
-            this->m_parsed.emplace_back();
-            this->m_mask.emplace_back(false);
             return {consumed, loc};
         }
 
@@ -336,8 +365,8 @@ public:
 
         // adapt to a `std::chrono::time_point` to properly handle time unit
         // conversions and time since epoch
-        this->m_parsed.emplace_back(std::chrono::system_clock::from_time_t(seconds));
-        this->m_mask.emplace_back(true);
+        this->m_parsed[ix] = std::chrono::system_clock::from_time_t(seconds);
+        this->m_mask[ix] = true;
         return {consumed, loc};
     }
 };
@@ -347,8 +376,8 @@ class typed_cell_parser<py::py_bool> : public typed_cell_parser_base<py::py_bool
 public:
     typed_cell_parser(char delim) : typed_cell_parser_base<py::py_bool>(delim) {}
 
-    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
-                                                std::size_t offset) {
+    virtual std::tuple<std::size_t, bool>
+    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         std::size_t size;
         std::size_t consumed;
         auto subrow = row.substr(offset);
@@ -362,8 +391,6 @@ public:
         }
 
         if (size == 0) {
-            this->m_parsed.emplace_back(false);
-            this->m_mask.emplace_back(false);
             return {consumed, loc};
         }
         if (size != 1) {
@@ -381,8 +408,8 @@ public:
             throw formatted_error("bool is not 0 or 1: ", subrow[0]);
         }
 
-        this->m_parsed.emplace_back(value);
-        this->m_mask.emplace_back(true);
+        this->m_parsed[ix] = value;
+        this->m_mask[ix] = true;
         return {consumed, loc};
     }
 };
@@ -393,8 +420,8 @@ protected:
 public:
     header_parser(char delim) : cell_parser(delim) {}
 
-    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
-                                                std::size_t offset) {
+    virtual std::tuple<std::size_t, bool>
+    chomp(std::size_t, const std::string_view& row, std::size_t offset) {
         this->m_parsed.emplace_back();
         auto& cell = this->m_parsed.back();
         return chomp_quoted_string([&](char c) { cell.push_back(c); },
@@ -412,8 +439,8 @@ class skip_parser : public cell_parser {
 public:
     skip_parser(char delim) : cell_parser(delim) {}
 
-    virtual std::tuple<std::size_t, bool> chomp(const std::string_view& row,
-                                                std::size_t offset) {
+    virtual std::tuple<std::size_t, bool>
+    chomp(std::size_t, const std::string_view& row, std::size_t offset) {
         return chomp_quoted_string([](char) {}, this->m_delim, row, offset);
     }
 };
@@ -437,19 +464,19 @@ void parse_row(std::size_t row,
     for (auto& parser : parsers) {
         if (!more) {
             throw formatted_error("line ",
-                                  row,
+                                  row + 2,
                                   ": less columns than expected, got ",
                                   col,
                                   " but expected ",
                                   parsers.size());
         }
         try {
-            auto [new_consumed, new_more] = parser->chomp(data, consumed);
+            auto [new_consumed, new_more] = parser->chomp(row, data, consumed);
             consumed += new_consumed;
             more = new_more;
         }
         catch (const std::exception& e) {
-            throw position_formatted_error(row, col, e.what());
+            throw position_formatted_error(row + 2, col, e.what());
         }
 
         ++col;
@@ -457,9 +484,34 @@ void parse_row(std::size_t row,
 
     if (consumed != data.size()) {
         throw formatted_error("line ",
-                              row,
+                              row + 2,
                               ": more columns than expected, expected ",
                               parsers.size());
+    }
+}
+
+void parse_lines(std::string_view* begin,
+                 std::string_view* end,
+                 std::size_t offset,
+                 parser_types& parsers) {
+    for (std::size_t ix = offset; begin != end; ++begin, ++ix) {
+        parse_row(ix, *begin, parsers);
+    }
+}
+
+
+void parse_lines_worker(std::mutex* exception_mutex,
+                        std::vector<std::exception_ptr>* exceptions,
+                        std::string_view* begin,
+                        std::string_view* end,
+                        std::size_t offset,
+                        parser_types* parsers) {
+    try {
+        parse_lines(begin, end, offset, *parsers);
+    }
+    catch (const std::exception&) {
+        std::lock_guard<std::mutex> guard(*exception_mutex);
+        exceptions->emplace_back(std::current_exception());
     }
 }
 
@@ -471,46 +523,71 @@ void parse_row(std::size_t row,
  */
 void parse_csv_from_header(const std::string_view& data,
                            parser_types& parsers,
-                           const std::string_view& line_ending) {
-    // rows are 1 indexed for csv
-    std::size_t row = 1;
-
+                           const std::string_view& line_ending,
+                           std::size_t num_threads) {
     // The current position into the input.
     std::string_view::size_type pos = 0;
     // The index of the next newline.
     std::string_view::size_type end;
 
+    std::vector<std::string_view> lines;
+    lines.reserve(min_group_size);
+
     while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
-        std::string_view line = data.substr(pos, end - pos);
-        parse_row(++row, line, parsers);
+        lines.emplace_back(data.substr(pos, end - pos));
 
         // advance past line ending
         pos = end + line_ending.size();
     }
+    if (pos != data.size()) {
+        // add any data after the last newline if there is anything to add
+        lines.emplace_back(data.substr(pos));
+    }
 
-    std::string_view line = data.substr(pos);
-    if (line.size()) {
-        // get the rest of the data after the final newline if there is any
-        parse_row(++row, line, parsers);
+    for (auto& parser : parsers) {
+        parser->set_num_lines(lines.size());
+    }
+
+    std::size_t group_size = lines.size() / num_threads;
+    if (group_size < min_group_size) {
+        parse_lines(&lines[0], &lines[lines.size()], 0, parsers);
+    }
+    else {
+        std::mutex exception_mutex;
+        std::vector<std::exception_ptr> exceptions;
+
+        std::vector<std::thread> threads;
+        std::size_t n;
+        for (n = 0; n < num_threads - 1; ++n) {
+            std::size_t start = n * group_size;
+            threads.emplace_back(
+                std::thread(parse_lines_worker,
+                            &exception_mutex,
+                            &exceptions,
+                            &lines[start],
+                            &lines[start + group_size],
+                            start,
+                            &parsers));
+        }
+        std::size_t start = n * group_size;
+        threads.emplace_back(
+            std::thread(parse_lines_worker,
+                        &exception_mutex,
+                        &exceptions,
+                        &lines[start],
+                        &lines[std::max(start + group_size, lines.size())],
+                        start,
+                        &parsers));
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        for (auto& e : exceptions) {
+            std::rethrow_exception(e);
+        }
     }
 }
-
-/** The types that can be parsed. To add support for a new type, just add it to this
-    tuple.
- */
-using possible_types = std::tuple<std::array<char, 1>,
-                                  std::array<char, 2>,
-                                  std::array<char, 3>,
-                                  std::array<char, 4>,
-                                  std::array<char, 6>,
-                                  std::array<char, 8>,
-                                  std::array<char, 9>,
-                                  std::array<char, 12>,
-                                  std::array<char, 30>,
-                                  std::array<char, 40>,
-                                  py::datetime64ns,
-                                  py::py_bool,
-                                  double>;
 
 namespace detail {
 template<typename T>
@@ -574,7 +651,8 @@ PyObject* parse_csv(PyObject*,
                     const std::string_view& data,
                     PyObject* dtypes,
                     char delimiter,
-                    const std::string_view& line_ending) {
+                    const std::string_view& line_ending,
+                    std::size_t num_threads) {
     py::valgrind::callgrind profile("parse_csv");
 
     if (PyDict_Size(dtypes) < 0) {
@@ -588,7 +666,7 @@ PyObject* parse_csv(PyObject*,
     header_parser header_parser(delimiter);
 
     for (auto [consumed, more] = std::make_tuple(0, true); more;) {
-        auto [new_consumed, new_more] = header_parser.chomp(line, consumed);
+        auto [new_consumed, new_more] = header_parser.chomp(0, line, consumed);
         consumed += new_consumed;
         more = new_more;
     }
@@ -643,7 +721,8 @@ PyObject* parse_csv(PyObject*,
     // advance_past the line ending
     parse_csv_from_header(data.substr(line_end + line_ending.size()),
                           parsers,
-                          line_ending);
+                          line_ending,
+                          num_threads);
 
     auto out = py::scoped_ref(PyDict_New());
     if (!out) {
