@@ -10,6 +10,13 @@ namespace py::cs {
 template<char... cs>
 using char_sequence = std::integer_sequence<char, cs...>;
 
+inline namespace literals {
+template<typename Char, Char... cs>
+constexpr char_sequence<cs...> operator""_cs() {
+    return {};
+}
+};
+
 namespace detail {
 template<char... cs, char... ds>
 constexpr auto binary_cat(char_sequence<cs...>, char_sequence<ds...>) {
