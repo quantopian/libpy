@@ -460,7 +460,7 @@ PyObject* parse_csv(PyObject*,
                     const std::string_view& line_ending) {
     py::valgrind::callgrind profile("parse_csv");
 
-    std::array<py::scoped_ref<PyArray_Descr>, 11> possible_dtypes =
+    std::array<py::scoped_ref<PyArray_Descr>, 12> possible_dtypes =
         {py::new_dtype<std::array<char, 1>>(),
          py::new_dtype<std::array<char, 2>>(),
          py::new_dtype<std::array<char, 3>>(),
@@ -468,6 +468,7 @@ PyObject* parse_csv(PyObject*,
          py::new_dtype<std::array<char, 6>>(),
          py::new_dtype<std::array<char, 8>>(),
          py::new_dtype<std::array<char, 9>>(),
+         py::new_dtype<std::array<char, 30>>(),
          py::new_dtype<std::array<char, 40>>(),
          py::new_dtype<py::datetime64ns>(),
          py::new_dtype<py::py_bool>(),
