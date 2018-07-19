@@ -232,20 +232,37 @@ void parse_element_into_vector(const skip&,
                                std::vector<py::py_bool>&,
                                const std::string_view&) {}
 
+/** The types that can be parsed. To add support for a new type, just add it to this
+    tuple.
+ */
+using possible_types = std::tuple<std::array<char, 1>,
+                                  std::array<char, 2>,
+                                  std::array<char, 3>,
+                                  std::array<char, 4>,
+                                  std::array<char, 6>,
+                                  std::array<char, 8>,
+                                  std::array<char, 9>,
+                                  std::array<char, 12>,
+                                  std::array<char, 30>,
+                                  std::array<char, 40>,
+                                  py::datetime64ns,
+                                  py::py_bool,
+                                  double>;
+
+namespace detail {
+template<typename>
+struct value_vector_from_possible_types;
+
+template<typename... Ts>
+struct value_vector_from_possible_types<std::tuple<Ts...>> {
+    using type = std::variant<std::vector<Ts>..., skip>;
+};
+}  // namespace detail
+
 /** The type of a vector to store parsed values.
  */
-using value_vector = std::variant<std::vector<std::array<char, 1>>,
-                                  std::vector<std::array<char, 2>>,
-                                  std::vector<std::array<char, 3>>,
-                                  std::vector<std::array<char, 4>>,
-                                  std::vector<std::array<char, 6>>,
-                                  std::vector<std::array<char, 8>>,
-                                  std::vector<std::array<char, 9>>,
-                                  std::vector<std::array<char, 40>>,
-                                  std::vector<py::datetime64ns>,
-                                  std::vector<py::py_bool>,
-                                  std::vector<double>,
-                                  skip>;
+using value_vector =
+    typename detail::value_vector_from_possible_types<possible_types>::type;
 
 /** The type of the vector of (value, pair) tuples.
  */
@@ -421,20 +438,6 @@ void parse_csv_from_header(const std::string_view& data,
     }
 }
 
-/** Check if two dtypes are equal. If a Python exception is raised, throw a C++ exception.
-
-    @param a The first dtype.
-    @param b The second dtype.
-    @return Are they equal.
- */
-bool dtype_eq(PyObject* a, py::scoped_ref<PyArray_Descr>& b) {
-    int result = PyObject_RichCompareBool(a, static_cast<PyObject*>(b), Py_EQ);
-    if (result < 0) {
-        throw std::runtime_error("failed to compare objects");
-    }
-    return result;
-}
-
 template<typename T>
 scoped_ref<PyObject> to_numpy_array(std::vector<T>& v) {
     return py::move_to_numpy_array(std::move(v));
@@ -442,6 +445,54 @@ scoped_ref<PyObject> to_numpy_array(std::vector<T>& v) {
 
 scoped_ref<PyObject> to_numpy_array(skip&) {
     throw std::runtime_error("skipped column should not be converted to numpy array");
+}
+
+namespace detail {
+template<typename T>
+struct dtype_option {
+    using type = T;
+
+    static bool matches(PyObject* dtype) {
+        auto candidate = py::new_dtype<T>();
+        if (!candidate) {
+            throw py::exception();
+        }
+
+        int result =
+            PyObject_RichCompareBool(dtype, static_cast<PyObject*>(candidate), Py_EQ);
+        if (result < 0) {
+            throw py::exception();
+        }
+        return result;
+    }
+
+    static void create_vector(vectors_type& vectors) {
+        vectors.emplace_back(std::vector<T>{}, std::vector<py::py_bool>{});
+    }
+};
+
+template<typename T>
+struct initialize_vector;
+
+template<typename T, typename... Ts>
+struct initialize_vector<std::tuple<T, Ts...>> {
+    static void f(PyObject* dtype, vectors_type& vectors) {
+        using option = dtype_option<T>;
+        if (!option::matches(dtype)) {
+            initialize_vector<std::tuple<Ts...>>::f(dtype, vectors);
+            return;
+        }
+
+        option::create_vector(vectors);
+    }
+};
+
+template<>
+struct initialize_vector<std::tuple<>> {
+    static void f(PyObject*, vectors_type&) {
+        throw std::runtime_error("unknown dtype");
+    }
+};
 }
 
 /** Python CSV parsing function.
@@ -460,20 +511,6 @@ PyObject* parse_csv(PyObject*,
                     const std::string_view& line_ending) {
     py::valgrind::callgrind profile("parse_csv");
 
-    std::array<py::scoped_ref<PyArray_Descr>, 12> possible_dtypes =
-        {py::new_dtype<std::array<char, 1>>(),
-         py::new_dtype<std::array<char, 2>>(),
-         py::new_dtype<std::array<char, 3>>(),
-         py::new_dtype<std::array<char, 4>>(),
-         py::new_dtype<std::array<char, 6>>(),
-         py::new_dtype<std::array<char, 8>>(),
-         py::new_dtype<std::array<char, 9>>(),
-         py::new_dtype<std::array<char, 30>>(),
-         py::new_dtype<std::array<char, 40>>(),
-         py::new_dtype<py::datetime64ns>(),
-         py::new_dtype<py::py_bool>(),
-         py::new_dtype<double>()};
-
     std::vector<py::scoped_ref<PyObject>> header;
     vectors_type vectors;
 
@@ -482,48 +519,14 @@ PyObject* parse_csv(PyObject*,
 
     auto callback = [&](const std::string& cell) {
         auto as_pystring = py::to_object(cell);
-        std::vector<py::py_bool> mask;
-
         PyObject* dtype = PyDict_GetItem(dtypes, as_pystring.get());
         if (!dtype) {
-            vectors.emplace_back(skip{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[0])) {
-            vectors.emplace_back(std::vector<std::array<char, 1>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[1])) {
-            vectors.emplace_back(std::vector<std::array<char, 2>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[2])) {
-            vectors.emplace_back(std::vector<std::array<char, 3>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[3])) {
-            vectors.emplace_back(std::vector<std::array<char, 4>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[4])) {
-            vectors.emplace_back(std::vector<std::array<char, 6>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[5])) {
-            vectors.emplace_back(std::vector<std::array<char, 8>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[6])) {
-            vectors.emplace_back(std::vector<std::array<char, 9>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[7])) {
-            vectors.emplace_back(std::vector<std::array<char, 40>>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[8])) {
-            vectors.emplace_back(std::vector<py::datetime64ns>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[9])) {
-            vectors.emplace_back(std::vector<py::py_bool>{}, mask);
-        }
-        else if (dtype_eq(dtype, possible_dtypes[10])) {
-            vectors.emplace_back(std::vector<double>{}, mask);
+            vectors.emplace_back(skip{}, std::vector<py::py_bool>{});
         }
         else {
-            py::raise(PyExc_TypeError) << "unknown dtype: " << dtype;
-            throw std::runtime_error("unknown dtype");
+            // push back a new vector of the proper static type into `vectors` given the
+            // runtime `dtype`
+            detail::initialize_vector<possible_types>::f(dtype, vectors);
         }
 
         header.emplace_back(std::move(as_pystring));
