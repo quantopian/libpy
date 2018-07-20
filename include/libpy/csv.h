@@ -637,7 +637,7 @@ struct initialize_parser<T, Ts...> {
     f(PyObject* dtype, char delimiter, parser_types<std::unique_ptr>& parsers) {
         using option = dtype_option<T>;
         if (!option::matches(dtype)) {
-            initialize_parser<std::tuple<Ts...>>::f(dtype, delimiter, parsers);
+            initialize_parser<Ts...>::f(dtype, delimiter, parsers);
             return;
         }
 
