@@ -19,12 +19,41 @@ private:
     };
 
 public:
+    class iterator {
+    private:
+        std::size_t m_ix;
+        archive& m_archive;
+
+    protected:
+        friend class archive;
+
+        iterator(std::size_t ix, archive& archive) : m_ix(ix), m_archive(archive) {}
+
+    public:
+        iterator& operator++() {
+            ++m_ix;
+            return *this;
+        }
+
+        bool operator==(const iterator& other) const {
+            return m_archive.get() == other.m_archive.get() && m_ix == other.m_ix;
+        }
+
+        bool operator!=(const iterator& other) const {
+            return !(*this == other);
+        }
+
+        std::pair<std::string, std::string> operator*() {
+            return m_archive.read_as_string(m_ix);
+        }
+    };
+
     using file = std::unique_ptr<zip_file_t, close_file>;
     using stat = zip_stat_t;
 
-    archive(const char* path, int flags = ZIP_RDONLY) : m_zip(nullptr) {
+    archive(const std::string& path, int flags = ZIP_RDONLY) : m_zip(nullptr) {
         int err = 0;
-        m_zip = zip_open(path, flags, &err);
+        m_zip = zip_open(path.data(), flags, &err);
         if (err) {
             zip_error_t error_ob;
             zip_error_init_with_code(&error_ob, err);
@@ -34,6 +63,14 @@ public:
         }
     }
 
+    zip_t* get() {
+        return m_zip;
+    }
+
+    const zip_t* get() const {
+        return m_zip;
+    }
+
     std::size_t size() {
         auto size = zip_get_num_entries(m_zip, /* flags */ 0);
         if (size < 0) {
@@ -41,6 +78,14 @@ public:
         }
 
         return static_cast<std::size_t>(size);
+    }
+
+    iterator begin() {
+        return iterator(0, *this);
+    }
+
+    iterator end() {
+        return iterator(size(), *this);
     }
 
     file open_file(std::size_t ix) {
@@ -99,7 +144,7 @@ pymethod_read(PyObject*, const std::string& path) {
 
 std::unordered_map<std::string, std::string>
 read(const std::string& path) {
-    archive z(path.data());
+    archive z(path);
     std::size_t entries = z.size();
 
     std::unordered_map<std::string, std::string> out;
