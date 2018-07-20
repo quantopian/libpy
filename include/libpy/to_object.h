@@ -60,21 +60,21 @@ struct to_object<scoped_ref<T>> {
 template<>
 struct to_object<std::string> {
     static PyObject* f(const std::string& cs) {
-        return PyUnicode_FromStringAndSize(cs.data(), cs.size());
+        return PyBytes_FromStringAndSize(cs.data(), cs.size());
     }
 };
 
 template<>
 struct to_object<std::string_view> {
     static PyObject* f(const std::string_view& cs) {
-        return PyUnicode_FromStringAndSize(cs.data(), cs.size());
+        return PyBytes_FromStringAndSize(cs.data(), cs.size());
     }
 };
 
 template<std::size_t n>
 struct to_object<char[n]> {
     static PyObject* f(const char* cs) {
-        return PyUnicode_FromStringAndSize(cs, n - 1);
+        return PyBytes_FromStringAndSize(cs, n - 1);
     }
 };
 
