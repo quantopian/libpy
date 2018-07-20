@@ -66,12 +66,17 @@ struct automethodwrapper_impl {
         }
 
         auto cxx_args = f::build_arg_tuple(self, args);
-        auto result = std::apply(impl, cxx_args);
-        if constexpr (std::is_same_v<decltype(result), PyObject*>) {
-            return result;
+        if constexpr (std::is_same_v<typename f::return_type, void>) {
+            std::apply(impl, cxx_args);
+            // Allow auto method with void return. This will return a new reference of
+            // None to the calling Python.
+            Py_RETURN_NONE;
+        }
+        else if constexpr (std::is_same_v<typename f::return_type, PyObject*>) {
+            return std::apply(impl, cxx_args);
         }
         else {
-            return py::to_object(result).escape();
+            return py::to_object(std::apply(impl, cxx_args)).escape();
         }
     }
 };
@@ -81,12 +86,18 @@ struct automethodwrapper_impl {
 template<auto impl, typename Self>
 struct automethodwrapper_impl<0, impl, Self> {
     static PyObject* f(Self self, PyObject*) {
-        auto result = impl(self);
-        if constexpr (std::is_same_v<decltype(result), PyObject*>) {
-            return result;
+        using f = function_traits<decltype(impl), Self>;
+        if constexpr (std::is_same_v<typename f::return_type, void>) {
+            impl(self);
+            // Allow auto method with void return. This will return a new reference of
+            // None to the calling Python.
+            Py_RETURN_NONE;
+        }
+        else if constexpr (std::is_same_v<typename f::return_type, PyObject*>) {
+            return impl(self);
         }
         else {
-            return py::to_object(result).escape();
+            return py::to_object(impl(self)).escape();
         }
     }
 };
