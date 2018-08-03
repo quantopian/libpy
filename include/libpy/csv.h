@@ -647,8 +647,8 @@ struct initialize_parser<T, Ts...> {
 
 template<>
 struct initialize_parser<> {
-    static void f(PyObject*, char, parser_types<std::unique_ptr>&) {
-        throw std::runtime_error("unknown dtype");
+    static void f(PyObject* dtype, char, parser_types<std::unique_ptr>&) {
+        throw py::exception(PyExc_TypeError, "unknown dtype: ", dtype);
     }
 };
 }  // namespace detail
