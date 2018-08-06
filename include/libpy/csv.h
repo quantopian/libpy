@@ -15,7 +15,6 @@
 
 #include "libpy/datetime64ns.h"
 #include "libpy/exception.h"
-#include "libpy/gil.h"
 #include "libpy/itertools.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/scoped_ref.h"
