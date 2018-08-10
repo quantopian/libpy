@@ -748,7 +748,8 @@ parse_header(const std::string_view& data,
         }
     };
 
-    return {data.substr(line.size() + line_ending.size()), std::move(parsers)};
+    auto start = std::min(line.size() + line_ending.size(), data.size());
+    return {data.substr(start), std::move(parsers)};
 }
 
 /** Verify that the `dtypes` dict keys are a subset of the actual header in the file.
@@ -763,17 +764,18 @@ void verify_dtypes_dict(PyObject* dtypes, std::vector<py::scoped_ref<PyObject>>&
     if (!expected_keys) {
         throw py::exception();
     }
-    auto actual_keys = py::scoped_ref(PySet_New(nullptr));
+    auto actual_keys = py::to_object(header);
     if (!actual_keys) {
         throw py::exception();
     }
-    for (auto& key : header) {
-        if (PySet_Add(actual_keys.get(), key.get())) {
-            throw py::exception();
-        }
+
+    auto actual_keys_set = py::scoped_ref(PySet_New(actual_keys.get()));
+    if (!actual_keys_set) {
+        throw py::exception();
     }
 
-    auto diff = py::scoped_ref(PyNumber_Subtract(expected_keys.get(), actual_keys.get()));
+    auto diff = py::scoped_ref(
+        PyNumber_Subtract(expected_keys.get(), actual_keys_set.get()));
     if (!diff) {
         throw py::exception();
     }
@@ -785,7 +787,7 @@ void verify_dtypes_dict(PyObject* dtypes, std::vector<py::scoped_ref<PyObject>>&
         throw py::exception(PyExc_ValueError,
                             "dtype keys not present in header: ",
                             as_list,
-                            "\nheader:",
+                            "\nheader: ",
                             actual_keys);
     }
 }
