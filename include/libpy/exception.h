@@ -104,7 +104,7 @@ struct raise_format<void*> {
 
 template<>
 struct raise_format<PyObject*> {
-    using fmt = cs::char_sequence<'R'>;
+    using fmt = cs::char_sequence<'S'>;
 
     static auto prepare(PyObject* ob) {
         return ob;
