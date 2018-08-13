@@ -11,6 +11,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -70,22 +71,25 @@ public:
             indicating that more cells are expected.
  */
 std::tuple<std::string_view, std::size_t, bool>
-isolate_cell(const std::string_view& row, std::size_t offset, char delim) {
+isolate_unquoted_cell(const std::string_view& row, std::size_t offset, char delim) {
     std::string_view raw;
 
     auto subrow = row.substr(offset);
     const void* loc = std::memchr(subrow.data(), delim, subrow.size());
     std::size_t size;
     std::size_t consumed;
+    bool more;
     if (loc) {
         size = reinterpret_cast<const char*>(loc) - subrow.data();
         consumed = size + 1;
+        more = true;
     }
     else {
         size = consumed = subrow.size();
+        more = false;
     }
 
-    return {subrow.substr(0, size), consumed, loc};
+    return {subrow.substr(0, size), consumed, more};
 }
 
 }  // namespace detail
@@ -401,7 +405,8 @@ public:
 
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
-        auto [raw, consumed, more] = detail::isolate_cell(row, offset, this->m_delim);
+        auto [raw, consumed, more] =
+            detail::isolate_unquoted_cell(row, offset, this->m_delim);
         if (!raw.size()) {
             return {consumed, more};
         }
@@ -423,7 +428,8 @@ public:
 
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
-        auto [raw, consumed, more] = detail::isolate_cell(row, offset, this->m_delim);
+        auto [raw, consumed, more] =
+            detail::isolate_unquoted_cell(row, offset, this->m_delim);
         if (raw.size() == 0) {
             return {consumed, more};
         }
@@ -668,8 +674,8 @@ struct dtype_option {
     }
 };
 
-/** Initialize a cell parser with the correct static type given the runtime numpy `dtype`.
-    `initialize_parser<...>::f` expands to the equivalent of:
+/** Create a cell parser with the correct static type given the runtime numpy `dtype`.
+    `create_parser<...>::f` expands to the equivalent of:
 
     ```
     void f(PyObject* dtype, char delimiter, parser_types<std::unique_ptr>& parsers) {
@@ -732,8 +738,14 @@ parse_header(const std::string_view& data,
         more = new_more;
     }
 
+    std::unordered_set<std::string> column_names;
     parser_types<ptr_type> parsers;
     for (const auto& cell : header_parser.parsed()) {
+        if (column_names.count(cell)) {
+            throw detail::formatted_error("column name duplicated: ", cell);
+        }
+        column_names.emplace(cell);
+
         auto search = get_parser(cell);
         if (!search) {
             if constexpr (is_shared) {
