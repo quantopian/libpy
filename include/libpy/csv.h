@@ -110,6 +110,8 @@ public:
      */
     virtual void set_num_lines(std::size_t) {}
 
+    virtual ~cell_parser() = default;
+
     /** "chomp" text from a row and parse the given cell.
 
         @param row_ix The row number (0-indexed) being parsed.
