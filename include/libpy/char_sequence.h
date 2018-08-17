@@ -103,7 +103,7 @@ private:
 public:
     constexpr static auto value =
         cs::cat(char_sequence<cs...>{},
-                std::conditional_t<sizeof...(Tail), joiner, char_sequence<>>{},
+                std::conditional_t<sizeof...(Tail) != 0, joiner, char_sequence<>>{},
                 join<joiner, Tail...>::value);
 };
 }  // namespace detail
