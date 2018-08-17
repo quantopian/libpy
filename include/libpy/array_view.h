@@ -308,7 +308,8 @@ public:
 
     static constexpr std::size_t npos = -1;
 
-    using generic_ndarray_impl::ndarray_view;
+    // Re-use constructor from the generic impl.
+    using ndarray_view<T, 1, true>::ndarray_view;
 
     /** Create a view over an arbitrary contiguous container of `T`s.
 
