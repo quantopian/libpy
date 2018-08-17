@@ -72,8 +72,6 @@ public:
  */
 std::tuple<std::string_view, std::size_t, bool>
 isolate_unquoted_cell(const std::string_view& row, std::size_t offset, char delim) {
-    std::string_view raw;
-
     auto subrow = row.substr(offset);
     const void* loc = std::memchr(subrow.data(), delim, subrow.size());
     std::size_t size;
