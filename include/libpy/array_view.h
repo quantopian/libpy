@@ -208,13 +208,14 @@ private:
         using pointer = value_type*;
         using const_pointer = const value_type*;
         using reference = value_type&;
+        using const_reference = const value_type&;
         using iterator_category = std::random_access_iterator_tag;
 
         reference operator*() {
             return *reinterpret_cast<V*>(m_ptr);
         }
 
-        const reference operator*() const {
+        const_reference operator*() const {
             return *reinterpret_cast<V*>(m_ptr);
         }
 
@@ -222,7 +223,7 @@ private:
             return *(*this + ix);
         }
 
-        const reference operator[](difference_type ix) const {
+        const_reference operator[](difference_type ix) const {
             return *(*this + ix);
         }
 
