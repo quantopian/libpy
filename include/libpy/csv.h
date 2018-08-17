@@ -495,7 +495,7 @@ namespace detail {
 
     @tparam ptr_type The type of smart pointer to `cell_parser` to use.
  */
-template<template<typename T> typename ptr_type>
+template<template<typename...> typename ptr_type>
 using parser_types = std::vector<ptr_type<cell_parser>>;
 
 /** Parse a single row and store the values in the vectors.
@@ -504,7 +504,7 @@ using parser_types = std::vector<ptr_type<cell_parser>>;
     @param data The view over the row to parse.
     @param parsers The cell parsers.
  */
-template<template<typename T> typename ptr_type>
+template<template<typename...> typename ptr_type>
 void parse_row(std::size_t row,
                const std::string_view& data,
                parser_types<ptr_type>& parsers) {
@@ -542,7 +542,7 @@ void parse_row(std::size_t row,
     }
 }
 
-template<template<typename T> typename ptr_type>
+template<template<typename...> typename ptr_type>
 void parse_lines(std::vector<std::string_view>::iterator begin,
                  std::vector<std::string_view>::iterator end,
                  std::size_t offset,
@@ -552,7 +552,7 @@ void parse_lines(std::vector<std::string_view>::iterator begin,
     }
 }
 
-template<template<typename T> typename ptr_type>
+template<template<typename...> typename ptr_type>
 void parse_lines_worker(std::mutex* exception_mutex,
                         std::vector<std::exception_ptr>* exceptions,
                         std::vector<std::string_view>::iterator begin,
@@ -609,7 +609,7 @@ std::vector<std::string_view> split_into_lines(const std::string_view& data,
     @param parsers The cell parsers.
     @param line_ending The string to split lines on.
  */
-template<template<typename T> typename ptr_type>
+template<template<typename...> typename ptr_type>
 void parse_from_header(const std::string_view& data,
                        parser_types<ptr_type>& parsers,
                        const std::string_view& line_ending,
@@ -719,7 +719,7 @@ struct create_parser<> {
     }
 };
 
-template<template<typename T> typename ptr_type, typename GetParser>
+template<template<typename...> typename ptr_type, typename GetParser>
 std::tuple<std::string_view, parser_types<ptr_type>>
 parse_header(const std::string_view& data,
              char delimiter,
