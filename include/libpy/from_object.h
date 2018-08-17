@@ -293,7 +293,7 @@ template<typename... Ts>
 struct from_object<std::tuple<Ts...>> {
 private:
     template<std::size_t... ixs>
-    std::tuple<Ts...> fill_tuple(PyObject* tup, std::index_sequence<ixs...>) {
+    static std::tuple<Ts...> fill_tuple(PyObject* tup, std::index_sequence<ixs...>) {
         return {py::from_object<Ts>(PyTuple_GET_ITEM(tup, ixs))...};
     }
 public:
