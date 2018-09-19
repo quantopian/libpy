@@ -24,6 +24,15 @@
 #include "libpy/valgrind.h"
 
 namespace py::csv {
+struct fast_float {};
+}  // namespace py::csv
+
+namespace py::dispatch {
+template<>
+struct new_dtype<py::csv::fast_float> : public new_dtype<double> {};
+}  // namespace py::dispatch
+
+namespace py::csv {
 constexpr std::size_t min_group_size = 4096;
 
 namespace detail {
@@ -264,16 +273,17 @@ public:
     }
 };
 
-template<>
-class typed_cell_parser<double> : public typed_cell_parser_base<double> {
+namespace detail {
+template<auto P>
+class double_parser : public typed_cell_parser_base<double> {
 public:
-    typed_cell_parser(char delim) : typed_cell_parser_base<double>(delim) {}
+    double_parser(char delim) : typed_cell_parser_base<double>(delim) {}
 
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         const char* first = &row.data()[offset];
-        char* last;
-        this->m_parsed[ix] = std::strtod(first, &last);
+        const char* last;
+        this->m_parsed[ix] = P(first, &last);
 
         std::size_t size = last - first;
         if (*last != this->m_delim && size != row.size() - offset) {
@@ -302,6 +312,115 @@ public:
         bool more = *last == this->m_delim;
         return {size + more, more};
     }
+};
+
+double regular_strtod(const char* ptr, const char** last) {
+    return std::strtod(ptr, const_cast<char**>(last));
+}
+
+double fast_strtod(const char* ptr, const char** last) {
+    double result;
+    double whole_part = 0;
+    double fractional_part = 0;
+    double fractional_denom = 1;
+
+    bool negate = *ptr == '-';
+    if (negate) {
+        ++ptr;
+    }
+    while (true) {
+        char c = *ptr;
+
+        if (c == 'e' || c == 'E') {
+            ++ptr;
+            goto begin_exp;
+        }
+        if (c == '.') {
+            ++ptr;
+            break;
+        }
+
+        int value = c - '0';
+        if (value < 0 || value > 9) {
+            *last = ptr;
+
+            if (negate) {
+                whole_part = -whole_part;
+            }
+            return whole_part;
+        }
+
+        whole_part *= 10;
+        whole_part += value;
+        ++ptr;
+    }
+
+    while (true) {
+        char c = *ptr;
+        if (c == 'e' || c == 'E') {
+            ++ptr;
+            break;
+        }
+
+        int value = c - '0';
+        if (value < 0 || value > 9) {
+            *last = ptr;
+
+            result = whole_part + fractional_part / fractional_denom;
+            if (negate) {
+                result = -result;
+            }
+            return result;
+        }
+
+        fractional_denom *= 10;
+        fractional_part *= 10;
+        fractional_part += value;
+        ++ptr;
+    }
+
+begin_exp:
+    result = whole_part + fractional_part / fractional_denom;
+    if (negate) {
+        result = -result;
+    }
+
+    long exp = 0;
+    bool exp_negate = *ptr == '-';
+    if (exp_negate || *ptr == '+') {
+        ++ptr;
+    }
+    while (true) {
+        int value = *ptr - '0';
+        if (value < 0 || value > 9) {
+            *last = ptr;
+
+            if (exp_negate) {
+                exp = -exp;
+            }
+            result *= std::pow(10, exp);
+            return result;
+        }
+
+        exp *= 10;
+        exp += value;
+        ++ptr;
+    }
+}
+
+}  // namespace detail
+
+template<>
+class typed_cell_parser<double> : public detail::double_parser<detail::regular_strtod> {
+public:
+    typed_cell_parser(char delim)
+        : detail::double_parser<detail::regular_strtod>(delim) {}
+};
+
+template<>
+class typed_cell_parser<fast_float> : public detail::double_parser<detail::fast_strtod> {
+public:
+    typed_cell_parser(char delim) : detail::double_parser<detail::fast_strtod>(delim) {}
 };
 
 template<>
@@ -837,7 +956,7 @@ void parse(const std::string_view& data,
 
     @param data The string data to parse as a CSV.
     @param dtypes A Python dictionary from column name to dtype. Columns not
-   present are ignored.
+    present are ignored.
     @param delimiter The delimiter between cells.
     @param line_ending The separator between line.
     @return A Python dictionary from column name to a tuple of (value, mask)
