@@ -24,12 +24,23 @@
 #include "libpy/valgrind.h"
 
 namespace py::csv {
-struct fast_float {};
+/** Tag type for marking that CSV parsing should use use `fast_strtod` which is much
+ * faster but loses precision.
+ */
+struct fast_float32 {};
+
+/** Tag type for marking that CSV parsing should use use `fast_strtod` which is much
+ * faster but loses precision.
+ */
+struct fast_float64 {};
 }  // namespace py::csv
 
 namespace py::dispatch {
 template<>
-struct new_dtype<py::csv::fast_float> : public new_dtype<double> {};
+struct new_dtype<py::csv::fast_float32> : public new_dtype<float> {};
+
+template<>
+struct new_dtype<py::csv::fast_float64> : public new_dtype<double> {};
 }  // namespace py::dispatch
 
 namespace py::csv {
@@ -274,10 +285,10 @@ public:
 };
 
 namespace detail {
-template<auto P>
-class double_parser : public typed_cell_parser_base<double> {
+template<typename T, auto P>
+class float_parser : public typed_cell_parser_base<T> {
 public:
-    double_parser(char delim) : typed_cell_parser_base<double>(delim) {}
+    float_parser(char delim) : typed_cell_parser_base<T>(delim) {}
 
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
@@ -304,7 +315,10 @@ public:
                 // to report in the error.
                 cell = row.substr(offset);
             }
-            throw detail::formatted_error("invalid digit in double: ", cell);
+            throw detail::formatted_error("invalid digit in ",
+                                          py::util::type_name<T>().get(),
+                                          ":",
+                                          cell);
         }
 
         this->m_mask[ix] = size > 0;
@@ -314,15 +328,24 @@ public:
     }
 };
 
-double regular_strtod(const char* ptr, const char** last) {
-    return std::strtod(ptr, const_cast<char**>(last));
+template<typename T>
+T regular_strtod(const char* ptr, const char** last) {
+    static_assert(std::is_same_v<T, double> || std::is_same_v<T, float>,
+                  "regular_strtod<T>: T must be `double` or `float`");
+    if constexpr (std::is_same_v<T, double>) {
+        return std::strtod(ptr, const_cast<char**>(last));
+    }
+    else {
+        return std::strtof(ptr, const_cast<char**>(last));
+    }
 }
 
-double fast_strtod(const char* ptr, const char** last) {
-    double result;
-    double whole_part = 0;
-    double fractional_part = 0;
-    double fractional_denom = 1;
+template<typename T>
+T fast_strtod(const char* ptr, const char** last) {
+    T result;
+    T whole_part = 0;
+    T fractional_part = 0;
+    T fractional_denom = 1;
 
     bool negate = *ptr == '-';
     if (negate) {
@@ -411,16 +434,35 @@ begin_exp:
 }  // namespace detail
 
 template<>
-class typed_cell_parser<double> : public detail::double_parser<detail::regular_strtod> {
+class typed_cell_parser<float>
+    : public detail::float_parser<float, detail::regular_strtod<float>> {
 public:
     typed_cell_parser(char delim)
-        : detail::double_parser<detail::regular_strtod>(delim) {}
+        : detail::float_parser<float, detail::regular_strtod<float>>(delim) {}
 };
 
 template<>
-class typed_cell_parser<fast_float> : public detail::double_parser<detail::fast_strtod> {
+class typed_cell_parser<double>
+    : public detail::float_parser<double, detail::regular_strtod<double>> {
 public:
-    typed_cell_parser(char delim) : detail::double_parser<detail::fast_strtod>(delim) {}
+    typed_cell_parser(char delim)
+        : detail::float_parser<double, detail::regular_strtod<double>>(delim) {}
+};
+
+template<>
+class typed_cell_parser<fast_float32>
+    : public detail::float_parser<float, detail::fast_strtod<float>> {
+public:
+    typed_cell_parser(char delim)
+        : detail::float_parser<float, detail::fast_strtod<float>>(delim) {}
+};
+
+template<>
+class typed_cell_parser<fast_float64>
+    : public detail::float_parser<double, detail::fast_strtod<double>> {
+public:
+    typed_cell_parser(char delim)
+        : detail::float_parser<double, detail::fast_strtod<double>>(delim) {}
 };
 
 template<>
