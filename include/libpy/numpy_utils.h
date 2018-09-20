@@ -148,6 +148,18 @@ struct new_dtype<std::uint64_t> {
 };
 
 template<>
+struct new_dtype<float> {
+    static PyArray_Descr* get() {
+        auto ob = PyArray_DescrFromType(NPY_FLOAT32);
+        if (!ob) {
+            return nullptr;
+        }
+        Py_INCREF(ob);
+        return ob;
+    }
+};
+
+template<>
 struct new_dtype<double> {
     static PyArray_Descr* get() {
         auto ob = PyArray_DescrFromType(NPY_FLOAT64);
