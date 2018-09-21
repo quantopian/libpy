@@ -79,6 +79,13 @@ struct to_object<char[n]> {
 };
 
 template<>
+struct to_object<bool> {
+    static PyObject* f(bool value) {
+        return PyBool_FromLong(value);
+    }
+};
+
+template<>
 struct to_object<std::size_t> {
     static PyObject* f(std::size_t value) {
         return PyLong_FromSize_t(value);
