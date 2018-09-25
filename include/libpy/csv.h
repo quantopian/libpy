@@ -352,11 +352,11 @@ T fast_positive_strtod(const char* ptr, const char** last) {
 
         if (c == 'e' || c == 'E') {
             ++ptr;
-            goto begin_exp;
+            goto begin_exponent;
         }
         if (c == '.') {
             ++ptr;
-            break;
+            goto after_decimal;
         }
 
         int value = c - '0';
@@ -370,11 +370,12 @@ T fast_positive_strtod(const char* ptr, const char** last) {
         ++ptr;
     }
 
+after_decimal:
     while (true) {
         char c = *ptr;
         if (c == 'e' || c == 'E') {
             ++ptr;
-            break;
+            goto begin_exponent;
         }
 
         int value = c - '0';
@@ -391,12 +392,12 @@ T fast_positive_strtod(const char* ptr, const char** last) {
         ++ptr;
     }
 
-begin_exp:
+begin_exponent:
     result = whole_part + fractional_part / fractional_denom;
 
-    long exp = 0;
-    bool exp_negate = *ptr == '-';
-    if (exp_negate || *ptr == '+') {
+    long exponent = 0;
+    bool exponent_negate = *ptr == '-';
+    if (exponent_negate || *ptr == '+') {
         ++ptr;
     }
     while (true) {
@@ -404,15 +405,15 @@ begin_exp:
         if (value < 0 || value > 9) {
             *last = ptr;
 
-            if (exp_negate) {
-                exp = -exp;
+            if (exponent_negate) {
+                exponent = -exponent_negate;
             }
-            result *= std::pow(10, exp);
+            result *= std::pow(10, exponent_negate);
             return result;
         }
 
-        exp *= 10;
-        exp += value;
+        exponent *= 10;
+        exponent += value;
         ++ptr;
     }
 
