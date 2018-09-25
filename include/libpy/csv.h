@@ -25,12 +25,14 @@
 
 namespace py::csv {
 /** Tag type for marking that CSV parsing should use use `fast_strtod` which is much
- * faster but loses precision.
+ * faster but loses precision. This is primarily used to speed up development cycles, and
+ * it should not be used in production unless you are absolutely certain it is okay.
  */
 struct fast_float32 {};
 
 /** Tag type for marking that CSV parsing should use use `fast_strtod` which is much
- * faster but loses precision.
+ * faster but loses precision. This is primarily used to speed up development cycles, and
+ * it should not be used in production unless you are absolutely certain it is okay.
  */
 struct fast_float64 {};
 }  // namespace py::csv
@@ -416,7 +418,6 @@ begin_exponent:
         exponent += value;
         ++ptr;
     }
-
 }
 
 template<typename T>
