@@ -285,7 +285,7 @@ public:
 };
 
 namespace detail {
-template<typename T, auto P>
+template<typename T, auto strtod_impl>
 class float_parser : public typed_cell_parser_base<T> {
 public:
     float_parser(char delim) : typed_cell_parser_base<T>(delim) {}
@@ -294,7 +294,7 @@ public:
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         const char* first = &row.data()[offset];
         const char* last;
-        this->m_parsed[ix] = P(first, &last);
+        this->m_parsed[ix] = strtod_impl(first, &last);
 
         std::size_t size = last - first;
         if (*last != this->m_delim && size != row.size() - offset) {
@@ -341,16 +341,12 @@ T regular_strtod(const char* ptr, const char** last) {
 }
 
 template<typename T>
-T fast_strtod(const char* ptr, const char** last) {
+T fast_positive_strtod(const char* ptr, const char** last) {
     T result;
     T whole_part = 0;
     T fractional_part = 0;
     T fractional_denom = 1;
 
-    bool negate = *ptr == '-';
-    if (negate) {
-        ++ptr;
-    }
     while (true) {
         char c = *ptr;
 
@@ -366,10 +362,6 @@ T fast_strtod(const char* ptr, const char** last) {
         int value = c - '0';
         if (value < 0 || value > 9) {
             *last = ptr;
-
-            if (negate) {
-                whole_part = -whole_part;
-            }
             return whole_part;
         }
 
@@ -390,9 +382,6 @@ T fast_strtod(const char* ptr, const char** last) {
             *last = ptr;
 
             result = whole_part + fractional_part / fractional_denom;
-            if (negate) {
-                result = -result;
-            }
             return result;
         }
 
@@ -404,9 +393,6 @@ T fast_strtod(const char* ptr, const char** last) {
 
 begin_exp:
     result = whole_part + fractional_part / fractional_denom;
-    if (negate) {
-        result = -result;
-    }
 
     long exp = 0;
     bool exp_negate = *ptr == '-';
@@ -429,8 +415,18 @@ begin_exp:
         exp += value;
         ++ptr;
     }
+
 }
 
+template<typename T>
+T fast_strtod(const char* ptr, const char** last) {
+    bool negate = *ptr == '-';
+    if (negate) {
+        ++ptr;
+        return -fast_positive_strtod<T>(ptr, last);
+    }
+    return fast_positive_strtod<T>(ptr, last);
+}
 }  // namespace detail
 
 template<>
