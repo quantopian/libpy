@@ -319,7 +319,7 @@ public:
             }
             throw detail::formatted_error("invalid digit in ",
                                           py::util::type_name<T>().get(),
-                                          ":",
+                                          ": ",
                                           cell);
         }
 
