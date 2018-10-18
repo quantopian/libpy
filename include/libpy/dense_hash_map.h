@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sparsehash/dense_hash_map>
+#include <sparsehash/sparse_hash_map>
 
 #include "libpy/to_object.h"
 
@@ -50,9 +51,42 @@ public:
     }
 };
 
+/** A wrapper around `google::dense_hash_map` which uses `std::hash` instead of
+    `tr1::hash` and requires an empty key at construction time.
+
+    @tparam Key The key type.
+    @tparam T The value type.
+    @tparam HashFcn The key hash functor type.
+    @tparam Alloc The allocator object to use. In general, don't change this.
+ */
+template<typename Key,
+         typename T,
+         typename HashFcn = std::hash<Key>,  // change the default to std::hash
+         typename EqualKey = std::equal_to<Key>,
+         typename Alloc = google::libc_allocator_with_realloc<std::pair<const Key, T>>>
+struct sparse_hash_map : public google::sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc> {
+private:
+    using base = google::sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>;
+public:
+    using base::sparse_hash_map;
+
+    sparse_hash_map(sparse_hash_map&& mvfrom) noexcept {
+        this->swap(mvfrom);
+    }
+
+    sparse_hash_map& operator=(sparse_hash_map&& mvfrom) noexcept {
+        this->swap(mvfrom);
+        return *this;
+    }
+};
+
 namespace dispatch {
 template<typename Key, typename T, typename HashFcn, typename EqualKey, typename Alloc>
 struct to_object<dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>>
     : public map_to_object<dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>> {};
+
+template<typename Key, typename T, typename HashFcn, typename EqualKey, typename Alloc>
+struct to_object<sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>>
+    : public map_to_object<sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>> {};
 }  // namespace dispatch
 }  // namespace py
