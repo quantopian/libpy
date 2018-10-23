@@ -173,3 +173,14 @@ std::ostream& operator<<(std::ostream& stream, const datetime64ns& dt) {
     return stream << static_cast<std::int64_t>(dt);
 }
 }  // namespace py
+
+namespace std {
+template<>
+struct hash<py::datetime64ns> {
+    using result_type = std::size_t;
+
+    result_type operator()(const py::datetime64ns& dt) const noexcept {
+        return std::hash<std::int64_t>{}(static_cast<std::int64_t>(dt));
+    }
+};
+}  // namespace std
