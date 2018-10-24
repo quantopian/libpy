@@ -51,7 +51,7 @@ public:
     }
 };
 
-/** A wrapper around `google::dense_hash_map` which uses `std::hash` instead of
+/** A wrapper around `google::sparse_hash_map` which uses `std::hash` instead of
     `tr1::hash` and requires an empty key at construction time.
 
     @tparam Key The key type.
