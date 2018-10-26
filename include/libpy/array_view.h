@@ -190,17 +190,23 @@ class ndarray_view<T, 1, false> : public ndarray_view<T, 1, true> {
 private:
     using generic_ndarray_impl = ndarray_view<T, 1, true>;
 
+    /** Iterator type to implement forward, const, reverse, and const reverse iterators.
+
+        This type cannot be implemented with just a pointer and stride because stride may
+        be zero, so an index is needed to count the number of iterations in that case.
+     */
     template<typename V>
     struct generic_iterator {
     private:
         char* m_ptr;
+        std::size_t m_ix;
         std::size_t m_stride;
 
     protected:
         friend ndarray_view;
 
-        generic_iterator(char* buffer, std::size_t stride)
-            : m_ptr(buffer), m_stride(stride) {}
+        generic_iterator(char* buffer, std::size_t ix, std::size_t stride)
+            : m_ptr(buffer), m_ix(ix), m_stride(stride) {}
 
     public:
         using difference_type = std::size_t;
@@ -237,37 +243,43 @@ private:
 
         generic_iterator& operator++() {
             m_ptr += m_stride;
+            m_ix += 1;
             return *this;
         }
 
         generic_iterator operator++(int) {
             generic_iterator out = *this;
             m_ptr += m_stride;
+            m_ix += 1;
             return out;
         }
 
         generic_iterator& operator+=(difference_type n) {
             m_ptr += m_stride * n;
+            m_ix += n;
             return *this;
         }
 
         generic_iterator operator+(difference_type n) const {
-            return generic_iterator(m_ptr + n * m_stride, m_stride);
+            return generic_iterator(m_ptr + n * m_stride, m_ix + n, m_stride);
         }
 
         generic_iterator& operator--() {
             m_ptr -= m_stride;
+            m_ix -= 1;
             return *this;
         }
 
         generic_iterator operator--(int) {
             generic_iterator out = *this;
             m_ptr -= m_stride;
+            m_ix -= 1;
             return out;
         }
 
         generic_iterator& operator-=(difference_type n) {
             m_ptr -= m_stride * n;
+            m_ix -= n;
             return *this;
         }
 
@@ -276,11 +288,11 @@ private:
         }
 
         bool operator!=(const generic_iterator& other) const {
-            return m_ptr != other.m_ptr;
+            return !(m_ix == other.m_ix && m_ptr == other.m_ptr);
         }
 
         bool operator==(const generic_iterator& other) const {
-            return m_ptr == other.m_ptr;
+            return m_ix == other.m_ix && m_ptr == other.m_ptr;
         }
 
         bool operator<(const generic_iterator& other) const {
@@ -346,62 +358,68 @@ public:
     }
 
     iterator begin() {
-        return iterator(this->m_buffer, this->m_strides[0]);
+        return iterator(this->m_buffer, 0, this->m_strides[0]);
     }
 
     const_iterator cbegin() {
-        return const_iterator(this->m_buffer, this->m_strides[0]);
+        return const_iterator(this->m_buffer, 0, this->m_strides[0]);
     }
 
     const_iterator begin() const {
-        return const_iterator(this->m_buffer, this->m_strides[0]);
+        return const_iterator(this->m_buffer, 0, this->m_strides[0]);
     }
 
     iterator end() {
         return iterator(this->m_buffer + this->pos_to_index(this->m_shape),
+                        this->size(),
                         this->m_strides[0]);
     }
 
     const_iterator end() const {
         return const_iterator(this->m_buffer + this->pos_to_index(this->m_shape),
+                              this->size(),
                               this->m_strides[0]);
     }
 
     const_iterator cend() {
         return const_iterator(this->m_buffer + this->pos_to_index(this->m_shape),
+                              this->size(),
                               this->m_strides[0]);
     }
 
     reverse_iterator rbegin() {
         return reverse_iterator(this->m_buffer + this->pos_to_index({this->size() - 1}),
+                                0,
                                 -this->m_strides[0]);
     }
 
     const_reverse_iterator crbegin() {
         return const_reverse_iterator(this->m_buffer +
                                           this->pos_to_index({this->size() - 1}),
+                                      0,
                                       -this->m_strides[0]);
     }
 
     const_reverse_iterator rbegin() const {
         return const_reverse_iterator(this->m_buffer +
                                           this->pos_to_index({this->size() - 1}),
+                                      0,
                                       -this->m_strides[0]);
     }
 
     reverse_iterator rend() {
         auto stride = -this->m_strides[0];
-        return reverse_iterator(this->m_buffer + stride, stride);
+        return reverse_iterator(this->m_buffer + stride, this->size(), stride);
     }
 
     const_reverse_iterator rend() const {
         auto stride = -this->m_strides[0];
-        return const_reverse_iterator(this->m_buffer + stride, stride);
+        return const_reverse_iterator(this->m_buffer + stride, this->size(), stride);
     }
 
     const_reverse_iterator crend() {
         auto stride = -this->m_strides[0];
-        return const_reverse_iterator(this->m_buffer + stride, stride);
+        return const_reverse_iterator(this->m_buffer + stride, this->size(), stride);
     }
 
     /**  Access the element at the given index without bounds checking.
