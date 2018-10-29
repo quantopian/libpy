@@ -53,13 +53,15 @@ private:
 
         deref_type operator*() {
             return std::apply(
-                [](Us... iterators) { return deref_type{std::ref(*iterators)...}; },
+                [](Us&... iterators) { return std::forward_as_tuple(*iterators...); },
                 m_iterators);
         }
 
         arrow_type operator->() {
             return std::apply(
-                [](Us... iterators) { return arrow_type{iterators.operator->()...}; },
+                [](Us&... iterators) {
+                    return std::forward_as_tuple(iterators.operator->()...);
+                },
                 m_iterators);
         }
     };
