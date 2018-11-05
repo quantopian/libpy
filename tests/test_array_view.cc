@@ -105,14 +105,21 @@ TYPED_TEST_P(array_view, _2d_indexing) {
 TYPED_TEST_P(array_view, virtual_array) {
     TypeParam value(1);
 
-    auto view = py::array_view<TypeParam>::virtual_array(value, 10);
-    EXPECT_EQ(view.size(), 10ul);
+    std::size_t size = 10;
+    auto view = py::array_view<TypeParam>::virtual_array(value, size);
+    EXPECT_EQ(view.size(), size);
     EXPECT_EQ(view.strides()[0], 0);
+
+    std::size_t iterations = 0;
 
     for (const auto& element : view) {
         EXPECT_EQ(element, value);
         EXPECT_EQ(std::addressof(element), std::addressof(value));
+
+        ++iterations;
     }
+
+    EXPECT_EQ(iterations, size);
 }
 
 REGISTER_TYPED_TEST_CASE_P(array_view,
