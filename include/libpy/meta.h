@@ -13,8 +13,7 @@ namespace meta {
  *  @tparam Search The type to be searched for.
  *  @tparam Elements The types of parameters appearing in the tuple.
  *
- *  Examples
- *  --------
+ *  ### Examples
  *
  *  ``element_of<int, std::tuple<float, int>>`` evaluates to true.
  *  ``element_of<int, std::tuple<float, float>>`` evaluates to false.
