@@ -42,7 +42,7 @@ namespace dispatch {
 template<std::size_t n>
 struct to_object<std::array<char, n>> {
     static PyObject* f(const std::array<char, n>& cs) {
-        return PyUnicode_FromStringAndSize(cs.data(), n);
+        return PyBytes_FromStringAndSize(cs.data(), n);
     }
 };
 
