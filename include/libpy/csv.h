@@ -15,7 +15,7 @@
 #include <variant>
 #include <vector>
 
-#include "libpy/datetime64ns.h"
+#include "libpy/datetime64.h"
 #include "libpy/exception.h"
 #include "libpy/itertools.h"
 #include "libpy/numpy_utils.h"
@@ -463,13 +463,20 @@ public:
         : detail::float_parser<double, detail::fast_strtod<double>>(delim) {}
 };
 
-template<>
-class typed_cell_parser<py::datetime64ns>
+/* Regardless of the input type, we always convert datetimes to datetime64<ns> for the
+   output buffer.
+ */
+template<typename Unit>
+class typed_cell_parser<py::datetime64<Unit>>
     : public typed_cell_parser_base<py::datetime64ns> {
 private:
+    static_assert(std::is_same_v<Unit, py::chrono::s> ||
+                      std::is_same_v<Unit, py::chrono::D>,
+                  "can only parse datetime64 at second or daily frequency");
+
     /** The number of days in each month for non-leap years.
      */
-    constexpr static std::array<uint8_t, 12> days_in_month = {31,   // jan
+    static constexpr std::array<uint8_t, 12> days_in_month = {31,   // jan
                                                               28,   // feb
                                                               31,   // mar
                                                               30,   // apr
@@ -482,27 +489,41 @@ private:
                                                               30,   // nov
                                                               31};  // dec
 
-    static bool is_leapyear(long year) {
+    static constexpr std::array<uint16_t, 12> build_days_before_month() {
+        std::array<uint16_t, 12> out = {0};
+        for (std::size_t n = 1; n < 12; ++n) {
+            out[n] = days_in_month[n - 1] + out[n - 1];
+        }
+        return out;
+    }
+
+    /** The number of days that occur before the first of the month in a non-leap year.
+     */
+    static constexpr std::array<uint16_t, 12> days_before_month =
+        build_days_before_month();
+
+    static constexpr bool is_leapyear(int year) {
         return !(year % 4) && (!(year % 100) || year % 400);
     }
 
-    static std::time_t to_unix_time(int year, int month, int day) {
-        std::int64_t seconds = 0;
-        if (year < 1970) {
-            for (std::uint16_t n = 1969; n >= year; --n) {
-                seconds -= (365 + is_leapyear(n)) * 24 * 60 * 60;
-            }
-        }
-        else {
-            for (std::uint16_t n = 1970; n < year; ++n) {
-                seconds += (365 + is_leapyear(n)) * 24 * 60 * 60;
-            }
-        }
-        for (std::uint8_t n = 0; n < month; ++n) {
-            std::uint8_t days = days_in_month[n] + (n == 1 && is_leapyear(year));
-            seconds += days * 24 * 60 * 60;
-        }
-        return seconds + day * 24 * 60 * 60;
+    static constexpr int leap_years_before(int year) {
+        --year;
+        return (year / 4) - (year / 100) + (year / 400);
+    }
+
+    static std::chrono::seconds time_since_epoch(int year, int month, int day) {
+        using days = std::chrono::duration<std::int64_t, std::ratio<86400>>;
+        // The number of seconds in 365 days. This doesn't account for leap years, we will
+        // manually add those days.
+        using years = std::chrono::duration<std::int64_t, std::ratio<31536000>>;
+
+        std::chrono::seconds out = years(year - 1970);
+        out += days(leap_years_before(year) - leap_years_before(1970));
+        out += days(days_before_month[month - 1]);
+        out += days(month > 2 && is_leapyear(year));
+        out += days(day - 1);
+
+        return out;
     }
 
     template<std::size_t ndigits>
@@ -524,39 +545,65 @@ private:
         return result;
     }
 
-    static std::tuple<int, int, int> parse_year_month_day(const std::string_view& raw) {
-        if (raw.size() != 10) {
+    static void expect_char(const std::string_view& raw, std::size_t ix, char c) {
+        if (raw[ix] != c) {
+            throw detail::formatted_error("expected '", c, "' at index ", ix, ": ", raw);
+        }
+    }
+
+    static std::tuple<int, int, int> parse_year_month_day(const std::string_view& raw,
+                                                          bool expect_time) {
+        if (expect_time) {
+            if (raw.size() <= 10) {
+                throw detail::formatted_error(
+                    "date string is not at least 10 characters: ", raw);
+            }
+        }
+        else if (raw.size() != 10) {
             throw detail::formatted_error("date string is not exactly 10 characters: ",
                                           raw);
         }
 
         int year = parse_int<4>(raw);
-
-        if (raw[4] != '-') {
-            throw detail::formatted_error("expected hyphen at index 4: ", raw);
-        }
-
-        // we subtract one to zero index month
-        int month = parse_int<2>(raw.substr(5)) - 1;
-        if (month < 0 || month > 11) {
+        expect_char(raw, 4, '-');
+        int month = parse_int<2>(raw.substr(5));
+        if (month < 1 || month > 12) {
             throw detail::formatted_error("month not in range [1, 12]: ", raw);
         }
 
-        if (raw[7] != '-') {
-            throw detail::formatted_error("expected hyphen at index 7: ", raw);
-        }
+        expect_char(raw, 7, '-');
+        int leap_day = month == 2 && is_leapyear(year);
 
-        int leap_day = month == 1 && is_leapyear(year);
-
-        // we subtract one to zero index day
-        int day = parse_int<2>(raw.substr(8)) - 1;
-        int max_day = days_in_month[month] + leap_day - 1;
-        if (day < 0 || day > max_day) {
+        int day = parse_int<2>(raw.substr(8));
+        int max_day = days_in_month[month - 1] + leap_day;
+        if (day < 1 || day > max_day) {
             throw detail::formatted_error(
-                "day out of bounds for month (max=", max_day + 1, "): ", raw);
+                "day out of bounds for month (max=", max_day, "): ", raw);
         }
 
         return {year, month, day};
+    }
+
+    static std::tuple<int, int, int>
+    parse_hours_minutes_seconds(const std::string_view& raw) {
+        if (raw.size() != 19) {
+            throw detail::formatted_error("date string is not exactly 19 characters: ",
+                                          raw);
+        }
+
+        expect_char(raw, 11, ' ');
+        int hours = parse_int<2>(raw.substr(11));
+        if (hours < 0 || hours > 23) {
+            throw detail::formatted_error("hour not in range [0, 24): ", raw);
+        }
+
+        expect_char(raw, 13, ':');
+        int minutes = parse_int<2>(raw.substr(14));
+
+        expect_char(raw, 16, ':');
+        int seconds = parse_int<2>(raw.substr(17));
+
+        return {hours, minutes, seconds};
     }
 
 public:
@@ -570,11 +617,16 @@ public:
             return {consumed, more};
         }
 
-        time_t seconds = std::apply(to_unix_time, parse_year_month_day(raw));
+        bool expect_time = std::is_same_v<Unit, py::chrono::s>;
+        auto value = std::apply(time_since_epoch, parse_year_month_day(raw, expect_time));
+        if (expect_time) {
+            auto [hours, minutes, seconds] = parse_hours_minutes_seconds(raw);
+            value += std::chrono::hours(hours);
+            value += std::chrono::minutes(minutes);
+            value += std::chrono::seconds(seconds);
+        }
 
-        // adapt to a `std::chrono::time_point` to properly handle time unit
-        // conversions and time since epoch
-        this->m_parsed[ix] = std::chrono::system_clock::from_time_t(seconds);
+        this->m_parsed[ix] = py::datetime64ns(value);
         this->m_mask[ix] = true;
         return {consumed, more};
     }
