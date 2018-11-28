@@ -13,7 +13,7 @@
 #include "libpy/array_view.h"
 #include "libpy/automethod.h"
 #include "libpy/char_sequence.h"
-#include "libpy/datetime64ns.h"
+#include "libpy/datetime64.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
@@ -46,6 +46,50 @@ struct py_bool {
 std::ostream& operator<<(std::ostream& stream, const py_bool& value) {
     return stream << value.value;
 }
+
+namespace detail {
+template<typename D>
+struct py_chrono_unit_to_numpy_unit;
+
+template<>
+struct py_chrono_unit_to_numpy_unit<py::chrono::ns> {
+    static constexpr auto value = NPY_FR_ns;
+};
+
+template<>
+struct py_chrono_unit_to_numpy_unit<py::chrono::us> {
+    static constexpr auto value = NPY_FR_us;
+};
+
+template<>
+struct py_chrono_unit_to_numpy_unit<py::chrono::ms> {
+    static constexpr auto value = NPY_FR_ms;
+};
+
+template<>
+struct py_chrono_unit_to_numpy_unit<py::chrono::s> {
+    static constexpr auto value = NPY_FR_s;
+};
+
+template<>
+struct py_chrono_unit_to_numpy_unit<py::chrono::m> {
+    static constexpr auto value = NPY_FR_m;
+};
+
+template<>
+struct py_chrono_unit_to_numpy_unit<py::chrono::h> {
+    static constexpr auto value = NPY_FR_h;
+};
+
+template<>
+struct py_chrono_unit_to_numpy_unit<py::chrono::D> {
+    static constexpr auto value = NPY_FR_D;
+};
+}  // namespace detail
+
+template<typename D>
+constexpr auto py_chrono_unit_to_numpy_unit =
+    detail::py_chrono_unit_to_numpy_unit<D>::value;
 
 namespace dispatch {
 template<typename T>
@@ -198,8 +242,8 @@ struct new_dtype<bool> {
 template<>
 struct new_dtype<py_bool> : public new_dtype<bool> {};
 
-template<>
-struct new_dtype<datetime64ns> {
+template<typename D>
+struct new_dtype<datetime64<D>> {
     static PyArray_Descr* get() {
         PyArray_Descr* out = PyArray_DescrNewFromType(NPY_DATETIME);
         if (!out) {
@@ -207,7 +251,7 @@ struct new_dtype<datetime64ns> {
         }
 
         auto dt_meta = reinterpret_cast<PyArray_DatetimeDTypeMetaData*>(out->c_metadata);
-        dt_meta->meta.base = NPY_FR_ns;
+        dt_meta->meta.base = py_chrono_unit_to_numpy_unit<D>;
         dt_meta->meta.num = 1;
         return out;
     }
@@ -287,17 +331,17 @@ struct from_object<ndarray_view<T, ndim>> {
     }
 };
 
-template<>
-struct from_object<datetime64ns> {
-    static datetime64ns f(PyObject* ob) {
+template<typename D>
+struct from_object<datetime64<D>> {
+    static datetime64<D> f(PyObject* ob) {
         if (!PyArray_CheckScalar(ob)) {
-            throw invalid_conversion::make<datetime64ns>(ob);
+            throw invalid_conversion::make<datetime64<D>>(ob);
         }
 
         auto array = scoped_ref(
             reinterpret_cast<PyArrayObject*>(PyArray_FromScalar(ob, nullptr)));
 
-        auto dtype = py::new_dtype<datetime64ns>();
+        auto dtype = py::new_dtype<datetime64<D>>();
         if (!dtype) {
             throw exception{};
         }
@@ -312,7 +356,7 @@ struct from_object<datetime64ns> {
                             PyArray_DTYPE(array.get()));
         }
 
-        datetime64ns out;
+        datetime64<D> out;
         PyArray_ScalarAsCtype(ob, &out);
         return out;
     }
@@ -329,12 +373,12 @@ struct from_object<py_bool> {
     }
 };
 
-/** Convert a datetime64ns in to a numpy array scalar.
+/** Convert a datetime64 in to a numpy array scalar.
  */
-template<>
-struct to_object<datetime64ns> {
-    static PyObject* f(datetime64ns dt) {
-        auto descr = py::new_dtype<datetime64ns>();
+template<typename D>
+struct to_object<datetime64<D>> {
+    static PyObject* f(datetime64<D> dt) {
+        auto descr = py::new_dtype<datetime64<D>>();
         if (!descr) {
             return nullptr;
         }
