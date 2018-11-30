@@ -287,16 +287,18 @@ public:
 };
 
 namespace detail {
-template<typename T, auto strtod_impl>
-class float_parser : public typed_cell_parser_base<T> {
+template<const auto& scalar_parse>
+class fundamental_parser : public typed_cell_parser_base<decltype(
+                               scalar_parse((const char*){}, (const char**){}))> {
 public:
-    float_parser(char delim) : typed_cell_parser_base<T>(delim) {}
+    fundamental_parser(char delim)
+        : typed_cell_parser_base<typename fundamental_parser::type>(delim) {}
 
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         const char* first = &row.data()[offset];
         const char* last;
-        this->m_parsed[ix] = strtod_impl(first, &last);
+        this->m_parsed[ix] = scalar_parse(first, &last);
 
         std::size_t size = last - first;
         if (*last != this->m_delim && size != row.size() - offset) {
@@ -317,10 +319,11 @@ public:
                 // to report in the error.
                 cell = row.substr(offset);
             }
-            throw detail::formatted_error("invalid digit in ",
-                                          py::util::type_name<T>().get(),
-                                          ": ",
-                                          cell);
+            throw detail::formatted_error(
+                "invalid digit in ",
+                py::util::type_name<typename fundamental_parser::type>().get(),
+                ": ",
+                cell);
         }
 
         this->m_mask[ix] = size > 0;
@@ -343,7 +346,7 @@ T regular_strtod(const char* ptr, const char** last) {
 }
 
 template<typename T>
-T fast_positive_strtod(const char* ptr, const char** last) {
+T fast_unsigned_strtod(const char* ptr, const char** last) {
     T result;
     T whole_part = 0;
     T fractional_part = 0;
@@ -421,51 +424,105 @@ begin_exponent:
 }
 
 template<typename T>
-T fast_strtod(const char* ptr, const char** last) {
+T fast_unsigned_strtol(const char* ptr, const char** last) {
+    T result = 0;
+    while (true) {
+        char c = *ptr - '0';
+        if (c < 0 || c > 9) {
+            *last = ptr;
+            return result;
+        }
+
+        result *= 10;
+        result += c;
+        ++ptr;
+    }
+}
+
+template<auto F>
+auto signed_adapter(const char* ptr, const char** last) -> decltype(F(ptr, last)) {
     bool negate = *ptr == '-';
     if (negate) {
         ++ptr;
-        return -fast_positive_strtod<T>(ptr, last);
+        return -F(ptr, last);
     }
-    return fast_positive_strtod<T>(ptr, last);
+    return F(ptr, last);
 }
+
+template<typename T>
+auto fast_strtod = signed_adapter<fast_unsigned_strtod<T>>;
+
+template<typename T>
+auto fast_strtol = signed_adapter<fast_unsigned_strtol<T>>;
 }  // namespace detail
 
 template<>
 class typed_cell_parser<float>
-    : public detail::float_parser<float, detail::regular_strtod<float>> {
+    : public detail::fundamental_parser<detail::regular_strtod<float>> {
 public:
     typed_cell_parser(char delim)
-        : detail::float_parser<float, detail::regular_strtod<float>>(delim) {}
+        : detail::fundamental_parser<detail::regular_strtod<float>>(delim) {}
 };
 
 template<>
 class typed_cell_parser<double>
-    : public detail::float_parser<double, detail::regular_strtod<double>> {
+    : public detail::fundamental_parser<detail::regular_strtod<double>> {
 public:
     typed_cell_parser(char delim)
-        : detail::float_parser<double, detail::regular_strtod<double>>(delim) {}
+        : detail::fundamental_parser<detail::regular_strtod<double>>(delim) {}
 };
 
 template<>
 class typed_cell_parser<fast_float32>
-    : public detail::float_parser<float, detail::fast_strtod<float>> {
+    : public detail::fundamental_parser<detail::fast_strtod<float>> {
 public:
     typed_cell_parser(char delim)
-        : detail::float_parser<float, detail::fast_strtod<float>>(delim) {}
+        : detail::fundamental_parser<detail::fast_strtod<float>>(delim) {}
 };
 
 template<>
 class typed_cell_parser<fast_float64>
-    : public detail::float_parser<double, detail::fast_strtod<double>> {
+    : public detail::fundamental_parser<detail::fast_strtod<double>> {
 public:
     typed_cell_parser(char delim)
-        : detail::float_parser<double, detail::fast_strtod<double>>(delim) {}
+        : detail::fundamental_parser<detail::fast_strtod<double>>(delim) {}
+};
+
+template<>
+class typed_cell_parser<std::int8_t>
+    : public detail::fundamental_parser<detail::fast_strtol<std::int8_t>> {
+public:
+    typed_cell_parser(char delim)
+        : detail::fundamental_parser<detail::fast_strtol<std::int8_t>>(delim) {}
+};
+
+template<>
+class typed_cell_parser<std::int16_t>
+    : public detail::fundamental_parser<detail::fast_strtol<std::int16_t>> {
+public:
+    typed_cell_parser(char delim)
+        : detail::fundamental_parser<detail::fast_strtol<std::int16_t>>(delim) {}
+};
+
+template<>
+class typed_cell_parser<std::int32_t>
+    : public detail::fundamental_parser<detail::fast_strtol<std::int32_t>> {
+public:
+    typed_cell_parser(char delim)
+        : detail::fundamental_parser<detail::fast_strtol<std::int32_t>>(delim) {}
+};
+
+template<>
+class typed_cell_parser<std::int64_t>
+    : public detail::fundamental_parser<detail::fast_strtol<std::int64_t>> {
+public:
+    typed_cell_parser(char delim)
+        : detail::fundamental_parser<detail::fast_strtol<std::int64_t>>(delim) {}
 };
 
 /* Regardless of the input type, we always convert datetimes to datetime64<ns> for the
    output buffer.
- */
+*/
 template<typename Unit>
 class typed_cell_parser<py::datetime64<Unit>>
     : public typed_cell_parser_base<py::datetime64ns> {
