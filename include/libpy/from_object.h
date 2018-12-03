@@ -46,7 +46,7 @@ public:
         if (!repr) {
             throw py::exception("failed to call repr on ob");
         }
-        char* data = PyUnicode_AsUTF8(repr.get());
+        const char* data = PyUnicode_AsUTF8(repr.get());
         if (!data) {
             throw py::exception("failed to get utf8 string from repr result");
         }
@@ -92,7 +92,7 @@ struct from_object<std::array<char, n>> {
     static std::array<char, n> f(PyObject* cs) {
         std::array<char, n> out = {0};
 
-        char* data;
+        const char* data;
         Py_ssize_t size;
 
         if (PyBytes_Check(cs)) {
@@ -116,7 +116,7 @@ struct from_object<std::array<char, n>> {
 template<>
 struct from_object<char> {
     static char f(PyObject* cs) {
-        char* data;
+        const char* data;
         Py_ssize_t size;
 
         if (PyBytes_Check(cs)) {
@@ -163,7 +163,7 @@ struct from_object<scoped_ref<T>> {
 template<>
 struct from_object<std::string_view> {
     static std::string_view f(PyObject* cs) {
-        char* data;
+        const char* data;
         Py_ssize_t size;
 
         if (PyBytes_Check(cs)) {
