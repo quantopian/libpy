@@ -613,7 +613,7 @@ private:
                                           raw);
         }
 
-        expect_char(raw, 11, ' ');
+        expect_char(raw, 10, ' ');
         int hours = parse_int<2>(raw.substr(11));
         if (hours < 0 || hours > 23) {
             throw detail::formatted_error("hour not in range [0, 24): ", raw);
