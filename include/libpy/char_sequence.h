@@ -15,6 +15,11 @@ template<typename Char, Char... cs>
 constexpr char_sequence<cs...> operator""_cs() {
     return {};
 }
+
+template<typename Char, Char... cs>
+constexpr std::array<char, sizeof...(cs)> operator""_arr() {
+    return {cs...};
+}
 };
 
 namespace detail {
