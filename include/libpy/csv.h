@@ -120,15 +120,19 @@ isolate_unquoted_cell(const std::string_view& row, std::size_t offset, char deli
  */
 class cell_parser {
 protected:
-    char m_delim;
+    char m_delim = '\0';
 
 public:
-    cell_parser(char delim) : m_delim(delim) {}
-
     /** Set the line count. This should pre-allocate space for `num_lines` values to be
         parsed.
      */
     virtual void set_num_lines(std::size_t) {}
+
+    /** Set the delimiter.
+     */
+    void set_delim(char delim) {
+        m_delim = delim;
+    }
 
     virtual ~cell_parser() = default;
 
@@ -164,8 +168,6 @@ protected:
 
 public:
     using type = T;
-
-    typed_cell_parser_base(char delim) : cell_parser(delim) {}
 
     const std::vector<T>& parsed() const {
         return m_parsed;
@@ -266,8 +268,6 @@ template<std::size_t n>
 class typed_cell_parser<std::array<char, n>>
     : public typed_cell_parser_base<std::array<char, n>> {
 public:
-    typed_cell_parser(char delim) : typed_cell_parser_base<std::array<char, n>>(delim) {}
-
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         auto& cell = this->m_parsed[ix];
@@ -291,9 +291,6 @@ template<const auto& scalar_parse>
 class fundamental_parser : public typed_cell_parser_base<decltype(
                                scalar_parse((const char*){}, (const char**){}))> {
 public:
-    fundamental_parser(char delim)
-        : typed_cell_parser_base<typename fundamental_parser::type>(delim) {}
-
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         const char* first = &row.data()[offset];
@@ -458,67 +455,35 @@ auto fast_strtol = signed_adapter<fast_unsigned_strtol<T>>;
 
 template<>
 class typed_cell_parser<float>
-    : public detail::fundamental_parser<detail::regular_strtod<float>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::regular_strtod<float>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::regular_strtod<float>> {};
 
 template<>
 class typed_cell_parser<double>
-    : public detail::fundamental_parser<detail::regular_strtod<double>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::regular_strtod<double>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::regular_strtod<double>> {};
 
 template<>
 class typed_cell_parser<fast_float32>
-    : public detail::fundamental_parser<detail::fast_strtod<float>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::fast_strtod<float>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::fast_strtod<float>> {};
 
 template<>
 class typed_cell_parser<fast_float64>
-    : public detail::fundamental_parser<detail::fast_strtod<double>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::fast_strtod<double>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::fast_strtod<double>> {};
 
 template<>
 class typed_cell_parser<std::int8_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int8_t>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::fast_strtol<std::int8_t>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::fast_strtol<std::int8_t>> {};
 
 template<>
 class typed_cell_parser<std::int16_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int16_t>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::fast_strtol<std::int16_t>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::fast_strtol<std::int16_t>> {};
 
 template<>
 class typed_cell_parser<std::int32_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int32_t>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::fast_strtol<std::int32_t>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::fast_strtol<std::int32_t>> {};
 
 template<>
 class typed_cell_parser<std::int64_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int64_t>> {
-public:
-    typed_cell_parser(char delim)
-        : detail::fundamental_parser<detail::fast_strtol<std::int64_t>>(delim) {}
-};
+    : public detail::fundamental_parser<detail::fast_strtol<std::int64_t>> {};
 
 /* Regardless of the input type, we always convert datetimes to datetime64<ns> for the
    output buffer.
@@ -664,8 +629,6 @@ private:
     }
 
 public:
-    typed_cell_parser(char delim) : typed_cell_parser_base<py::datetime64ns>(delim) {}
-
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         auto [raw, consumed, more] =
@@ -692,8 +655,6 @@ public:
 template<>
 class typed_cell_parser<py::py_bool> : public typed_cell_parser_base<py::py_bool> {
 public:
-    typed_cell_parser(char delim) : typed_cell_parser_base<py::py_bool>(delim) {}
-
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         auto [raw, consumed, more] =
@@ -727,8 +688,6 @@ protected:
     std::vector<std::string> m_parsed;
 
 public:
-    header_parser(char delim) : cell_parser(delim) {}
-
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t, const std::string_view& row, std::size_t offset) {
         this->m_parsed.emplace_back();
@@ -746,8 +705,6 @@ public:
 
 class skip_parser : public cell_parser {
 public:
-    skip_parser(char delim) : cell_parser(delim) {}
-
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t, const std::string_view& row, std::size_t offset) {
         return detail::chomp_quoted_string([](char) {}, this->m_delim, row, offset);
@@ -878,6 +835,7 @@ std::vector<std::string_view> split_into_lines(const std::string_view& data,
 template<template<typename...> typename ptr_type>
 void parse_from_header(const std::string_view& data,
                        parser_types<ptr_type>& parsers,
+                       char delimiter,
                        const std::string_view& line_ending,
                        std::size_t num_threads,
                        std::size_t skip_rows = 0) {
@@ -885,6 +843,7 @@ void parse_from_header(const std::string_view& data,
 
     for (auto& parser : parsers) {
         parser->set_num_lines(lines.size());
+        parser->set_delim(delimiter);
     }
 
     std::size_t group_size;
@@ -937,50 +896,29 @@ struct dtype_option {
         return result;
     }
 
-    static std::unique_ptr<cell_parser> create_parser(char delimiter) {
-        return std::make_unique<typed_cell_parser<T>>(delimiter);
+    static std::unique_ptr<cell_parser> create_parser() {
+        return std::make_unique<typed_cell_parser<T>>();
     }
 };
 
-/** Create a cell parser with the correct static type given the runtime numpy `dtype`.
-    `create_parser<...>::f` expands to the equivalent of:
-
-    ```
-    void f(PyObject* dtype, char delimiter, parser_types<std::unique_ptr>& parsers) {
-        if (dtype == Ts[0]) {
-            parsers.emplace_back(std::make_unique<typed_cell_parser<Ts[0]>>(delimiter));
-        }
-        else if (dtype = Ts[1]) {
-            parsers.emplace_back(std::make_unique<typed_cell_parser<Ts[1]>>(delimiter));
-        }
-        // ...
-        else if (dtype = Ts[-1]) {
-            parsers.emplace_back(std::make_unique<typed_cell_parser<Ts[-1]>>(delimiter));
-        }
-        else {
-            throw py::exception(PyExc_TypeError);
-        }
-    }
-    ```
- */
 template<typename...>
 struct create_parser;
 
 template<typename T, typename... Ts>
 struct create_parser<T, Ts...> {
-    static std::unique_ptr<cell_parser> f(PyObject* dtype, char delimiter) {
+    static std::unique_ptr<cell_parser> f(PyObject* dtype) {
         using option = dtype_option<T>;
         if (!option::matches(dtype)) {
-            return create_parser<Ts...>::f(dtype, delimiter);
+            return create_parser<Ts...>::f(dtype);
         }
 
-        return option::create_parser(delimiter);
+        return option::create_parser();
     }
 };
 
 template<>
 struct create_parser<> {
-    [[noreturn]] static std::unique_ptr<cell_parser> f(PyObject* dtype, char) {
+    [[noreturn]] static std::unique_ptr<cell_parser> f(PyObject* dtype) {
         throw py::exception(PyExc_TypeError, "unknown dtype: ", dtype);
     }
 };
@@ -999,7 +937,8 @@ parse_header(const std::string_view& data,
     auto line_end = data.find(line_ending, 0);
     auto line = data.substr(0, line_end);
 
-    header_parser header_parser(delimiter);
+    header_parser header_parser;
+    header_parser.set_delim(delimiter);
     for (auto [consumed, more] = std::make_tuple(0, true); more;) {
         auto [new_consumed, new_more] = header_parser.chomp(0, line, consumed);
         consumed += new_consumed;
@@ -1017,10 +956,10 @@ parse_header(const std::string_view& data,
         auto search = get_parser(cell);
         if (!search) {
             if constexpr (is_shared) {
-                parsers.emplace_back(std::make_shared<skip_parser>(delimiter));
+                parsers.emplace_back(std::make_shared<skip_parser>());
             }
             else {
-                parsers.emplace_back(std::make_unique<skip_parser>(delimiter));
+                parsers.emplace_back(std::make_unique<skip_parser>());
             }
         }
         else {
@@ -1098,7 +1037,7 @@ void parse(const std::string_view& data,
     auto [to_parse, parsers] =
         detail::parse_header<std::shared_ptr>(data, delimiter, line_ending, get_parser);
 
-    detail::parse_from_header(to_parse, parsers, line_ending, num_threads);
+    detail::parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
 }
 
 /** Python CSV parsing function.
@@ -1134,14 +1073,14 @@ PyObject* py_parse(PyObject*,
             return {};
         }
 
-        return detail::create_parser<possible_types...>::f(dtype, delimiter);
+        return detail::create_parser<possible_types...>::f(dtype);
     };
 
     auto [to_parse, parsers] =
         detail::parse_header<std::unique_ptr>(data, delimiter, line_ending, get_parser);
 
     detail::verify_dtypes_dict(dtypes, header);
-    detail::parse_from_header(to_parse, parsers, line_ending, num_threads);
+    detail::parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
 
     auto out = py::scoped_ref(PyDict_New());
     if (!out) {
