@@ -331,18 +331,6 @@ public:
 };
 
 template<typename T>
-T regular_strtod(const char* ptr, const char** last) {
-    static_assert(std::is_same_v<T, double> || std::is_same_v<T, float>,
-                  "regular_strtod<T>: T must be `double` or `float`");
-    if constexpr (std::is_same_v<T, double>) {
-        return std::strtod(ptr, const_cast<char**>(last));
-    }
-    else {
-        return std::strtof(ptr, const_cast<char**>(last));
-    }
-}
-
-template<typename T>
 T fast_unsigned_strtod(const char* ptr, const char** last) {
     T result;
     T whole_part = 0;
@@ -430,8 +418,10 @@ T fast_unsigned_strtol(const char* ptr, const char** last) {
             return result;
         }
 
-        result *= 10;
-        result += c;
+        if (__builtin_mul_overflow(result, 10, &result) ||
+            __builtin_add_overflow(result, c, &result)) {
+            throw std::overflow_error("integer would overflow");
+        }
         ++ptr;
     }
 }
@@ -446,44 +436,80 @@ auto signed_adapter(const char* ptr, const char** last) -> decltype(F(ptr, last)
     return F(ptr, last);
 }
 
-template<typename T>
-auto fast_strtod = signed_adapter<fast_unsigned_strtod<T>>;
+} // namespace detail
 
+/** A wrapper around `std::strtod` to give it the same interface as `fast_strtod`.
+
+    @tparam T Either `float` or `double` to switch between `std::strtof` and
+              `std::strtod`.
+    @param ptr The beginning of the string to parse.
+    @param last An output argument to take a pointer to the first character not parsed.
+    @return As much of `ptr` parsed as a double as possible.
+ */
 template<typename T>
-auto fast_strtol = signed_adapter<fast_unsigned_strtol<T>>;
-}  // namespace detail
+T regular_strtod(const char* ptr, const char** last) {
+    static_assert(std::is_same_v<T, double> || std::is_same_v<T, float>,
+                  "regular_strtod<T>: T must be `double` or `float`");
+    if constexpr (std::is_same_v<T, double>) {
+        return std::strtod(ptr, const_cast<char**>(last));
+    }
+    else {
+        return std::strtof(ptr, const_cast<char**>(last));
+    }
+}
+
+/** A faster, but lower precision, implementation of `strtod`.
+
+    @tparam T The precision of the value to parse, either `float` or `double`.
+    @param ptr The beginning of the string to parse.
+    @param last An output argument to take a pointer to the first character not parsed.
+    @return As much of `ptr` parsed as a `T` as possible.
+ */
+template<typename T>
+auto fast_strtod = detail::signed_adapter<detail::fast_unsigned_strtod<T>>;
+
+/** A faster, but less accepting, implementation of `strtol`.
+
+    @tparam T The type of integer to parse as. This should be a signed integral type.
+    @param ptr The beginning of the string to parse.
+    @param last An output argument to take a pointer to the first character not parsed.
+    @return As much of `ptr` parsed as a `T` as possible.
+ */
+template<typename T,
+         typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
+auto fast_strtol = detail::signed_adapter<detail::fast_unsigned_strtol<T>>;
 
 template<>
 class typed_cell_parser<float>
-    : public detail::fundamental_parser<detail::regular_strtod<float>> {};
+    : public detail::fundamental_parser<regular_strtod<float>> {};
 
 template<>
 class typed_cell_parser<double>
-    : public detail::fundamental_parser<detail::regular_strtod<double>> {};
+    : public detail::fundamental_parser<regular_strtod<double>> {};
 
 template<>
 class typed_cell_parser<fast_float32>
-    : public detail::fundamental_parser<detail::fast_strtod<float>> {};
+    : public detail::fundamental_parser<fast_strtod<float>> {};
 
 template<>
 class typed_cell_parser<fast_float64>
-    : public detail::fundamental_parser<detail::fast_strtod<double>> {};
+    : public detail::fundamental_parser<fast_strtod<double>> {};
 
 template<>
 class typed_cell_parser<std::int8_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int8_t>> {};
+    : public detail::fundamental_parser<fast_strtol<std::int8_t>> {};
 
 template<>
 class typed_cell_parser<std::int16_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int16_t>> {};
+    : public detail::fundamental_parser<fast_strtol<std::int16_t>> {};
 
 template<>
 class typed_cell_parser<std::int32_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int32_t>> {};
+    : public detail::fundamental_parser<fast_strtol<std::int32_t>> {};
 
 template<>
 class typed_cell_parser<std::int64_t>
-    : public detail::fundamental_parser<detail::fast_strtol<std::int64_t>> {};
+    : public detail::fundamental_parser<fast_strtol<std::int64_t>> {};
 
 /* Regardless of the input type, we always convert datetimes to datetime64<ns> for the
    output buffer.
