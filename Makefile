@@ -20,7 +20,9 @@ ifneq ($(COVERAGE),0)
 endif
 
 INCLUDE_DIRS := include/
-INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) $(shell $(PYTHON)-config --includes)
+INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) \
+	$(shell $(PYTHON)-config --includes) \
+	-I $(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
 LIBRARY := py
 
 OS := $(shell uname)
