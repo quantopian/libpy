@@ -10,6 +10,142 @@
 #include "libpy/csv.h"
 #include "libpy/datetime64.h"
 
+const char* failing_string = "123x";
+
+TEST(fast_strtol, int8) {
+    std::array<const char*, 7> strings = {"0", "1", "64", "127", "-1", "-64", "-127"};
+    std::array<std::int8_t, 7> expected_values = {0, 1, 64, 127, -1, -64, -127};
+
+    for (const auto& [input, expected] : py::zip(strings, expected_values)) {
+        const char* out;
+        auto actual = py::csv::fast_strtol<std::int8_t>(input, &out);
+        EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
+        EXPECT_EQ(actual, expected);
+    }
+}
+
+TEST(fast_strtol, int8_overflow) {
+    std::array<const char*, 4> strings = {"256", "-256", "10000", "-10000"};
+
+    for (const char* input : strings) {
+        const char* out;
+        EXPECT_THROW(py::csv::fast_strtol<std::int8_t>(input, &out), std::overflow_error)
+            << "input=" << input;
+    }
+}
+
+TEST(fast_strtol, int16) {
+    std::array<const char*, 7> strings =
+        {"0", "1", "10000", "32767", "-1", "-10000", "-32767"};
+    std::array<std::int16_t, 7> expected_values =
+        {0, 1, 10000, 32767, -1, -10000, -32767};
+
+    for (const auto& [input, expected] : py::zip(strings, expected_values)) {
+        const char* out;
+        auto actual = py::csv::fast_strtol<std::int16_t>(input, &out);
+        EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
+        EXPECT_EQ(actual, expected);
+    }
+}
+
+TEST(fast_strtol, int16_overflow) {
+    std::array<const char*, 4> strings = {"32768", "-32768", "100000", "-100000"};
+
+    for (const char* input : strings) {
+        const char* out;
+        EXPECT_THROW(py::csv::fast_strtol<std::int16_t>(input, &out), std::overflow_error)
+            << "input=" << input;
+    }
+}
+
+TEST(fast_strtol, int32) {
+    std::array<const char*, 7> strings =
+        {"0", "1", "1000000", "2147483647", "-1", "-1000000", "-2147483647"};
+    std::array<std::int32_t, 7> expected_values =
+        {0, 1, 1000000, 2147483647, -1, -1000000, -2147483647};
+
+    for (const auto& [input, expected] : py::zip(strings, expected_values)) {
+        const char* out;
+        auto actual = py::csv::fast_strtol<std::int32_t>(input, &out);
+        EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
+        EXPECT_EQ(actual, expected);
+    }
+}
+
+TEST(fast_strtol, int32_overflow) {
+    std::array<const char*, 4> strings = {"2147483648",
+                                          "-2147483648",
+                                          "10000000000000",
+                                          "-10000000000000"};
+
+    for (const char* input : strings) {
+        const char* out;
+        EXPECT_THROW(py::csv::fast_strtol<std::int32_t>(input, &out), std::overflow_error)
+            << "input=" << input;
+    }
+}
+
+TEST(fast_strtol, int64) {
+    std::array<const char*, 7> strings = {"0",
+                                          "1",
+                                          "1000000000000",
+                                          "9223372036854775807",
+                                          "-1",
+                                          "-1000000000000",
+                                          "-9223372036854775807"};
+    std::array<std::int64_t, 7> expected_values = {0,
+                                                   1,
+                                                   1000000000000,
+                                                   9223372036854775807,
+                                                   -1,
+                                                   -1000000000000,
+                                                   -9223372036854775807};
+
+    for (const auto& [input, expected] : py::zip(strings, expected_values)) {
+        const char* out;
+        auto actual = py::csv::fast_strtol<std::int64_t>(input, &out);
+        EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
+        EXPECT_EQ(actual, expected);
+    }
+}
+
+TEST(fast_strtol, int64_overflow) {
+    std::array<const char*, 4> strings = {"9223372036854775808",
+                                          "-9223372036854775808",
+                                          "1000000000000000000000000000",
+                                          "-1000000000000000000000000000"};
+
+    for (const char* input : strings) {
+        const char* out;
+        EXPECT_THROW(py::csv::fast_strtol<std::int64_t>(input, &out), std::overflow_error)
+            << "input=" << input;
+    }
+}
+
+template<typename T>
+class fast_strtol_errors : public testing::Test {};
+TYPED_TEST_CASE_P(fast_strtol_errors);
+
+TYPED_TEST_P(fast_strtol_errors, invalid_string) {
+    std::array<const char*, 4> strings = {"x", "1x", "12x", "123x"};
+    std::array<TypeParam, 4> expected_values = {0, 1, 12, 123};
+    std::array<std::ptrdiff_t, 4> expected_lengths = {0, 1, 2, 3};
+
+    for (const auto& [input, expected_value, expected_lenth] :
+         py::zip(strings, expected_values, expected_lengths)) {
+
+        const char* out;
+        auto actual = py::csv::fast_strtol<TypeParam>(input, &out);
+
+        EXPECT_EQ(out - input, expected_lenth);
+        EXPECT_EQ(actual, expected_value);
+    }
+}
+REGISTER_TYPED_TEST_CASE_P(fast_strtol_errors, invalid_string);
+
+using int_types = testing::Types<std::int8_t, std::int16_t, std::int32_t, std::int64_t>;
+INSTANTIATE_TYPED_TEST_CASE_P(typed_, fast_strtol_errors, int_types);
+
 struct csv_params {
     char delim;
     const char* line_sep;
