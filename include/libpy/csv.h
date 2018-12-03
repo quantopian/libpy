@@ -192,7 +192,7 @@ public:
         return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
     }
 
-    virtual std::tuple<std::vector<T>, std::vector<py::py_bool>> move_to_cxx_tuple() && {
+    virtual std::tuple<std::vector<T>, std::vector<py::py_bool>> move_to_tuple() && {
         return {std::move(m_parsed), std::move(m_mask)};
     }
 };
