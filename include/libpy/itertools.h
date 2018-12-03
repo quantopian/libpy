@@ -27,9 +27,6 @@ private:
     template<typename... Us>
     class generic_iterator {
     private:
-        using deref_type = std::tuple<decltype(*std::declval<Us>())...>;
-        using arrow_type = std::tuple<decltype(std::declval<Us>().operator->())...>;
-
         std::tuple<Us...> m_iterators;
 
     protected:
@@ -51,13 +48,13 @@ private:
             return *this;
         }
 
-        deref_type operator*() {
+        auto operator*() {
             return std::apply(
                 [](Us&... iterators) { return std::forward_as_tuple(*iterators...); },
                 m_iterators);
         }
 
-        arrow_type operator->() {
+        auto operator->() {
             return std::apply(
                 [](Us&... iterators) {
                     return std::forward_as_tuple(iterators.operator->()...);
