@@ -15,7 +15,7 @@ bool all_equal(T&& head, Ts&&... tail) {
     return true;
 }
 
-bool all_equal() {
+inline bool all_equal() {
     return true;
 }
 
