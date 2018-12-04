@@ -36,6 +36,7 @@ RUN mkdir -p ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 ENV VENV_HOME=/virtualenvs
 ENV VENV_ACTIVATE=$VENV_HOME/libpy/bin/activate
 
+RUN . $VENV_ACTIVATE && pip install numpy==1.13.3
 WORKDIR /src/
 COPY . ./libpy
 COPY ./etc/Makefile.jenkins ./libpy/Makefile.local
