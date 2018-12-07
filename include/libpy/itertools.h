@@ -3,22 +3,10 @@
 #include <functional>
 #include <tuple>
 
+#include "libpy/utils.h"
+
 namespace py {
 namespace detail {
-template<typename T, typename... Ts>
-bool all_equal(T&& head, Ts&&... tail) {
-    for (auto&& v : {tail...}) {
-        if (head != v) {
-            return false;
-        }
-    }
-    return true;
-}
-
-inline bool all_equal() {
-    return true;
-}
-
 template<typename... Ts>
 class zipper {
 private:
@@ -69,7 +57,7 @@ public:
         generic_iterator<decltype(std::declval<const Ts>().begin())...>;
 
     zipper(Ts&&... iterables) : m_iterables(std::forward<Ts>(iterables)...) {
-        if (!detail::all_equal(iterables.size()...)) {
+        if (!utils::all_equal(iterables.size()...)) {
             throw std::invalid_argument("iterables must be same length");
         }
     }
