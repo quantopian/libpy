@@ -75,6 +75,15 @@ struct raise_format<const char*> {
     }
 };
 
+template<>
+struct raise_format<char*> {
+    using fmt = cs::char_sequence<'s'>;
+
+    static auto prepare(char* cs) {
+        return cs;
+    }
+};
+
 template<std::size_t n>
 struct raise_format<const char[n]> {
     using fmt = cs::char_sequence<'s'>;
