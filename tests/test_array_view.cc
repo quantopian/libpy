@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <array>
-#include <vector>
 #include <ostream>
+#include <vector>
 
 #include "gtest/gtest.h"
 
@@ -15,7 +15,7 @@ public:
     float b;
 
     custom_object() = default;
-    custom_object(int a) : a(a), b(a / 2.0) {};
+    custom_object(int a) : a(a), b(a / 2.0){};
 
     bool operator==(const custom_object& other) const {
         return a == other.a and b == other.b;
@@ -48,7 +48,6 @@ TYPED_TEST_P(array_view, from_std_array) {
     from_container<std::array<TypeParam, 5>>();
 }
 
-
 TYPED_TEST_P(array_view, from_std_vector) {
     from_container<std::vector<TypeParam>>();
 }
@@ -56,9 +55,9 @@ TYPED_TEST_P(array_view, from_std_vector) {
 template<typename It1, typename It2>
 void test_iterator(It1 arr_begin, It1 arr_end, It2 view_begin, It2 view_end) {
     auto [arr_mm, view_mm] = std::mismatch(arr_begin, arr_end, view_begin);
-    EXPECT_EQ(arr_mm, arr_end)
-        << "mismatched elements at index: " << std::distance(arr_mm, arr_begin) << ": "
-        << *arr_mm << " != " << *view_mm;
+    EXPECT_EQ(arr_mm, arr_end) << "mismatched elements at index: "
+                               << std::distance(arr_mm, arr_begin) << ": " << *arr_mm
+                               << " != " << *view_mm;
     EXPECT_EQ(view_mm, view_end);
 }
 
@@ -78,7 +77,6 @@ TYPED_TEST_P(array_view, reverse_iterator) {
 
     test_iterator(arr.rbegin(), arr.rend(), view.rbegin(), view.rend());
     test_iterator(arr.crbegin(), arr.crend(), view.crbegin(), view.crend());
-
 }
 
 TYPED_TEST_P(array_view, _2d_indexing) {

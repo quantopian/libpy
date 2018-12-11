@@ -9,8 +9,8 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
-#include "libpy/to_object.h"
 #include "libpy/scoped_ref.h"
+#include "libpy/to_object.h"
 
 namespace py {
 namespace detail {
@@ -52,7 +52,6 @@ template<typename... Args>
 scoped_ref<PyObject> call_function(scoped_ref<PyObject>& function, Args&&... args) {
     return scoped_ref(function.get(), std::forward<Args>(args)...);
 }
-
 
 /** Call a python method on C++ data.
 

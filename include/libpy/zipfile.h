@@ -188,8 +188,7 @@ pymethod_read(PyObject*, const std::string& path) {
     @param `path` The path to read.
     @return The (potentially decompressed) contents of each entry keyed by their name.
  */
-std::unordered_map<std::string, std::string>
-read(const std::string& path) {
+std::unordered_map<std::string, std::string> read(const std::string& path) {
     archive z(path);
     std::size_t entries = z.size();
 

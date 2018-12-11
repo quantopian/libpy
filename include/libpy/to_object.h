@@ -246,9 +246,8 @@ template<typename... Ts>
 struct to_object<std::tuple<Ts...>> {
 private:
     template<typename T, std::size_t... Ix>
-    static bool fill_tuple_as_objects(PyObject* out,
-                                      T&& tup,
-                                      std::index_sequence<Ix...>) {
+    static bool
+    fill_tuple_as_objects(PyObject* out, T&& tup, std::index_sequence<Ix...>) {
         bool result = false;
         auto f = [out, &result](std::size_t ix, const auto& elem) {
             PyObject* as_object = py::to_object(elem).escape();
@@ -260,7 +259,7 @@ private:
             }
             return '\0';
         };
-        (... , f(Ix, std::get<Ix>(tup)));
+        (..., f(Ix, std::get<Ix>(tup)));
         return result;
     }
 
@@ -293,7 +292,6 @@ public:
         return std::move(out).escape();
     }
 };
-
 
 template<typename T>
 struct to_object<std::optional<T>> {

@@ -1,5 +1,5 @@
-#include "gtest/gtest.h"
 #include "Python.h"
+#include "gtest/gtest.h"
 
 #include "libpy/scoped_ref.h"
 #include "test_utils.h"

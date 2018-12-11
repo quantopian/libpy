@@ -5,9 +5,9 @@
 #include <cstdint>
 #include <exception>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <sstream>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -139,7 +139,6 @@ struct from_object<char> {
         return data[0];
     }
 };
-
 
 /** Identity conversion for `PyObject*`.
  */
@@ -296,6 +295,7 @@ private:
     static std::tuple<Ts...> fill_tuple(PyObject* tup, std::index_sequence<ixs...>) {
         return {py::from_object<Ts>(PyTuple_GET_ITEM(tup, ixs))...};
     }
+
 public:
     static std::tuple<Ts...> f(PyObject* tup) {
         if (!(PyTuple_Check(tup) || PyTuple_GET_SIZE(tup) != sizeof...(Ts))) {

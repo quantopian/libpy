@@ -24,7 +24,10 @@ public:
     ensure_import_array() {
         // this macro returns NULL so we need to put it in a function to call it to ignore
         // the return statement
-        []() -> std::nullptr_t{ import_array(); return nullptr; }();
+        []() -> std::nullptr_t {
+            import_array();
+            return nullptr;
+        }();
     };
 };
 
@@ -355,7 +358,8 @@ struct from_object<datetime64<D>> {
             throw exception{};
         }
 
-        if (!PyObject_RichCompareBool(reinterpret_cast<PyObject*>(PyArray_DTYPE(array.get())),
+        if (!PyObject_RichCompareBool(reinterpret_cast<PyObject*>(
+                                          PyArray_DTYPE(array.get())),
                                       reinterpret_cast<PyObject*>(dtype.get()),
                                       Py_EQ)) {
             throw exception(PyExc_TypeError,

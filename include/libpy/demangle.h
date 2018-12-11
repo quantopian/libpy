@@ -1,8 +1,8 @@
 #pragma once
 
 #include <exception>
-#include <string>
 #include <memory>
+#include <string>
 #include <typeinfo>
 
 #include <cxxabi.h>
@@ -41,23 +41,20 @@ using demangled_cstring = std::unique_ptr<char, detail::demangle_deleter>;
  */
 inline demangled_cstring demangle_string(const char* cs) {
     int status;
-    char* demangled = abi::__cxa_demangle(cs,
-                                          nullptr,
-                                          nullptr,
-                                          &status);
+    char* demangled = abi::__cxa_demangle(cs, nullptr, nullptr, &status);
 
-        switch (status) {
-        case 0:
-            return demangled_cstring(demangled);
-        case -1:
-            throw demangle_error("memory error");
-        case -2:
-            throw demangle_error("invalid mangled_name");
-        case -3:
-            throw demangle_error("invalid argument to cxa_demangle");
-        default:
-            throw demangle_error("unknown failure");
-        }
+    switch (status) {
+    case 0:
+        return demangled_cstring(demangled);
+    case -1:
+        throw demangle_error("memory error");
+    case -2:
+        throw demangle_error("invalid mangled_name");
+    case -3:
+        throw demangle_error("invalid argument to cxa_demangle");
+    default:
+        throw demangle_error("unknown failure");
+    }
 }
 
 /** Demangle the given string.

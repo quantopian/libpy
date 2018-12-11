@@ -20,7 +20,7 @@ template<typename Char, Char... cs>
 constexpr std::array<char, sizeof...(cs)> operator""_arr() {
     return {cs...};
 }
-};
+};  // namespace literals
 
 namespace detail {
 template<char... cs, char... ds>
