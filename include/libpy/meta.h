@@ -29,5 +29,4 @@ constexpr bool element_of<Search, std::tuple<>> = false;
 template<typename Search, typename Head, typename... Rest>
 constexpr bool element_of<Search, std::tuple<Head, Rest...>> =
     std::is_same_v<Search, Head> || element_of<Search, std::tuple<Rest...>>;
-
 }  // namespace py::meta

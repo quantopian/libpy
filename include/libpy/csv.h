@@ -436,7 +436,7 @@ auto signed_adapter(const char* ptr, const char** last) -> decltype(F(ptr, last)
     return F(ptr, last);
 }
 
-} // namespace detail
+}  // namespace detail
 
 /** A wrapper around `std::strtod` to give it the same interface as `fast_strtod`.
 

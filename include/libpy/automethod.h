@@ -26,9 +26,8 @@ template<typename R, typename Self, typename... Args>
 struct remove_cref_traits {
 private:
     template<std::size_t... ixs>
-    static std::tuple<Self, Args...> inner_build_arg_tuple(Self self,
-                                                     PyObject* t,
-                                                     std::index_sequence<ixs...>) {
+    static std::tuple<Self, Args...>
+    inner_build_arg_tuple(Self self, PyObject* t, std::index_sequence<ixs...>) {
         return {self, py::from_object<Args>(PyTuple_GET_ITEM(t, ixs))...};
     }
 

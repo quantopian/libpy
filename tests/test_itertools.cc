@@ -12,7 +12,6 @@ TEST(zip, mismatched_sizes) {
     EXPECT_THROW(py::zip(as, bs), std::invalid_argument);
 }
 
-
 TEST(zip, const_iterator) {
     std::size_t size = 10;
 
@@ -37,7 +36,6 @@ TEST(zip, const_iterator) {
 
     EXPECT_EQ(ix, size);
 }
-
 
 TEST(zip, mutable_iterator) {
     std::size_t size = 10;

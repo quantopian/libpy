@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+
+find -name *.h -exec clang-format -i {} +
+find -name *.cc -exec clang-format -i {} +

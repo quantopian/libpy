@@ -1,7 +1,7 @@
 #pragma once
 
-#include "gtest/gtest.h"
 #include "Python.h"
+#include "gtest/gtest.h"
 
 class with_python_interpreter : public testing::Test {
 public:
