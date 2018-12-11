@@ -78,7 +78,9 @@ public:
     }
 
     ndarray_view(const ndarray_view& cpfrom)
-        : m_shape(cpfrom.m_shape), m_strides(cpfrom.m_strides), m_buffer(cpfrom.m_buffer) {}
+        : m_shape(cpfrom.m_shape),
+          m_strides(cpfrom.m_strides),
+          m_buffer(cpfrom.m_buffer) {}
 
     ndarray_view& operator=(const ndarray_view& cpfrom) {
         m_shape = cpfrom.m_shape;
@@ -284,7 +286,7 @@ private:
         }
 
         difference_type operator-(const generic_iterator& other) const {
-            return (m_ptr - other.m_ptr) / m_stride;
+            return m_ix - other.m_ix;
         }
 
         bool operator!=(const generic_iterator& other) const {
@@ -296,19 +298,19 @@ private:
         }
 
         bool operator<(const generic_iterator& other) const {
-            return m_ptr < other.m_ptr;
+            return m_ix < other.m_ix;
         }
 
         bool operator<=(const generic_iterator& other) const {
-            return m_ptr <= other.m_ptr;
+            return m_ix <= other.m_ix;
         }
 
         bool operator>(const generic_iterator& other) const {
-            return m_ptr > other.m_ptr;
+            return m_ix > other.m_ix;
         }
 
         bool operator>=(const generic_iterator& other) const {
-            return m_ptr >= other.m_ptr;
+            return m_ix >= other.m_ix;
         }
     };
 
@@ -342,8 +344,7 @@ public:
         @param shape The shape of the array.
         @return The new mutable array view.
      */
-    static ndarray_view virtual_array(T& value,
-                                      const std::array<std::size_t, 1>& shape) {
+    static ndarray_view virtual_array(T& value, const std::array<std::size_t, 1>& shape) {
         return {reinterpret_cast<char*>(std::addressof(value)), shape, {0}};
     }
 
@@ -442,13 +443,13 @@ public:
         return *reinterpret_cast<T*>(&this->m_buffer[this->pos_to_index({pos})]);
     }
 
-        /** Create a view over a subsection of the viewed memory.
+    /** Create a view over a subsection of the viewed memory.
 
-        @param start The start index of the slice.
-        @param stop The stop index of the slice, exclusive.
-        @param step The value to increment each index by.
-        @return A view over a subset of the memory.
-     */
+    @param start The start index of the slice.
+    @param stop The stop index of the slice, exclusive.
+    @param step The value to increment each index by.
+    @return A view over a subset of the memory.
+ */
     ndarray_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
         std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
         std::int64_t stride = this->m_strides[0] * step;
