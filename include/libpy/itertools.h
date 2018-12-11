@@ -20,29 +20,29 @@ private:
     protected:
         friend class zipper<Ts...>;
 
-        generic_iterator(Us... iterators) : m_iterators(iterators...) {}
+        constexpr generic_iterator(Us... iterators) : m_iterators(iterators...) {}
 
     public:
-        bool operator!=(const generic_iterator& other) const {
+        constexpr bool operator!=(const generic_iterator& other) const {
             return m_iterators != other.m_iterators;
         }
 
-        bool operator==(const generic_iterator& other) const {
+        constexpr bool operator==(const generic_iterator& other) const {
             return m_iterators == other.m_iterators;
         }
 
-        generic_iterator& operator++() {
+        constexpr generic_iterator& operator++() {
             std::apply([](Us&... iterators) { (..., ++iterators); }, m_iterators);
             return *this;
         }
 
-        auto operator*() {
+        constexpr auto operator*() {
             return std::apply(
                 [](Us&... iterators) { return std::forward_as_tuple(*iterators...); },
                 m_iterators);
         }
 
-        auto operator->() {
+        constexpr auto operator-> () {
             return std::apply(
                 [](Us&... iterators) {
                     return std::forward_as_tuple(iterators.operator->()...);
@@ -56,13 +56,13 @@ public:
     using const_iterator =
         generic_iterator<decltype(std::declval<const Ts>().begin())...>;
 
-    zipper(Ts&&... iterables) : m_iterables(std::forward<Ts>(iterables)...) {
+    constexpr zipper(Ts&&... iterables) : m_iterables(std::forward<Ts>(iterables)...) {
         if (!utils::all_equal(iterables.size()...)) {
             throw std::invalid_argument("iterables must be same length");
         }
     }
 
-    iterator begin() {
+    constexpr iterator begin() {
         return std::apply(
             [](auto&&... iterables) {
                 return iterator(std::forward<Ts>(iterables).begin()...);
@@ -70,7 +70,7 @@ public:
             m_iterables);
     }
 
-    iterator end() {
+    constexpr iterator end() {
         return std::apply(
             [](auto&&... iterables) {
                 return iterator(std::forward<Ts>(iterables).end()...);
@@ -78,7 +78,7 @@ public:
             m_iterables);
     }
 
-    const_iterator begin() const {
+    constexpr const_iterator begin() const {
         return std::apply(
             [](auto&&... iterables) {
                 return iterator(std::forward<Ts>(iterables).begin()...);
@@ -86,7 +86,7 @@ public:
             m_iterables);
     }
 
-    const_iterator end() const {
+    constexpr const_iterator end() const {
         return std::apply(
             [](auto&&... iterables) {
                 return iterator(std::forward<Ts>(iterables).end()...);
@@ -106,7 +106,6 @@ template<typename... Ts>
 auto zip(Ts&&... iterables) {
     return detail::zipper<Ts...>(std::forward<Ts>(iterables)...);
 }
-
 
 namespace detail {
 template<typename T>
@@ -151,8 +150,7 @@ private:
 
 public:
     using iterator = generic_iterator<decltype(std::declval<T>().begin())>;
-    using const_iterator =
-        generic_iterator<decltype(std::declval<const T>().begin())>;
+    using const_iterator = generic_iterator<decltype(std::declval<const T>().begin())>;
 
     enumerator(T&& iterable) : m_iterable(std::forward<T>(iterable)) {}
 
