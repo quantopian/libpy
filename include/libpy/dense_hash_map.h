@@ -20,6 +20,9 @@ template<typename Key,
          typename EqualKey = std::equal_to<Key>,
          typename Alloc = google::libc_allocator_with_realloc<std::pair<const Key, T>>>
 struct dense_hash_map : public google::dense_hash_map<Key, T, HashFcn, EqualKey, Alloc> {
+private:
+    using base = google::dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>;
+
 public:
     dense_hash_map() = delete;
 
@@ -41,8 +44,16 @@ public:
         this->set_empty_key(empty_key);
     }
 
+    dense_hash_map(const dense_hash_map& cpfrom)
+        : base(static_cast<const base&>(cpfrom)) {}
+
     dense_hash_map(dense_hash_map&& mvfrom) noexcept {
         this->swap(mvfrom);
+    }
+
+    dense_hash_map& operator=(const dense_hash_map& cpfrom) {
+        base::operator=(static_cast<const base&>(cpfrom));
+        return *this;
     }
 
     dense_hash_map& operator=(dense_hash_map&& mvfrom) noexcept {
@@ -64,14 +75,24 @@ template<typename Key,
          typename HashFcn = std::hash<Key>,  // change the default to std::hash
          typename EqualKey = std::equal_to<Key>,
          typename Alloc = google::libc_allocator_with_realloc<std::pair<const Key, T>>>
-struct sparse_hash_map : public google::sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc> {
+struct sparse_hash_map
+    : public google::sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc> {
 private:
     using base = google::sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>;
+
 public:
     using base::sparse_hash_map;
 
+    sparse_hash_map(const sparse_hash_map& cpfrom)
+        : base(static_cast<const base&>(cpfrom)) {}
+
     sparse_hash_map(sparse_hash_map&& mvfrom) noexcept {
         this->swap(mvfrom);
+    }
+
+    sparse_hash_map& operator=(const sparse_hash_map& cpfrom) {
+        base::operator=(static_cast<const base&>(cpfrom));
+        return *this;
     }
 
     sparse_hash_map& operator=(sparse_hash_map&& mvfrom) noexcept {
