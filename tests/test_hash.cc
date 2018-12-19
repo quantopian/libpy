@@ -5,6 +5,7 @@
 
 #include "libpy/hash.h"
 
+namespace test_hash {
 template<typename RandomEngine>
 std::string random_string(RandomEngine& g) {
     std::uniform_int_distribution<unsigned char> d(0);
@@ -24,3 +25,4 @@ TEST(hash, buffer) {
         EXPECT_EQ(std::hash<std::string>{}(s), py::hash_buffer(s.data(), s.size()));
     }
 }
+}  // namespace test_hash

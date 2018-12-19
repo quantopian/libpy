@@ -2,6 +2,7 @@
 
 #include "libpy/meta.h"
 
+namespace test_meta {
 struct my_type {};
 
 TEST(element_of, true_cases) {
@@ -34,3 +35,4 @@ TEST(element_of, false_cases) {
     bool case2 = py::meta::element_of<std::tuple<int>, std::tuple<int>>;
     EXPECT_EQ(case2, false);
 }
+}  // namespace test_meta
