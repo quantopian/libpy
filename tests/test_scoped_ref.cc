@@ -4,6 +4,7 @@
 #include "libpy/scoped_ref.h"
 #include "test_utils.h"
 
+namespace test_scoped_ref {
 class scoped_ref : public with_python_interpreter {};
 
 TEST_F(scoped_ref, basic_lifetime) {
@@ -116,3 +117,4 @@ TEST_F(scoped_ref, operator_bool) {
     py::scoped_ref<PyObject> falsy(nullptr);
     EXPECT_FALSE(falsy);
 }
+}  // namespace test_scoped_ref

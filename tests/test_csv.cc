@@ -10,6 +10,7 @@
 #include "libpy/csv.h"
 #include "libpy/datetime64.h"
 
+namespace test_csv {
 const char* failing_string = "123x";
 
 TEST(fast_strtol, int8) {
@@ -172,7 +173,7 @@ void build_csv_helper(const csv_params& params,
         builder << params.delim;
     }
 
-    if constexpr (sizeof...(entries)) {
+    if constexpr (sizeof...(entries) > 0) {
         build_csv_helper<(counter + 1) % ncol, ncol>(params, builder, entries...);
     }
 }
@@ -261,3 +262,4 @@ INSTANTIATE_TEST_CASE_P(csv_with_params,
                                         csv_params{',', "\r\n"},
                                         csv_params{'|', "\n"},
                                         csv_params{'|', "\r\n"}));
+}  // namespace test_csv

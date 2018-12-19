@@ -7,6 +7,7 @@
 
 #include "libpy/array_view.h"
 
+namespace test_array_view {
 /** A non-fundamental type.
  */
 class custom_object {
@@ -131,3 +132,4 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
 using array_view_types =
     testing::Types<char, unsigned char, int, float, double, custom_object>;
 INSTANTIATE_TYPED_TEST_CASE_P(typed_, array_view, array_view_types);
+}  // namespace test_array_view

@@ -5,6 +5,7 @@
 
 #include "libpy/itertools.h"
 
+namespace test_itertools {
 TEST(zip, mismatched_sizes) {
     std::vector<int> as(10);
     std::vector<int> bs(5);
@@ -75,3 +76,4 @@ TEST(zip, mutable_iterator) {
         EXPECT_EQ(cs[ix], -cs_original[ix]);
     }
 }
+}  // namespace test_itertools
