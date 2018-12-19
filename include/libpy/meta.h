@@ -18,7 +18,7 @@ namespace py ::meta {
  *  ``element_of<int, std::tuple<float, float>>`` evaluates to false.
  */
 template<typename Search, typename... Elements>
-constexpr bool element_of;
+constexpr bool element_of = false;
 
 // Base Case: Search is not an element of the empty tuple.
 template<typename Search>
