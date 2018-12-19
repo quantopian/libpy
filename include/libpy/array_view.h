@@ -177,8 +177,26 @@ public:
 
     /** The underlying buffer of characters for this string array.
      */
-    char* buffer() const {
+    const char* buffer() const {
         return m_buffer;
+    }
+
+    /** Create a new immutable view over the same memory.
+
+        @return The frozen view.
+    */
+    ndarray_view<const T, ndim, true> freeze() const {
+        return {m_buffer, m_shape, m_strides};
+    }
+
+    /** Check if two views are exactly identical.
+
+        @param other The view to compare to.
+        @return Are these views identical?
+     */
+    bool operator==(const ndarray_view& other) const {
+        return m_buffer == other.m_buffer && m_shape == other.m_shape &&
+               m_strides == other.m_strides;
     }
 };
 
@@ -465,9 +483,22 @@ public:
         @param step The value to increment each index by.
         @return A view over a subset of the memory.
      */
-    const ndarray_view
+    ndarray_view<const T, 1, false>
     slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
-        return const_cast<ndarray_view*>(this)->slice(start, stop, step);
+        std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
+        std::int64_t stride = this->m_strides[0] * step;
+        return ndarray_view<const T, 1, false>(this->m_buffer +
+                                                   this->pos_to_index({start}),
+                                               {size},
+                                               {stride});
+    }
+
+    /** Create a new immutable view over the same memory.
+
+        @return The frozen view.
+     */
+    ndarray_view<const T, 1, false> freeze() const {
+        return {this->m_buffer, this->m_shape, this->m_strides};
     }
 };
 
