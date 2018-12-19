@@ -55,7 +55,7 @@ struct py_bool {
     }
 };
 
-std::ostream& operator<<(std::ostream& stream, const py_bool& value) {
+inline std::ostream& operator<<(std::ostream& stream, const py_bool& value) {
     return stream << value.value;
 }
 
