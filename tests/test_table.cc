@@ -134,6 +134,47 @@ TEST(row, structured_binding) {
     EXPECT_EQ(c, custom_object(3));
 }
 
+TEST(row, cat) {
+    using A = py::row<py::C<std::int64_t>("a_first"_cs),
+                      py::C<std::int32_t>("a_second"_cs)>;
+    using B = py::row<py::C<double>("b_first"_cs),
+                      py::C<float>("b_second"_cs)>;
+    using C = py::row<py::C<std::string_view>("c_first"_cs),
+                      py::C<std::string>("c_second"_cs),
+                      py::C<std::string_view>("c_third"_cs),
+                      py::C<std::string_view>("c_fourth"_cs)>;
+
+    A a(1, 2);
+    B b(3.5, 4.5);
+    C c("l", "m", "a", "o");
+
+    auto actual_first_cat = py::row_cat(a, b);
+
+    using first_cat_type = py::row<py::C<std::int64_t>("a_first"_cs),
+                                   py::C<std::int32_t>("a_second"_cs),
+                                   py::C<double>("b_first"_cs),
+                                   py::C<float>("b_second"_cs)>;
+    EXPECT_TRUE((std::is_same_v<decltype(actual_first_cat), first_cat_type>));
+
+    first_cat_type expected_first_cat(1, 2, 3.5, 4.5);
+    EXPECT_EQ(actual_first_cat, expected_first_cat);
+
+    auto actual_second_cat = py::row_cat(a, b, c);
+
+    using second_cat_type = py::row<py::C<std::int64_t>("a_first"_cs),
+                                    py::C<std::int32_t>("a_second"_cs),
+                                    py::C<double>("b_first"_cs),
+                                    py::C<float>("b_second"_cs),
+                                    py::C<std::string_view>("c_first"_cs),
+                                    py::C<std::string>("c_second"_cs),
+                                    py::C<std::string_view>("c_third"_cs),
+                                    py::C<std::string_view>("c_fourth"_cs)>;
+    EXPECT_TRUE((std::is_same_v<decltype(actual_second_cat), second_cat_type>));
+
+    second_cat_type expected_second_cat(1, 2, 3.5, 4.5, "l", "m", "a", "o");
+    EXPECT_EQ(actual_second_cat, expected_second_cat);
+}
+
 TEST(table, emplace_back) {
     using T = py::table<py::C<std::int64_t>("a"_cs),
                         py::C<double>("b"_cs),
