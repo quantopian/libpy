@@ -39,12 +39,7 @@ struct column {
 
     using const_column = column<Key, std::add_const_t<Value>>;
     using remove_const_column = column<Key, std::remove_const_t<Value>>;
-
-    static column singleton;
 };
-
-template<auto p>
-using unwrap_column = std::remove_pointer_t<decltype(p)>;
 
 template<auto p>
 constexpr
@@ -65,21 +60,42 @@ constexpr typename std::remove_pointer_t<decltype(p)>::remove_const_column*
  */
 template<typename Value, typename Key>
 constexpr detail::column<Key, Value>* C(Key) {
-    return nullptr;  // &detail::column<Key, Value>::singleton;
+    return nullptr;
 }
+
+/** A helper for unwrapping the result of `C` to get the underlying column type.
+ */
+template<auto p>
+using unwrap_column = std::remove_pointer_t<decltype(p)>;
+
+namespace detail {
+template<std::size_t ix, typename T, auto... columns>
+struct get_helper {
+    static const std::tuple_element_t<ix, T>& f(const T& ob) {
+        return std::get<ix>(ob);
+    }
+};
+
+template<std::size_t ix,
+         template<auto...>
+         typename T,
+         auto... other_columns,
+         auto... columns>
+struct get_helper<ix, T<other_columns...>, columns...> {
+    static_assert(sizeof...(columns) == sizeof...(other_columns),
+                  "input columns do not match");
+
+    static const auto& f(const T<other_columns...>& ob) {
+        return ob.get(
+            std::get<ix>(std::make_tuple(typename unwrap_column<columns>::key{}...)));
+    }
+};
+}  // namespace detail
 
 template<auto... columns>
 class row {
 protected:
-    template<std::size_t ix>
-    friend const std::tuple_element_t<ix, row>& get(const row& row) {
-        return row.template get<ix>();
-    }
-
-    template<std::size_t ix>
-    friend std::tuple_element_t<ix, row>& get(row& row) {
-        return row.template get<ix>();
-    }
+    using tuple_type = std::tuple<typename unwrap_column<columns>::value...>;
 
     template<std::size_t, typename>
     friend struct std::tuple_element;
@@ -87,7 +103,25 @@ protected:
     template<typename>
     friend struct std::tuple_size;
 
-    using tuple_type = std::tuple<typename detail::unwrap_column<columns>::value...>;
+    template<std::size_t... ix, typename O>
+    void assign(std::index_sequence<ix...>, const O& values) {
+        ((*std::get<ix>(m_data) = detail::get_helper<ix, O, columns...>::f(values)), ...);
+    }
+
+    template<typename F, typename Agg, typename O, std::size_t... ix>
+    auto cmp(F&& f, Agg&& agg, const O& values, std::index_sequence<ix...>) const {
+        return agg(f(get<ix>(), detail::get_helper<ix, O, columns...>::f(values))...);
+    }
+
+    template<typename F, typename Agg, typename O>
+    auto cmp(F&& f, Agg&& agg, const O& values) const {
+        return cmp(std::forward<F>(f),
+                   std::forward<Agg>(agg),
+                   values,
+                   std::make_index_sequence<sizeof...(columns)>{});
+    }
+
+
     tuple_type m_data;
 
 public:
@@ -99,9 +133,9 @@ public:
     row& operator=(const row&) = default;
     row& operator=(row&&) = default;
 
-    template<typename... Ts>
-    row& operator=(const std::tuple<Ts...>& values) {
-        m_data = values;
+    template<typename O>
+    row& operator=(const O& values) {
+        assign(std::make_index_sequence<sizeof...(columns)>{}, values);
         return *this;
     }
 
@@ -136,10 +170,9 @@ public:
      */
     template<typename ColumnName>
     constexpr const auto& get(ColumnName) const {
-        return std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return std::get<detail::search<0,
+                                       ColumnName,
+                                       typename unwrap_column<columns>::key...>::value>(
             m_data);
     }
 
@@ -150,13 +183,48 @@ public:
      */
     template<typename ColumnName>
     auto& get(ColumnName) {
-        return std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return std::get<detail::search<0,
+                                       ColumnName,
+                                       typename unwrap_column<columns>::key...>::value>(
             m_data);
     }
+
+    template<typename O>
+    bool operator==(const O& other) const {
+        return cmp([](const auto& a, const auto& b) { return a == b; },
+                   [](const auto&... vs) { return (vs && ...); },
+                   other);
+    }
+
+    template<typename O>
+    bool operator!=(const O& other) const {
+        return cmp([](const auto& a, const auto& b) { return a != b; },
+                   [](const auto&... vs) { return (vs || ...); },
+                   other);
+    }
 };
+
+inline py::row<> row_cat() {
+    return {};
+}
+
+template<auto... columns>
+row<columns...> row_cat(const row<columns...>& r) {
+    return r;
+}
+
+template<auto... first_columns, auto... second_columns>
+row<first_columns..., second_columns...> row_cat(const row<first_columns...>& a,
+                                                 const row<second_columns...>& b) {
+    return row<first_columns..., second_columns...>(
+        a.get(typename unwrap_column<first_columns>::key{})...,
+        b.get(typename unwrap_column<second_columns>::key{})...);
+}
+
+template<typename A, typename B, typename... Tail>
+auto row_cat(const A& a, const B& b, const Tail&... tail) {
+    return row_cat(row_cat(a, b), row_cat(tail...));
+}
 }  // namespace py
 
 namespace std {
@@ -173,34 +241,12 @@ struct tuple_element<ix, py::row<columns...>> {
 }  // namespace std
 
 namespace py {
-namespace detail {
-template<std::size_t ix, typename T>
-struct get_helper {
-    static const std::tuple_element_t<ix, T>& f(const T& ob) {
-        return std::get<ix>(ob);
-    }
-};
-
-template<std::size_t ix, template<auto...> typename T, auto... columns>
-struct get_helper<ix, T<columns...>> {
-    static const std::tuple_element_t<ix, T<columns...>>& f(const T<columns...>& ob) {
-        return ob.template get<ix>();
-    }
-};
-}  // namespace detail
+namespace detail {}  // namespace detail
 
 template<auto... columns>
 class row_view {
 protected:
-    template<std::size_t ix>
-    friend const std::tuple_element_t<ix, row_view>& get(const row_view& row) {
-        return row.template get<ix>();
-    }
-
-    template<std::size_t ix>
-    friend std::tuple_element_t<ix, row_view>& get(row_view& row) {
-        return row.template get<ix>();
-    }
+    using tuple_type = std::tuple<typename unwrap_column<columns>::value*...>;
 
     template<std::size_t, typename>
     friend struct std::tuple_element;
@@ -208,17 +254,14 @@ protected:
     template<typename>
     friend struct std::tuple_size;
 
-    using tuple_type = std::tuple<typename detail::unwrap_column<columns>::value*...>;
-    tuple_type m_data;
-
-    template<std::size_t... ix, typename... Ts>
-    void assign(std::index_sequence<ix...>, const std::tuple<Ts...>& values) {
-        ((*std::get<ix>(m_data) = std::get<ix>(values)), ...);
+    template<std::size_t... ix, typename O>
+    void assign(std::index_sequence<ix...>, const O& values) {
+        ((*std::get<ix>(m_data) = detail::get_helper<ix, O, columns...>::f(values)), ...);
     }
 
     template<typename F, typename Agg, typename O, std::size_t... ix>
     auto cmp(F&& f, Agg&& agg, const O& values, std::index_sequence<ix...>) const {
-        return agg(f(get<ix>(), detail::get_helper<ix, O>::f(values))...);
+        return agg(f(get<ix>(), detail::get_helper<ix, O, columns...>::f(values))...);
     }
 
     template<typename F, typename Agg, typename O>
@@ -229,13 +272,15 @@ protected:
                    std::make_index_sequence<sizeof...(columns)>{});
     }
 
+    tuple_type m_data;
+
 public:
-    row_view(typename detail::unwrap_column<columns>::value*... cs) : m_data(cs...) {}
+    row_view(typename unwrap_column<columns>::value*... cs) : m_data(cs...) {}
     row_view(const row_view&) = default;
     row_view& operator=(const row_view&) = default;
 
-    template<typename... Ts>
-    row_view& operator=(const std::tuple<Ts...>& values) {
+    template<typename O>
+    row_view& operator=(const O& values) {
         assign(std::make_index_sequence<sizeof...(columns)>{}, values);
         return *this;
     }
@@ -277,10 +322,9 @@ public:
      */
     template<typename ColumnName>
     constexpr const auto& get(ColumnName) const {
-        return *std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return *std::get<detail::search<0,
+                                        ColumnName,
+                                        typename unwrap_column<columns>::key...>::value>(
             m_data);
     }
 
@@ -291,10 +335,9 @@ public:
      */
     template<typename ColumnName>
     constexpr auto& get(ColumnName) {
-        return *std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return *std::get<detail::search<0,
+                                        ColumnName,
+                                        typename unwrap_column<columns>::key...>::value>(
             m_data);
     }
 
@@ -333,14 +376,12 @@ namespace detail::table_iter {
 template<auto... columns>
 class rows {
 private:
-    std::tuple<py::array_view<typename detail::unwrap_column<columns>::value>...>
-        m_columns;
+    std::tuple<py::array_view<typename unwrap_column<columns>::value>...> m_columns;
 
     template<auto... inner_columns>
     class generic_iterator {
     private:
-        std::tuple<
-            py::array_view<typename detail::unwrap_column<inner_columns>::value>...>
+        std::tuple<py::array_view<typename unwrap_column<inner_columns>::value>...>
             m_columns;
         std::size_t m_ix;
 
@@ -348,8 +389,8 @@ private:
         friend class rows;
 
         generic_iterator(
-            const std::tuple<py::array_view<
-                typename detail::unwrap_column<inner_columns>::value>...>& cs,
+            const std::tuple<
+                py::array_view<typename unwrap_column<inner_columns>::value>...>& cs,
             std::size_t ix)
             : m_columns(cs), m_ix(ix) {}
 
@@ -447,8 +488,7 @@ public:
     using iterator = generic_iterator<columns...>;
     using const_iterator = generic_iterator<const_column<columns>...>;
 
-    rows(const std::tuple<
-         py::array_view<typename detail::unwrap_column<columns>::value>...>& cs)
+    rows(const std::tuple<py::array_view<typename unwrap_column<columns>::value>...>& cs)
         : m_columns(cs) {}
 
     std::size_t size() const {
@@ -492,7 +532,7 @@ class table_view;
 template<auto... columns>
 class table {
 private:
-    std::tuple<std::vector<typename detail::unwrap_column<columns>::value>...> m_columns;
+    std::tuple<std::vector<typename unwrap_column<columns>::value>...> m_columns;
 
     template<std::size_t... ix, typename... Row>
     void emplace_back(std::index_sequence<ix...>, Row&&... row) {
@@ -509,10 +549,9 @@ private:
      */
     template<typename ColumnName>
     constexpr auto& get_mutable(ColumnName) {
-        return std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return std::get<detail::search<0,
+                                       ColumnName,
+                                       typename unwrap_column<columns>::key...>::value>(
             m_columns);
     }
 
@@ -558,9 +597,11 @@ public:
      */
     template<auto... other_columns>
     explicit table(const table_view<other_columns...>& cpfrom)
-        : m_columns(
-              {cpfrom.get(typename detail::unwrap_column<columns>::key{}).begin(),
-               cpfrom.get(typename detail::unwrap_column<columns>::key{}).end()}...) {}
+        : m_columns({cpfrom.get(typename unwrap_column<columns>::key{}).begin(),
+                     cpfrom.get(typename unwrap_column<columns>::key{}).end()}...) {
+        static_assert(sizeof...(columns) == sizeof...(other_columns),
+                      "input columns do not match");
+    }
 
     /** The number of rows in the table.
      */
@@ -573,7 +614,7 @@ public:
      */
     constexpr static auto column_names() {
         return std::make_tuple(
-            py::cs::to_array(typename detail::unwrap_column<columns>::key{})...);
+            py::cs::to_array(typename unwrap_column<columns>::key{})...);
     }
 
     /** Retrieve a column by name.
@@ -583,10 +624,9 @@ public:
      */
     template<typename ColumnName>
     constexpr const auto& get(ColumnName) const {
-        return std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return std::get<detail::search<0,
+                                       ColumnName,
+                                       typename unwrap_column<columns>::key...>::value>(
             m_columns);
     }
 
@@ -601,10 +641,8 @@ public:
     template<typename ColumnName>
     constexpr auto& get(ColumnName) {
         auto& column = std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
-            m_columns);
+            detail::search<0, ColumnName, typename unwrap_column<columns>::key...>::
+                value>(m_columns);
         return py::array_view<
             typename std::remove_reference_t<decltype(column)>::value_type>(column);
     }
@@ -676,8 +714,10 @@ public:
      */
     template<auto... other_columns>
     void emplace_back(const py::row_view<other_columns...>& row) {
-        (get_mutable(typename detail::unwrap_column<columns>::key{})
-             .emplace_back(row.get(typename detail::unwrap_column<columns>::key{})),
+        static_assert(sizeof...(columns) == sizeof...(other_columns),
+                      "input columns do not match");
+        (get_mutable(typename unwrap_column<columns>::key{})
+             .emplace_back(row.get(typename unwrap_column<columns>::key{})),
          ...);
     }
 
@@ -688,8 +728,10 @@ public:
      */
     template<auto... other_columns>
     void emplace_back(const py::row<other_columns...>& row) {
-        (get_mutable(typename detail::unwrap_column<columns>::key{})
-             .emplace_back(row.get(typename detail::unwrap_column<columns>::key{})),
+        static_assert(sizeof...(columns) == sizeof...(other_columns),
+                      "input columns do not match");
+        (get_mutable(typename unwrap_column<columns>::key{})
+             .emplace_back(row.get(typename unwrap_column<columns>::key{})),
          ...);
     }
 
@@ -720,8 +762,7 @@ public:
 template<auto... columns>
 class table_view {
 private:
-    std::tuple<py::array_view<typename detail::unwrap_column<columns>::value>...>
-        m_columns;
+    std::tuple<py::array_view<typename unwrap_column<columns>::value>...> m_columns;
 
 public:
     using row_type = row<columns...>;
@@ -732,9 +773,8 @@ public:
 
     template<typename ColumnName>
     using column_type = std::tuple_element_t<
-        detail::search<0, ColumnName, typename detail::unwrap_column<columns>::key...>::
-            value,
-        std::tuple<typename detail::unwrap_column<columns>::value...>>;
+        detail::search<0, ColumnName, typename unwrap_column<columns>::key...>::value,
+        std::tuple<typename unwrap_column<columns>::value...>>;
 
     /** Construct a table view over a compatible table. The tables will be aligned by
         column name.
@@ -743,7 +783,10 @@ public:
      */
     template<auto... other_columns>
     table_view(table<other_columns...>& table)
-        : m_columns(table.get(typename detail::unwrap_column<columns>::key{})...) {}
+        : m_columns(table.get(typename unwrap_column<columns>::key{})...) {
+        static_assert(sizeof...(columns) == sizeof...(other_columns),
+                      "input columns do not match");
+    }
 
     /** Create a table view from constituent column views.
 
@@ -770,7 +813,7 @@ public:
      */
     constexpr static auto column_names() {
         return std::make_tuple(
-            py::cs::to_array(typename detail::unwrap_column<columns>::key{})...);
+            py::cs::to_array(typename unwrap_column<columns>::key{})...);
     }
 
     /** Retrieve a column by name.
@@ -780,10 +823,9 @@ public:
      */
     template<typename ColumnName>
     constexpr const auto& get(ColumnName) const {
-        return std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return std::get<detail::search<0,
+                                       ColumnName,
+                                       typename unwrap_column<columns>::key...>::value>(
             m_columns);
     }
 
@@ -794,10 +836,9 @@ public:
      */
     template<typename ColumnName>
     auto& get(ColumnName) {
-        return std::get<
-            detail::search<0,
-                           ColumnName,
-                           typename detail::unwrap_column<columns>::key...>::value>(
+        return std::get<detail::search<0,
+                                       ColumnName,
+                                       typename unwrap_column<columns>::key...>::value>(
             m_columns);
     }
 
@@ -827,8 +868,7 @@ public:
         @return A view over a subset of the rows.
     */
     table_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
-        return {get(typename detail::unwrap_column<columns>::key{})
-                    .slice(start, stop, step)...};
+        return {get(typename unwrap_column<columns>::key{}).slice(start, stop, step)...};
     }
 
     /** Create a slice of the table by slicing each column.
@@ -840,8 +880,7 @@ public:
      */
     table_view<detail::const_column<columns>...>
     slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
-        return {get(typename detail::unwrap_column<columns>::key{})
-                    .slice(start, stop, step)...};
+        return {get(typename unwrap_column<columns>::key{}).slice(start, stop, step)...};
     }
 
     /** Return a subset of the columns.
@@ -870,7 +909,7 @@ public:
         @return The frozen view.
      */
     table_view<detail::const_column<columns>...> freeze() const {
-        return {get(typename detail::unwrap_column<columns>::key{}).freeze()...};
+        return {get(typename unwrap_column<columns>::key{}).freeze()...};
     }
 };
 
@@ -913,7 +952,7 @@ public:
             throw py::exception();
         }
 
-        type out(get_column<detail::unwrap_column<columns>>(copy.get())...);
+        type out(get_column<unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
             auto keys = py::scoped_ref(PyDict_Keys(copy.get()));
             if (!keys) {
