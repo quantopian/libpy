@@ -29,6 +29,16 @@ struct search<ix, Needle, Head, Tail...> {
 
 /** A container to hold the key and value types for a column.
 
+    `py::C` returns a pointer to one of these structures. We use pointers to empty structs
+    to support using the `py::cs::char_sequence` UDL (`py::cs::literals::operator""_cs`)
+    for column names. A UDL must return a value, so `py::cs::literals::operator""_cs`
+    returns an *instance* of a `py::cs::char_sequence`. This is an instance of an empty
+    type, so it is just used to pass type-level information around at the value
+    level. There is no easy way to go from a value to just a type without using `decltype`
+    so we just pass `table`, `table_view`, `row`, etc pointers to the types we actually
+    wanted to pass. Inside the table and row types, we can use `py::unwrap_column` on the
+    value to get the column type that it is a pointer to.
+
     @tparam Key `std::integer_sequence` of chars containing the column name.
     @tparam Value The scalar type of the column.
  */
