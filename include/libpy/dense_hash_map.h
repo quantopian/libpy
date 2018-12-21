@@ -44,15 +44,14 @@ public:
         this->set_empty_key(empty_key);
     }
 
-    dense_hash_map(const dense_hash_map& cpfrom)
-        : base(static_cast<const base&>(cpfrom)) {}
+    dense_hash_map(const dense_hash_map& cpfrom) : base(cpfrom) {}
 
     dense_hash_map(dense_hash_map&& mvfrom) noexcept {
         this->swap(mvfrom);
     }
 
     dense_hash_map& operator=(const dense_hash_map& cpfrom) {
-        base::operator=(static_cast<const base&>(cpfrom));
+        base::operator=(cpfrom);
         return *this;
     }
 
@@ -83,15 +82,14 @@ private:
 public:
     using base::sparse_hash_map;
 
-    sparse_hash_map(const sparse_hash_map& cpfrom)
-        : base(static_cast<const base&>(cpfrom)) {}
+    sparse_hash_map(const sparse_hash_map& cpfrom) : base(cpfrom) {}
 
     sparse_hash_map(sparse_hash_map&& mvfrom) noexcept {
         this->swap(mvfrom);
     }
 
     sparse_hash_map& operator=(const sparse_hash_map& cpfrom) {
-        base::operator=(static_cast<const base&>(cpfrom));
+        base::operator=(cpfrom);
         return *this;
     }
 
