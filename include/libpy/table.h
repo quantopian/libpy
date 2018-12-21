@@ -922,7 +922,7 @@ private:
     using type = py::table_view<columns...>;
 
     template<typename Column>
-    static auto get_column(PyObject* t) {
+    static auto pop_column(PyObject* t) {
         auto text = py::cs::to_array(typename Column::key{});
         auto column_name = py::to_object(
             *reinterpret_cast<std::array<char, text.size() - 1>*>(text.data()));
@@ -954,7 +954,7 @@ public:
             throw py::exception();
         }
 
-        type out(get_column<unwrap_column<columns>>(copy.get())...);
+        type out(pop_column<unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
             auto keys = py::scoped_ref(PyDict_Keys(copy.get()));
             if (!keys) {
