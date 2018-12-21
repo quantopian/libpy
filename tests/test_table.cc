@@ -22,7 +22,7 @@ public:
     explicit custom_object(int a) : a(a), b(a / 2.0){};
 
     bool operator==(const custom_object& other) const {
-        return a == other.a and b == other.b;
+        return a == other.a && b == other.b;
     }
 
     custom_object& operator++() {
@@ -46,14 +46,14 @@ TEST(row_view, assign) {
     custom_object c(3);
     R row_view(&a, &b, &c);
 
-    EXPECT_EQ(row_view.get("a"_cs), 1l);
+    EXPECT_EQ(row_view.get("a"_cs), 1L);
     EXPECT_EQ(row_view.get("b"_cs), 2.5);
     EXPECT_EQ(row_view.get("c"_cs), custom_object(3));
 
     // assign through the view
     row_view = std::make_tuple(2, 3.5, custom_object(4));
 
-    EXPECT_EQ(row_view.get("a"_cs), 2l);
+    EXPECT_EQ(row_view.get("a"_cs), 2L);
     EXPECT_EQ(a, 2l);
     EXPECT_EQ(row_view.get("b"_cs), 3.5);
     EXPECT_EQ(b, 3.5);
@@ -65,7 +65,7 @@ TEST(row_view, assign) {
     b = 4.5;
     c = custom_object(5);
 
-    EXPECT_EQ(row_view.get("a"_cs), 3l);
+    EXPECT_EQ(row_view.get("a"_cs), 3L);
     EXPECT_EQ(row_view.get("b"_cs), 4.5);
     EXPECT_EQ(row_view.get("c"_cs), custom_object(5));
 }
@@ -124,7 +124,7 @@ TEST(row, structured_binding) {
     ref_b = 3.5;
     ref_c = custom_object(4);
 
-    EXPECT_EQ(row.get("a"_cs), 2);
+    EXPECT_EQ(row.get("a"_cs), 2L);
     EXPECT_EQ(row.get("b"_cs), 3.5);
     EXPECT_EQ(row.get("c"_cs), custom_object(4));
 
