@@ -41,13 +41,15 @@ struct column {
     using remove_const_column = column<Key, std::remove_const_t<Value>>;
 };
 
-template<auto p>
-constexpr
-    typename std::remove_pointer_t<decltype(p)>::const_column* const_column = nullptr;
+template<typename T>
+T column_singleton;
 
-template<auto p>
-constexpr typename std::remove_pointer_t<decltype(p)>::remove_const_column*
-    remove_const_column = nullptr;
+template<auto p, typename C = typename std::remove_pointer_t<decltype(p)>::const_column>
+constexpr C* const_column = &column_singleton<C>;
+
+template<auto p,
+         typename C = typename std::remove_pointer_t<decltype(p)>::remove_const_column>
+constexpr C* remove_const_column = &column_singleton<C>;
 }  // namespace detail
 
 /** Create a specification for a column to pass to `table` or `table_view`.
@@ -60,7 +62,7 @@ constexpr typename std::remove_pointer_t<decltype(p)>::remove_const_column*
  */
 template<typename Value, typename Key>
 constexpr detail::column<Key, Value>* C(Key) {
-    return nullptr;
+    return &detail::column_singleton<detail::column<Key, Value>>;
 }
 
 /** A helper for unwrapping the result of `C` to get the underlying column type.
