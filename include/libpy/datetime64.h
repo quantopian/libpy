@@ -30,8 +30,7 @@ private:
     static constexpr std::int64_t nat_value = std::numeric_limits<std::int64_t>::min();
 
     template<typename F, typename Rep, typename Period>
-    Unit ns_arithmetic(F&& op,
-                               const std::chrono::duration<Rep, Period>& d) const {
+    Unit ns_arithmetic(F&& op, const std::chrono::duration<Rep, Period>& d) const {
         if (isnat()) {
             return Unit(nat_value);
         }

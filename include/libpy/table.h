@@ -42,13 +42,13 @@
 #include <utility>
 #include <vector>
 
-#include "libpy/table_details.h"
 #include "libpy/array_view.h"
 #include "libpy/char_sequence.h"
 #include "libpy/from_object.h"
 #include "libpy/itertools.h"
 #include "libpy/meta.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/table_details.h"
 #include "libpy/utils.h"
 
 namespace py {
@@ -932,6 +932,56 @@ private:
             throw py::exception();
         }
         return py::from_object<py::array_view<typename Column::value>>(column_ob);
+    }
+
+public:
+    static type f(PyObject* t) {
+        if (!PyDict_Check(t)) {
+            throw py::exception(
+                PyExc_TypeError,
+                "from_object<table_view<...>> input must be a Python dictionary, got: ",
+                Py_TYPE(t)->tp_name);
+        }
+
+        auto copy = py::scoped_ref(PyDict_Copy(t));
+        if (!copy) {
+            throw py::exception();
+        }
+
+        type out(pop_column<detail::unwrap_column<columns>>(copy.get())...);
+        if (PyDict_Size(copy.get())) {
+            auto keys = py::scoped_ref(PyDict_Keys(copy.get()));
+            if (!keys) {
+                throw py::exception();
+            }
+            throw py::exception(PyExc_ValueError, "extra columns provided: ", keys);
+        }
+        return out;
+    }
+};
+
+template<auto... columns>
+struct from_object<py::row<columns...>> {
+private:
+    using type = py::row<columns...>;
+
+    template<typename Column>
+    static auto pop_column(PyObject* t) {
+        auto text = py::cs::to_array(typename Column::key{});
+        auto column_name = py::to_object(
+            *reinterpret_cast<std::array<char, text.size() - 1>*>(text.data()));
+        if (!column_name) {
+            throw py::exception();
+        }
+        PyObject* column_ob = PyDict_GetItem(t, column_name.get());
+        if (!column_ob) {
+            throw py::exception(PyExc_ValueError, "missing column: ", column_name);
+        }
+        if (PyDict_DelItem(t, column_name.get())) {
+            // pop the item to track which columns we used
+            throw py::exception();
+        }
+        return py::from_object<typename Column::value>(column_ob);
     }
 
 public:
