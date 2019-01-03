@@ -135,10 +135,9 @@ TEST(row, structured_binding) {
 }
 
 TEST(row, cat) {
-    using A = py::row<py::C<std::int64_t>("a_first"_cs),
-                      py::C<std::int32_t>("a_second"_cs)>;
-    using B = py::row<py::C<double>("b_first"_cs),
-                      py::C<float>("b_second"_cs)>;
+    using A =
+        py::row<py::C<std::int64_t>("a_first"_cs), py::C<std::int32_t>("a_second"_cs)>;
+    using B = py::row<py::C<double>("b_first"_cs), py::C<float>("b_second"_cs)>;
     using C = py::row<py::C<std::string_view>("c_first"_cs),
                       py::C<std::string>("c_second"_cs),
                       py::C<std::string_view>("c_third"_cs),
@@ -154,7 +153,7 @@ TEST(row, cat) {
                                    py::C<std::int32_t>("a_second"_cs),
                                    py::C<double>("b_first"_cs),
                                    py::C<float>("b_second"_cs)>;
-    EXPECT_TRUE((std::is_same_v<decltype(actual_first_cat), first_cat_type>));
+    EXPECT_TRUE((std::is_same_v<decltype(actual_first_cat), first_cat_type>) );
 
     first_cat_type expected_first_cat(1, 2, 3.5, 4.5);
     EXPECT_EQ(actual_first_cat, expected_first_cat);
@@ -169,7 +168,7 @@ TEST(row, cat) {
                                     py::C<std::string>("c_second"_cs),
                                     py::C<std::string_view>("c_third"_cs),
                                     py::C<std::string_view>("c_fourth"_cs)>;
-    EXPECT_TRUE((std::is_same_v<decltype(actual_second_cat), second_cat_type>));
+    EXPECT_TRUE((std::is_same_v<decltype(actual_second_cat), second_cat_type>) );
 
     second_cat_type expected_second_cat(1, 2, 3.5, 4.5, "l", "m", "a", "o");
     EXPECT_EQ(actual_second_cat, expected_second_cat);
