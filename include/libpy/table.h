@@ -1,5 +1,37 @@
 #pragma once
+/* table.h
 
+ This file defines four types:
+
+ - `py::table`
+ - `py::table_view`
+ - `py::row`
+ - `py::row_view`
+
+ All four of these types are variadic templates designed to be templated on sentinel
+ values created with `py::C`. Each sentinel values encodes a (name, type) pair that
+ specifies a column (in the case of table/table_view) or a field (in the case of
+ row/row_view). For details on how this encoding works, see the docs for
+ `py::detail::column` in table_details.h.
+
+ `table` and `table_view`
+ ------------------------
+ `table` and `table_view` are data structures that model column-oriented tables, in which
+ each column has a name and an associated type. Columns (represented as 1D array_views)
+ can be looked up by name using `t.get("column_name"_cs)`
+
+ The main difference between ``table`` and ``table_view`` is that ``table`` owns its own
+ memory and can be resized, whereas ``table_view`` is a view into memory owned by another
+ object (often a collection of numpy arrays), and cannot be resized.
+
+ `table` is generally used for constructing new tables in C++.
+ `table_view` is generally used for receiving tables from Python.
+
+ `row` and `row_view`
+ --------------------
+ `row` and `row_view` are
+
+*/
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -17,8 +49,8 @@ namespace py {
 
 /** Build a specification for a column to pass to ``table`` or ``table_view``.
 
-    Usage
-    -----
+    ### Usage
+
     ```
     using my_table = py::table<py::C<int>("some_name"_cs),
                                py::C<double>("some_other_name"_cs)>;
@@ -534,7 +566,7 @@ private:
 
     template<std::size_t ix>
     auto move_to_objects() {
-        auto text = std::get<ix>(this->column_names());
+        auto text = py::cs::to_array(std::tuple_element_t<ix, keys_type>{});
         auto column_name = py::to_object(
             *reinterpret_cast<std::array<char, text.size() - 1>*>(text.data()));
         if (!column_name) {
@@ -585,12 +617,6 @@ public:
     std::size_t size() const {
         static_assert(sizeof...(columns) > 0, "a table with no columns has no size");
         return std::get<0>(m_columns).size();
-    }
-
-    /** A constexpr sequence of column names as null terminated `std::array<char>`.
-     */
-    constexpr static auto get_column_names() {
-        return std::make_tuple(py::cs::to_array(keys_type{}));
     }
 
     /** Retrieve a column by name.
@@ -782,12 +808,6 @@ public:
     std::size_t size() const {
         static_assert(sizeof...(columns) > 0, "a table with no columns has no size");
         return std::get<0>(m_columns).size();
-    }
-
-    /** A constexpr sequence of column names as null terminated `std::array<char>`.
-     */
-    constexpr static auto get_column_names() {
-        return std::make_tuple(py::cs::to_array(column_name<columns>{})...);
     }
 
     /** Retrieve a column by name.
