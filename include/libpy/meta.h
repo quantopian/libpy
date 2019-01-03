@@ -14,8 +14,8 @@ namespace py ::meta {
  *
  *  ### Examples
  *
- *  ``element_of<int, std::tuple<float, int>>`` evaluates to true.
- *  ``element_of<int, std::tuple<float, float>>`` evaluates to false.
+ *  - `element_of<int, std::tuple<float, int>>` evaluates to true.
+ *  - `element_of<int, std::tuple<float, float>>` evaluates to false.
  */
 template<typename Search, typename... Elements>
 constexpr bool element_of = false;
@@ -52,13 +52,13 @@ struct search_impl<ix, Needle, std::tuple<Head, Tail...>> {
  * std::tuple.
 
  @tparam Needle The type to be searched for.
- @tparam Haystack ``std::tuple`` of types in which to search.
+ @tparam Haystack `std::tuple` of types in which to search.
 
  ### Examples
 
- ``search_tuple<int, std::tuple<float, double, int>`` evaluates to 2.
- ``search_tuple<int, std::tuple<float, int, double>`` evaluates to 1.
- ``search_tuple<int, std::tuple<float, double>`` will fail to compile.
+ - `search_tuple<int, std::tuple<float, double, int>` evaluates to 2.
+ - `search_tuple<int, std::tuple<float, int, double>` evaluates to 1.
+ - `search_tuple<int, std::tuple<float, double>` will fail to compile.
 
 */
 template<typename Needle, typename Haystack>
