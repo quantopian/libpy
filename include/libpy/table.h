@@ -9,27 +9,33 @@
  - `py::row_view`
 
  All four of these types are variadic templates designed to be templated on sentinel
- values created with `py::C`. Each sentinel values encodes a (name, type) pair that
- specifies a column (in the case of table/table_view) or a field (in the case of
- row/row_view). For details on how this encoding works, see the docs for
- `py::detail::column` in table_details.h.
+ values created with `py::C`. Each sentinel encodes a (name, type) pair that describes a
+ column (in the case of table/table_view) or a field (in the case of row/row_view). For
+ details on how this encoding works, see the docs for `py::detail::column` in
+ table_details.h.
 
- `table` and `table_view`
- ------------------------
+ ### `table` and `table_view`
+
  `table` and `table_view` are data structures that model column-oriented tables, in which
- each column has a name and an associated type. Columns (represented as 1D array_views)
- can be looked up by name using `t.get("column_name"_cs)`
+ each column has a name and an associated type. Columns (represented as arrays) can be
+ looked up by name using `table.get("column_name"_cs)`.
 
- The main difference between ``table`` and ``table_view`` is that ``table`` owns its own
- memory and can be resized, whereas ``table_view`` is a view into memory owned by another
- object (often a collection of numpy arrays), and cannot be resized.
+ The main difference between `table` and `table_view` is that `table` owns its own memory
+ and can be resized, whereas `table_view` is a view into memory owned by another object
+ (often a collection of numpy arrays created in Python code), and cannot be resized.
 
  `table` is generally used for constructing new tables in C++.
  `table_view` is generally used for receiving tables from Python.
 
- `row` and `row_view`
- --------------------
- `row` and `row_view` are
+ ### `row` and `row_view`
+
+ `row` and `row_view` are data structures that represent "rows" of `table` and
+ `table_view`.
+
+ The main difference between `row` and `row_view` is that a `row` stores its own values
+ (often copies of values from a table) whereas a `row_view` holds **pointers** to values
+ owned by another object (often a `table_view`) Assignment through a `row_view`
+ transitively assigns through these pointers to the underlying storage.
 
 */
 #include <tuple>
