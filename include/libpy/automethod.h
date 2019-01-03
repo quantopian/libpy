@@ -17,12 +17,15 @@
 
 namespace py {
 namespace detail {
+template<int flags>
+using default_self = std::conditional_t<METH_CLASS & flags, PyTypeObject*, PyObject*>;
+
 /** Struct for extracting traits about the function being wrapped.
  */
-template<typename F, typename Self = PyObject*>
+template<typename F, int base_flags, typename Self = default_self<base_flags>>
 struct function_traits;
 
-template<typename R, typename Self, typename... Args>
+template<typename R, typename Self, int base_flags, typename... Args>
 struct remove_cref_traits {
 private:
     template<std::size_t... ixs>
@@ -35,27 +38,28 @@ public:
     using return_type = R;
 
     static constexpr std::size_t arity = sizeof...(Args);
-    static constexpr auto flags = arity ? METH_VARARGS : METH_NOARGS;
+    static constexpr auto flags = base_flags | (arity ? METH_VARARGS : METH_NOARGS);
 
     static std::tuple<Self, Args...> build_arg_tuple(Self self, PyObject* t) {
         return inner_build_arg_tuple(self, t, std::index_sequence_for<Args...>{});
     }
 };
 
-template<typename R, typename... Args, typename Self>
-struct function_traits<R (*)(Self, Args...), Self>
+template<typename R, typename... Args, int base_flags, typename Self>
+struct function_traits<R (*)(Self, Args...), base_flags, Self>
     : public remove_cref_traits<R,
                                 Self,
+                                base_flags,
                                 std::remove_const_t<std::remove_reference_t<Args>>...> {};
 
 /** Struct which provides a single function `f` which is the actual implementation of
     `_automethod_wrapper` to use. This is implemented as a struct to allow for partial
     template specialization to optimize for the `METH_NOARGS` case.
  */
-template<std::size_t arity, auto impl, typename Self = PyObject*>
+template<std::size_t arity, auto impl, int flags, typename Self = default_self<flags>>
 struct automethodwrapper_impl {
     static PyObject* f(Self self, PyObject* args) {
-        using f = function_traits<decltype(impl), Self>;
+        using f = function_traits<decltype(impl), flags, Self>;
 
         if (PyTuple_GET_SIZE(args) != f::arity) {
             py::raise(PyExc_TypeError)
@@ -82,10 +86,10 @@ struct automethodwrapper_impl {
 
 /** `METH_NOARGS` handler for `_automethodwrapper_impl`, hit when `arity == 0`.
  */
-template<auto impl, typename Self>
-struct automethodwrapper_impl<0, impl, Self> {
+template<auto impl, int flags, typename Self>
+struct automethodwrapper_impl<0, impl, flags, Self> {
     static PyObject* f(Self self, PyObject*) {
-        using f = function_traits<decltype(impl), Self>;
+        using f = function_traits<decltype(impl), flags, Self>;
         if constexpr (std::is_same_v<typename f::return_type, void>) {
             impl(self);
             // Allow auto method with void return. This will return a new reference of
@@ -109,11 +113,11 @@ struct automethodwrapper_impl<0, impl, Self> {
     @param args The arguments to the method as a `PyTupleObject*`.
     @return The result of calling our method.
 */
-template<auto impl, typename Self = PyObject*>
+template<auto impl, int flags, typename Self = default_self<flags>>
 PyObject* automethodwrapper(Self self, PyObject* args) {
-    using traits = function_traits<decltype(impl), Self>;
+    using traits = function_traits<decltype(impl), flags, Self>;
     try {
-        return automethodwrapper_impl<traits::arity, impl, Self>::f(self, args);
+        return automethodwrapper_impl<traits::arity, impl, flags, Self>::f(self, args);
     }
     catch (const std::exception& e) {
         return raise_from_cxx_exception(e);
@@ -132,14 +136,14 @@ PyObject* wrap_new(PyTypeObject* cls, PyObject* args, PyObject* kwargs) {
         return nullptr;
     }
 
-    using f = detail::function_traits<decltype(impl), PyTypeObject*>;
+    using f = detail::function_traits<decltype(impl), 0, PyTypeObject*>;
     if (f::arity == 0 and PyTuple_GET_SIZE(args)) {
         raise(PyExc_TypeError) << "type does not accept any arguments";
         return nullptr;
     }
 
     try {
-        return detail::automethodwrapper<impl, PyTypeObject*>(cls, args);
+        return detail::automethodwrapper<impl, 0, PyTypeObject*>(cls, args);
     }
     catch (const std::exception& e) {
         return raise_from_cxx_exception(e);
@@ -154,13 +158,13 @@ PyObject* wrap_new(PyTypeObject* cls, PyObject* args, PyObject* kwargs) {
                will be None.
     @return A PyMethodDef which defines the wrapped function.
  */
-template<auto impl>
+template<auto impl, int flags = 0>
 constexpr PyMethodDef automethod(const char* const name,
                                  const char* const doc = nullptr) {
     PyMethodDef out{};
     out.ml_name = name;
-    out.ml_meth = reinterpret_cast<PyCFunction>(detail::automethodwrapper<impl>);
-    out.ml_flags = detail::function_traits<decltype(impl)>::flags;
+    out.ml_meth = reinterpret_cast<PyCFunction>(detail::automethodwrapper<impl, flags>);
+    out.ml_flags = detail::function_traits<decltype(impl), flags>::flags;
     out.ml_doc = doc;
     return out;
 }
