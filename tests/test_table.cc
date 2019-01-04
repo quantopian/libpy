@@ -99,6 +99,71 @@ TEST(row_view, structured_binding) {
     EXPECT_EQ(c, custom_object(4));
 }
 
+TEST(row, assign) {
+    using R = py::row<py::C<std::int64_t>("a"_cs),
+                      py::C<double>("b"_cs),
+                      py::C<custom_object>("c"_cs)>;
+
+    std::int64_t a = 1;
+    double b = 2.5;
+    custom_object c(3);
+    R row(a, b, c);
+
+    auto expect_original_unchanged = [&]() {
+        EXPECT_EQ(a, 1L);
+        EXPECT_EQ(b, 2.5);
+        EXPECT_EQ(c, custom_object(3));
+    };
+
+    EXPECT_EQ(row.get("a"_cs), 1L);
+    EXPECT_EQ(row.get("b"_cs), 2.5);
+    EXPECT_EQ(row.get("c"_cs), custom_object(3));
+
+    // assign with a tuple
+    row = std::make_tuple(2, 3.5, custom_object(4));
+
+    EXPECT_EQ(row.get("a"_cs), 2L);
+    EXPECT_EQ(row.get("b"_cs), 3.5);
+    EXPECT_EQ(row.get("c"_cs), custom_object(4));
+    expect_original_unchanged();
+
+    // assign with another row
+    R new_row(3, 4.5, custom_object(5));
+    row = new_row;
+    EXPECT_EQ(row, new_row);
+    EXPECT_EQ(row.get("a"_cs), 3L);
+    EXPECT_EQ(row.get("b"_cs), 4.5);
+    EXPECT_EQ(row.get("c"_cs), custom_object(5));
+
+    // assign with a view
+    a = 4;
+    b = 5.5;
+    c = custom_object(6);
+
+    using RV = py::row_view<py::C<std::int64_t>("a"_cs),
+                            py::C<double>("b"_cs),
+                            py::C<custom_object>("c"_cs)>;
+
+    RV row_view(&a, &b, &c);
+
+    row = row_view;
+    EXPECT_EQ(row, row_view);
+    EXPECT_EQ(row.get("a"_cs), 4L);
+    EXPECT_EQ(row.get("b"_cs), 5.5);
+    EXPECT_EQ(row.get("c"_cs), custom_object(6));
+
+    // assign to the underlying objects of the view;
+    a = 5;
+    b = 6.5;
+    c = custom_object(7);
+
+    row = row_view;
+    EXPECT_EQ(row, row_view);
+    EXPECT_EQ(row.get("a"_cs), 5L);
+    EXPECT_EQ(row.get("b"_cs), 6.5);
+    EXPECT_EQ(row.get("c"_cs), custom_object(7));
+}
+
 TEST(row, structured_binding) {
     using R = py::row<py::C<std::int64_t>("a"_cs),
                       py::C<double>("b"_cs),
