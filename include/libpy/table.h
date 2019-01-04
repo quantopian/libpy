@@ -137,7 +137,7 @@ protected:
 
     template<std::size_t... ix, typename O>
     void assign(std::index_sequence<ix...>, const O& values) {
-        ((*std::get<ix>(m_data) = detail::get_helper<ix, O, columns...>::f(values)), ...);
+        ((std::get<ix>(m_data) = detail::get_helper<ix, O, columns...>::f(values)), ...);
     }
 
     template<typename F, typename Agg, typename O, std::size_t... ix>
