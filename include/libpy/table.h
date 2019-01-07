@@ -948,7 +948,7 @@ public:
             throw py::exception();
         }
 
-        type out(pop_column<detail::unwrap_column<columns>>(copy.get())...);
+        type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
             auto keys = py::scoped_ref(PyDict_Keys(copy.get()));
             if (!keys) {
@@ -998,7 +998,7 @@ public:
             throw py::exception();
         }
 
-        type out(pop_column<detail::unwrap_column<columns>>(copy.get())...);
+        type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
             auto keys = py::scoped_ref(PyDict_Keys(copy.get()));
             if (!keys) {
