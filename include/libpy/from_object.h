@@ -189,27 +189,66 @@ struct from_object<std::string> {
     }
 };
 
-template<>
-struct from_object<std::size_t> {
-    static std::size_t f(PyObject* value) {
-        std::size_t out = PyLong_AsUnsignedLongLong(value);
-        if (PyErr_Occurred()) {
-            throw invalid_conversion::make<std::size_t>(value);
+namespace detail {
+template<typename T>
+struct int_from_object {
+private:
+    // the widest type for the given signedness
+    using wide_type =
+        std::conditional_t<std::is_signed_v<T>, long long, unsigned long long>;
+
+public:
+    static T f(PyObject* value) {
+        wide_type wide;
+
+        // convert the object to the widest type for the given signedness
+        if constexpr (std::is_signed_v<T>) {
+            wide = PyLong_AsLongLong(value);
         }
-        return out;
+        else {
+            wide = PyLong_AsUnsignedLongLong(value);
+        }
+
+        if (PyErr_Occurred()) {
+            throw invalid_conversion::make<T>(value);
+        }
+
+        // check if narrowing the wide value to the given type would overflow
+        if (wide > std::numeric_limits<T>::max() ||
+            wide < std::numeric_limits<T>::min()) {
+            py::raise(PyExc_OverflowError)
+                << "converting " << value << " to type" << py::util::type_name<T>().get()
+                << " overflows";
+            throw invalid_conversion::make<T>(value);
+        }
+        return wide;
     }
 };
+}  // namespace detail
 
 template<>
-struct from_object<std::int64_t> {
-    static std::int64_t f(PyObject* value) {
-        std::int64_t out = PyLong_AsLongLong(value);
-        if (PyErr_Occurred()) {
-            throw invalid_conversion::make<std::size_t>(value);
-        }
-        return out;
-    }
-};
+struct from_object<std::int64_t> : public detail::int_from_object<std::int64_t> {};
+
+template<>
+struct from_object<std::int32_t> : public detail::int_from_object<std::int32_t> {};
+
+template<>
+struct from_object<std::int16_t> : public detail::int_from_object<std::int16_t> {};
+
+template<>
+struct from_object<std::int8_t> : public detail::int_from_object<std::int8_t> {};
+
+template<>
+struct from_object<std::uint64_t> : public detail::int_from_object<std::uint64_t> {};
+
+template<>
+struct from_object<std::uint32_t> : public detail::int_from_object<std::uint32_t> {};
+
+template<>
+struct from_object<std::uint16_t> : public detail::int_from_object<std::uint16_t> {};
+
+template<>
+struct from_object<std::uint8_t> : public detail::int_from_object<std::uint8_t> {};
 
 template<>
 struct from_object<double> {
