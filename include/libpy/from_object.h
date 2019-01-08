@@ -197,6 +197,10 @@ private:
     using wide_type =
         std::conditional_t<std::is_signed_v<T>, long long, unsigned long long>;
 
+    static_assert(sizeof(T) <= sizeof(wide_type),
+                  "cannot use int_from_object with a type wider than the wide_type for "
+                  "the given signedness");
+
 public:
     static T f(PyObject* value) {
         wide_type wide;
@@ -209,6 +213,7 @@ public:
             wide = PyLong_AsUnsignedLongLong(value);
         }
 
+        // check if `value` would overflow `wide_type`
         if (PyErr_Occurred()) {
             throw invalid_conversion::make<T>(value);
         }
