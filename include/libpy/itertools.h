@@ -140,11 +140,7 @@ private:
         }
 
         std::pair<std::size_t, decltype(*std::declval<U>())> operator*() {
-            return {m_ix, std::ref(*m_iterator)};
-        }
-
-        std::pair<std::size_t, decltype(std::declval<U>().operator->())> operator->() {
-            return {m_ix, m_iterator.operator->()};
+            return {m_ix, *m_iterator};
         }
     };
 
