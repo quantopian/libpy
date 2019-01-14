@@ -42,39 +42,26 @@ void expect_overflow(py::scoped_ref<PyObject>& ob) {
     PyErr_Clear();
 }
 
-template<typename T>
-T max = std::numeric_limits<T>::max();
-
-template<typename T>
-T min = std::numeric_limits<T>::min();
-
 TEST_F(from_object, test_overflow) {
     auto py_one = py::scoped_ref(PyLong_FromLong(1));
     ASSERT_TRUE(py_one) << "py_one cannot be null";
     auto py_neg_one = py::scoped_ref(PyLong_FromLong(-1));
     ASSERT_TRUE(py_neg_one) << "py_neg_one cannot be null";
 
-    // The limit values (max and min) paired with an integer which, when added to the
-    // limit value, would result in an object that overflows in `from_object`.
-    auto limit_values = std::make_tuple(std::make_tuple(max<std::int64_t>, py_one),
-                                        std::make_tuple(max<std::int32_t>, py_one),
-                                        std::make_tuple(max<std::int16_t>, py_one),
-                                        std::make_tuple(max<std::int8_t>, py_one),
-                                        std::make_tuple(min<std::int64_t>, py_neg_one),
-                                        std::make_tuple(min<std::int32_t>, py_neg_one),
-                                        std::make_tuple(min<std::int16_t>, py_neg_one),
-                                        std::make_tuple(min<std::int8_t>, py_neg_one),
-                                        std::make_tuple(max<std::uint64_t>, py_one),
-                                        std::make_tuple(max<std::uint32_t>, py_one),
-                                        std::make_tuple(max<std::uint16_t>, py_one),
-                                        std::make_tuple(max<std::uint8_t>, py_one),
-                                        std::make_tuple(min<std::uint64_t>, py_neg_one),
-                                        std::make_tuple(min<std::uint32_t>, py_neg_one),
-                                        std::make_tuple(min<std::uint16_t>, py_neg_one),
-                                        std::make_tuple(min<std::uint8_t>, py_neg_one));
+    // the types to check, the values in the tuple don't get read
+    std::tuple<signed long long,
+               signed long,
+               signed int,
+               signed short,
+               signed char,
+               unsigned long long,
+               unsigned long,
+               unsigned int,
+               unsigned short,
+               unsigned char>
+        typed_values;
 
-    auto check_limit = [&](auto item) {
-        auto [limit_value, to_exceed] = item;
+    auto check_limit = [&](auto limit_value, py::scoped_ref<PyObject>& to_exceed) {
         using T = decltype(limit_value);
 
         py::scoped_ref<PyObject> limit_ob;
@@ -98,6 +85,13 @@ TEST_F(from_object, test_overflow) {
         expect_overflow<T>(exceeds_limit);
     };
 
-    std::apply([&](auto... items) { (check_limit(items), ...); }, limit_values);
+    auto check_type = [&](auto typed_value) {
+        using T = decltype(typed_value);
+        check_limit(std::numeric_limits<T>::max(), py_one);
+        check_limit(std::numeric_limits<T>::min(), py_neg_one);
+    };
+
+    std::apply([&](auto... typed_value) { (check_type(typed_value), ...); },
+               typed_values);
 }
 }  // namespace test_from_object
