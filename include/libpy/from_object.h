@@ -232,28 +232,36 @@ public:
 }  // namespace detail
 
 template<>
-struct from_object<std::int64_t> : public detail::int_from_object<std::int64_t> {};
+struct from_object<signed long long> : public detail::int_from_object<signed long long> {
+};
 
 template<>
-struct from_object<std::int32_t> : public detail::int_from_object<std::int32_t> {};
+struct from_object<signed long> : public detail::int_from_object<signed long> {};
 
 template<>
-struct from_object<std::int16_t> : public detail::int_from_object<std::int16_t> {};
+struct from_object<signed int> : public detail::int_from_object<signed int> {};
 
 template<>
-struct from_object<std::int8_t> : public detail::int_from_object<std::int8_t> {};
+struct from_object<signed short> : public detail::int_from_object<signed short> {};
 
 template<>
-struct from_object<std::uint64_t> : public detail::int_from_object<std::uint64_t> {};
+struct from_object<signed char> : public detail::int_from_object<signed char> {};
 
 template<>
-struct from_object<std::uint32_t> : public detail::int_from_object<std::uint32_t> {};
+struct from_object<unsigned long long>
+    : public detail::int_from_object<unsigned long long> {};
 
 template<>
-struct from_object<std::uint16_t> : public detail::int_from_object<std::uint16_t> {};
+struct from_object<unsigned long> : public detail::int_from_object<unsigned long> {};
 
 template<>
-struct from_object<std::uint8_t> : public detail::int_from_object<std::uint8_t> {};
+struct from_object<unsigned int> : public detail::int_from_object<unsigned int> {};
+
+template<>
+struct from_object<unsigned short> : public detail::int_from_object<unsigned short> {};
+
+template<>
+struct from_object<unsigned char> : public detail::int_from_object<unsigned char> {};
 
 template<>
 struct from_object<double> {
