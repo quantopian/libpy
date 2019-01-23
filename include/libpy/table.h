@@ -327,7 +327,11 @@ public:
 
     row_view(column_type<columns>*... cs) : m_data(cs...) {}
     row_view(const row_view&) = default;
-    row_view& operator=(const row_view&) = default;
+
+    row_view& operator=(const row_view& values) {
+        assign(std::make_index_sequence<sizeof...(columns)>{}, values);
+        return *this;
+    }
 
     template<typename O>
     row_view& operator=(const O& values) {
