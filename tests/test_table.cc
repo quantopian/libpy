@@ -161,6 +161,24 @@ TEST(row_view, drop) {
     }
 }
 
+TEST(row_view, relabel) {
+    using R = py::row_view<py::C<std::int64_t>("a"_cs),
+                           py::C<double>("b"_cs),
+                           py::C<custom_object>("c"_cs)>;
+
+    std::int64_t a = 1;
+    double b = 2.5;
+    custom_object c(3);
+    R row_view(&a, &b, &c);
+
+    auto relabeled = row_view.relabel(std::make_pair("a"_cs, "a-new"_cs),
+                                      std::make_pair("c"_cs, "c-new"_cs));
+
+    EXPECT_EQ(&relabeled.get("a-new"_cs), &row_view.get("a"_cs));
+    EXPECT_EQ(&relabeled.get("b"_cs), &row_view.get("b"_cs));
+    EXPECT_EQ(&relabeled.get("c-new"_cs), &row_view.get("c"_cs));
+}
+
 TEST(row, assign) {
     using R = py::row<py::C<std::int64_t>("a"_cs),
                       py::C<double>("b"_cs),
@@ -378,6 +396,38 @@ TEST(table, row_iter) {
         EXPECT_EQ(row.get("a"_cs), ++expected_a);
         EXPECT_EQ(row.get("b"_cs), ++expected_b);
         EXPECT_EQ(row.get("c"_cs), ++expected_c);
+    }
+}
+
+TEST(table_view, relabel) {
+    using Table = py::table<py::C<std::int64_t>("a"_cs),
+                            py::C<double>("b"_cs),
+                            py::C<custom_object>("c"_cs)>;
+    using View = typename Table::view_type;
+
+    Table table;
+
+    std::int64_t a = 0;
+    double b = 1.5;
+    custom_object c(2);
+    for (std::size_t ix = 0; ix < 64; ++ix) {
+        table.emplace_back(std::make_tuple(++a, ++b, ++c));
+    }
+
+    View view(table);
+
+    auto relabeled = view.relabel(std::make_pair("a"_cs, "a-new"_cs),
+                                  std::make_pair("c"_cs, "c-new"_cs));
+
+    ASSERT_EQ(relabeled.size(), view.size());
+    ASSERT_EQ(relabeled.size(), 64ul);
+    for (std::size_t ix = 0; ix < relabeled.size(); ++ix) {
+        auto base_row = view.rows()[ix];
+        auto relabeled_row = relabeled.rows()[ix];
+
+        EXPECT_EQ(&relabeled_row.get("a-new"_cs), &base_row.get("a"_cs));
+        EXPECT_EQ(&relabeled_row.get("b"_cs), &base_row.get("b"_cs));
+        EXPECT_EQ(&relabeled_row.get("c-new"_cs), &base_row.get("c"_cs));
     }
 }
 }  // namespace test_table

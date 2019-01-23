@@ -313,6 +313,12 @@ protected:
         return subset(Ts{}...);
     }
 
+protected:
+    template<auto...>
+    friend class row_view;
+
+    explicit row_view(const tuple_type& data) : m_data(data) {}
+
 public:
     template<typename ColumnName>
     using get_column_type =
@@ -402,6 +408,38 @@ public:
     template<typename... ColumnNames>
     auto drop(ColumnNames...) const {
         return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
+    }
+
+    /** Relabel columns in a row view.
+
+        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
+               specified will be unchanged.
+        @return The relabeled row viewing the same memory.
+     */
+    template<typename... From, typename... To>
+    auto relabel(std::pair<From, To>...) {
+        using Mappings = std::tuple<std::pair<From, To>...>;
+
+        using OutType = row_view<C<get_column_type<column_name<columns>>>(
+            detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
+
+        return OutType(m_data);
+    }
+
+    /** Relabel columns in a table.
+
+        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
+               specified will be unchanged.
+        @return The relabeled row viewing the same memory.
+     */
+    template<typename... From, typename... To>
+    auto relabel(std::pair<From, To>...) const {
+        using Mappings = std::tuple<std::pair<From, To>...>;
+
+        using OutType = row_view<C<const get_column_type<column_name<columns>>>(
+            detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
+
+        return OutType(m_data);
     }
 
     /** Retrieve a column by name.
@@ -654,6 +692,7 @@ private:
     }
 
 public:
+    using view_type = table_view<columns...>;
     using row_type = row<columns...>;
     using row_view_type = row_view<columns...>;
 
@@ -699,7 +738,7 @@ public:
         @return A reference to the view over the column.
      */
     template<typename ColumnName>
-    constexpr auto& get(ColumnName) {
+    auto get(ColumnName) {
         constexpr std::size_t ix = py::meta::search_tuple<ColumnName, keys_type>;
         auto& column = std::get<ix>(m_columns);
         return py::array_view<
@@ -834,6 +873,17 @@ private:
     auto subset_tuple(std::tuple<Ts...>) const {
         return subset(Ts{}...);
     }
+
+protected:
+    template<auto...>
+    friend class table_view;
+
+    /** Create a table view from constituent column views. This does not check the length
+        of the columns so it should only be used internally.
+
+        @param cs The columns of the table.
+     */
+    explicit table_view(const tuple_type& cs) : m_columns(cs) {}
 
 public:
     using row_type = row<columns...>;
@@ -976,6 +1026,38 @@ public:
     template<typename... ColumnNames>
     auto drop(ColumnNames...) const {
         return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
+    }
+
+    /** Relabel columns in a table.
+
+        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
+               specified will be unchanged.
+        @return The relabeled table viewing the same memory.
+     */
+    template<typename... From, typename... To>
+    auto relabel(std::pair<From, To>...) {
+        using Mappings = std::tuple<std::pair<From, To>...>;
+
+        using OutType = table_view<C<get_column_type<column_name<columns>>>(
+            detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
+
+        return OutType(m_columns);
+    }
+
+    /** Relabel columns in a table.
+
+        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
+               specified will be unchanged.
+        @return The relabeled table viewing the same memory.
+     */
+    template<typename... From, typename... To>
+    auto relabel(std::pair<From, To>...) const {
+        using Mappings = std::tuple<std::pair<From, To>...>;
+
+        using OutType = table_view<C<const get_column_type<column_name<columns>>>(
+            detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
+
+        return OutType(m_columns);
     }
 
     /** Create a new immutable view over the same memory.

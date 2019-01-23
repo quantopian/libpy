@@ -1,9 +1,10 @@
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
-namespace py {
-namespace detail {
+#include "libpy/meta.h"
 
+namespace py::detail {
 /** Sentinel struct used to store a name and a type for py::table and related types.
 
     The classes defined in table.h (table, table_view, row, and row_view) are all
@@ -66,6 +67,30 @@ constexpr C* const_column = &column_singleton<C>;
 template<auto p, typename C = typename unwrap_column<p>::remove_const_column>
 constexpr C* remove_const_column = &column_singleton<C>;
 
-}  // namespace detail
+template<typename C, typename Mappings, typename = void>
+struct relabeled_column_name_impl {
+    using type = C;
+};
 
-}  // namespace py
+template<typename C, typename... From, typename... To>
+struct relabeled_column_name_impl<
+    C,
+    std::tuple<std::pair<From, To>...>,
+    std::enable_if_t<py::meta::element_of<C, std::tuple<From...>>>> {
+
+    using type = std::tuple_element_t<py::meta::search_tuple<C, std::tuple<From...>>,
+                                      std::tuple<To...>>;
+};
+
+/** Given a column name, and a set of relabel mappings to apply, get the new column
+    name. This is used to help implement `relabel()` on `row_view` and `table_view`.
+
+    @tparam C The name of the column to lookup.
+    @tparam Mappings A `std::tuple` of `std::pair`s mapping old column names to new column
+            names. If `C` is the value of `first_type` on any of the pairs, the result
+            will be that same pair's `second_type`. Otherwise, `C` will be returned
+            unchanged.
+ */
+template<typename C, typename Mappings>
+using relabeled_column_name = typename relabeled_column_name_impl<C, Mappings>::type;
+}  // namespace py::detail
