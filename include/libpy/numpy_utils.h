@@ -239,6 +239,9 @@ struct new_dtype<PyObject*> {
     }
 };
 
+template<typename T>
+struct new_dtype<scoped_ref<T>> : new_dtype<PyObject*> {};
+
 template<>
 struct new_dtype<bool> {
     static PyArray_Descr* get() {
