@@ -68,6 +68,22 @@ TEST(row_view, assign) {
     EXPECT_EQ(row_view.get("a"_cs), 3L);
     EXPECT_EQ(row_view.get("b"_cs), 4.5);
     EXPECT_EQ(row_view.get("c"_cs), custom_object(5));
+
+    // assign from a row view: this should dereference assign to the underlying
+    std::int64_t new_a = 4;
+    double new_b = 5.5;
+    custom_object new_c(6);
+    R new_row_view(&new_a, &new_b, &new_c);
+
+    row_view = new_row_view;
+
+    EXPECT_EQ(row_view, new_row_view);
+    EXPECT_EQ(row_view.get("a"_cs), 4L);
+    EXPECT_EQ(a, 4L);
+    EXPECT_EQ(row_view.get("b"_cs), 5.5);
+    EXPECT_EQ(b, 5.5);
+    EXPECT_EQ(row_view.get("c"_cs), custom_object(6));
+    EXPECT_EQ(c, custom_object(6));
 }
 
 TEST(row_view, structured_binding) {
