@@ -137,6 +137,8 @@ protected:
 
     template<std::size_t... ix, typename O>
     void assign(std::index_sequence<ix...>, const O& values) {
+        static_assert(sizeof...(ix) == std::tuple_size_v<O>,
+                      "cannot assign row from differently sized tuple-like object");
         ((std::get<ix>(m_data) = detail::get_helper<ix, O, columns...>::f(values)), ...);
     }
 
@@ -281,6 +283,8 @@ protected:
 
     template<std::size_t... ix, typename O>
     void assign(std::index_sequence<ix...>, const O& values) {
+        static_assert(sizeof...(ix) == std::tuple_size_v<O>,
+                      "cannot assign row from differently sized tuple-like object");
         ((*std::get<ix>(m_data) = detail::get_helper<ix, O, columns...>::f(values)), ...);
     }
 
@@ -299,7 +303,22 @@ protected:
 
     tuple_type m_data;
 
+    template<typename... Ts>
+    auto subset_tuple(std::tuple<Ts...>) {
+        return subset(Ts{}...);
+    }
+
+    template<typename... Ts>
+    auto subset_tuple(std::tuple<Ts...>) const {
+        return subset(Ts{}...);
+    }
+
 public:
+    template<typename ColumnName>
+    using get_column_type =
+        std::tuple_element_t<py::meta::search_tuple<ColumnName, keys_type>,
+                             column_types<columns...>>;
+
     row_view(column_type<columns>*... cs) : m_data(cs...) {}
     row_view(const row_view&) = default;
     row_view& operator=(const row_view&) = default;
@@ -348,6 +367,41 @@ public:
     template<typename ColumnName>
     constexpr const auto& get(ColumnName) const {
         return *std::get<py::meta::search_tuple<ColumnName, keys_type>>(m_data);
+    }
+
+    /** Return a subset of the columns.
+
+        @parameters ColumnNames The names of the columns to take.
+        @return A view over a subset of the columns.
+    */
+    template<typename... ColumnNames>
+    row_view<C<get_column_type<ColumnNames>>(ColumnNames{})...> subset(ColumnNames...) {
+        return {&get(ColumnNames{})...};
+    }
+
+    /** Return a subset of the columns.
+
+        @parameters ColumnNames The names of the columns to take.
+        @return A view over a subset of the columns.
+    */
+    template<typename... ColumnNames>
+    row_view<C<const get_column_type<ColumnNames>>(ColumnNames{})...>
+    subset(ColumnNames...) const {
+        return {&get(ColumnNames{})...};
+    }
+
+    /** Remove some columns from the row view.
+     */
+    template<typename... ColumnNames>
+    auto drop(ColumnNames...) {
+        return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
+    }
+
+    /** Remove some columns from the row view.
+     */
+    template<typename... ColumnNames>
+    auto drop(ColumnNames...) const {
+        return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
     }
 
     /** Retrieve a column by name.
@@ -771,6 +825,16 @@ private:
     using tuple_type = std::tuple<py::array_view<column_type<columns>>...>;
     tuple_type m_columns;
 
+    template<typename... Ts>
+    auto subset_tuple(std::tuple<Ts...>) {
+        return subset(Ts{}...);
+    }
+
+    template<typename... Ts>
+    auto subset_tuple(std::tuple<Ts...>) const {
+        return subset(Ts{}...);
+    }
+
 public:
     using row_type = row<columns...>;
     using row_view_type = row_view<columns...>;
@@ -898,6 +962,20 @@ public:
     table_view<C<const get_column_type<ColumnNames>>(ColumnNames{})...>
     subset(ColumnNames...) const {
         return {get(ColumnNames{})...};
+    }
+
+    /** Remove some columns from the row view.
+     */
+    template<typename... ColumnNames>
+    auto drop(ColumnNames...) {
+        return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
+    }
+
+    /** Remove some columns from the row view.
+     */
+    template<typename... ColumnNames>
+    auto drop(ColumnNames...) const {
+        return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
     }
 
     /** Create a new immutable view over the same memory.

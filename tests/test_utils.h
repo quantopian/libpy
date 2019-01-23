@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <sstream>
+#include <string>
 
 #include "Python.h"
 #include "gtest/gtest.h"
@@ -36,6 +36,7 @@ private:
 
         return buf.str();
     }
+
 public:
     static void SetUpTestCase() {
         // initialize the Python interpreter state
