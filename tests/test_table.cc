@@ -99,6 +99,68 @@ TEST(row_view, structured_binding) {
     EXPECT_EQ(c, custom_object(4));
 }
 
+TEST(row_view, subset) {
+    using R = py::row_view<py::C<std::int64_t>("a"_cs),
+                           py::C<double>("b"_cs),
+                           py::C<custom_object>("c"_cs)>;
+
+    std::int64_t a = 1;
+    double b = 2.5;
+    custom_object c(3);
+    R row_view(&a, &b, &c);
+
+    {
+        // drop the `c` column
+        auto subset = row_view.subset("a"_cs, "b"_cs);
+        EXPECT_EQ(subset, std::make_tuple(a, b));
+    }
+
+    {
+        // transpose columns
+        auto subset = row_view.subset("b"_cs, "a"_cs, "c"_cs);
+        EXPECT_EQ(subset, std::make_tuple(b, a, c));
+    }
+
+    {
+        // mutate through subset
+        auto subset = row_view.subset("a"_cs, "b"_cs);
+        subset = std::make_tuple(2, 3.5);
+        EXPECT_EQ(subset, std::make_tuple(2, 3.5));
+        EXPECT_EQ(row_view, std::make_tuple(2, 3.5, custom_object(3)));
+    }
+}
+
+TEST(row_view, drop) {
+    using R = py::row_view<py::C<std::int64_t>("a"_cs),
+                           py::C<double>("b"_cs),
+                           py::C<custom_object>("c"_cs)>;
+
+    std::int64_t a = 1;
+    double b = 2.5;
+    custom_object c(3);
+    R row_view(&a, &b, &c);
+
+    {
+        // drop the `c` column
+        auto subset = row_view.drop("c"_cs);
+        EXPECT_EQ(subset, std::make_tuple(a, b));
+    }
+
+    {
+        // drop 2 columns
+        auto subset = row_view.drop("a"_cs, "c"_cs);
+        EXPECT_EQ(subset, std::make_tuple(b));
+    }
+
+    {
+        // mutate through subset
+        auto subset = row_view.drop("b"_cs);
+        subset = std::make_tuple(2, custom_object(4));
+        EXPECT_EQ(subset, std::make_tuple(2, custom_object(4)));
+        EXPECT_EQ(row_view, std::make_tuple(2, 2.5, custom_object(4)));
+    }
+}
+
 TEST(row, assign) {
     using R = py::row<py::C<std::int64_t>("a"_cs),
                       py::C<double>("b"_cs),

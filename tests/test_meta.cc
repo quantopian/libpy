@@ -35,4 +35,33 @@ TEST(element_of, false_cases) {
     bool case2 = py::meta::element_of<std::tuple<int>, std::tuple<int>>;
     EXPECT_EQ(case2, false);
 }
+
+TEST(set_diff, tests) {
+    using A = std::tuple<int, long, float, double>;
+
+    {
+        using B = std::tuple<int>;
+        using Expected = std::tuple<long, float, double>;
+        testing::StaticAssertTypeEq<py::meta::set_diff<A, B>, Expected>();
+    }
+
+    {
+        using B = std::tuple<int, long>;
+        using Expected = std::tuple<float, double>;
+        testing::StaticAssertTypeEq<py::meta::set_diff<A, B>, Expected>();
+    }
+
+    {
+        using B = std::tuple<long, int>;
+        using Expected = std::tuple<float, double>;
+        testing::StaticAssertTypeEq<py::meta::set_diff<A, B>, Expected>();
+    }
+
+    {
+        using A = std::tuple<int, long, float>;
+        using B = std::tuple<float>;
+        using Expected = std::tuple<int, long>;
+        testing::StaticAssertTypeEq<py::meta::set_diff<A, B>, Expected>();
+    }
+}
 }  // namespace test_meta
