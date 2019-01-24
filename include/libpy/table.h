@@ -430,7 +430,7 @@ public:
         return OutType(m_data);
     }
 
-    /** Relabel columns in a table.
+    /** Relabel columns in a row view.
 
         @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
                specified will be unchanged.
@@ -1018,14 +1018,14 @@ public:
         return {get(ColumnNames{})...};
     }
 
-    /** Remove some columns from the row view.
+    /** Remove some columns from the table view.
      */
     template<typename... ColumnNames>
     auto drop(ColumnNames...) {
         return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
     }
 
-    /** Remove some columns from the row view.
+    /** Remove some columns from the table view.
      */
     template<typename... ColumnNames>
     auto drop(ColumnNames...) const {
