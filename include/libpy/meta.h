@@ -6,6 +6,82 @@
 /** Utilities for metaprogramming.
  */
 namespace py ::meta {
+/** Debugging helper to get the compiler to dump a type as an error message.
+
+    @tparam T The type to print.
+
+    ### Usage
+
+    When debugging template meta-functions it is sometimes helpful to see the resulting
+    type of an expression. To use get the compiler to emit a message, instantiate
+    `print_t` with the type of interest and access any member inside the type, for example
+    `::a`.
+
+    ```
+    using T = std::remove_cv_t<std::remove_reference_t<const int&>>;
+
+    print_t<T>::a;
+    ```
+
+    ```
+    error: invalid use of incomplete type ‘struct py::meta::print_t<int>’
+     print_t<T>::a;
+             ^
+    ```
+
+    In the message we see: `py::meta::print_t<int>`, where `int` is the result of
+    `std::remove_cv_t<std::remove_reference_t<const int&>>`.
+
+    ### Notes
+
+    It doesn't matter what member is requested, `::a` is chosen because it is short and
+    easy to type, any other name will work.
+ */
+template<typename>
+struct print_t;
+
+/** Debugging helper to get the compiler to dump a compile-time value as an error message.
+
+    @tparam v The value to print.
+
+    ### Usage
+
+    When debugging template meta-functions it is sometimes helpful to see the resulting
+    value of an expression. To use get the compiler to emit a message, instantiate
+    `print_v` with the value of interest and access any member inside the type, for
+    example `::a`.
+
+    ```
+    template<auto v>
+    unsigned long fib = fib<v - 1> + fib<v - 2>;
+
+    template<>
+    unsigned long fib<1> = 1;
+
+    template<>
+    unsigned long fib<2> = 1;
+
+    unsigned long v = fib<24>;
+
+    print_v<T>::a;
+    ```
+
+    ```
+    error: invalid use of incomplete type ‘struct py::meta::print_v<46368>’
+     print_v<v>::a;
+    ```
+
+    In the message we see: `py::meta::print_v<46368>`, where `46368` is the value of
+    `fib<24>`.
+
+    ### Notes
+
+    It doesn't matter what member is requested, `::a` is chosen because it is short and
+    easy to type, any other name will work.
+ */
+template<auto>
+struct print_v;
+
 /** Remove reference then cv-qualifiers.
  */
 template<typename T>
@@ -94,6 +170,10 @@ struct type_cat_impl<Head, Tail...> {
 };
 }  // namespace detail
 
+/** Concatenate the types in a tuple into a single flattened tuple.
+
+    @tparam Ts The tuples to concat.
+ */
 template<typename... Ts>
 using type_cat = typename detail::type_cat_impl<Ts...>::type;
 
@@ -122,10 +202,4 @@ struct set_diff_impl<std::tuple<As...>, B> {
  */
 template<typename A, typename B>
 using set_diff = typename detail::set_diff_impl<A, B>::type;
-
-template<typename>
-struct print_t;
-
-template<auto>
-struct print_v;
 }  // namespace py::meta
