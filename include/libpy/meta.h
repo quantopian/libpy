@@ -13,9 +13,8 @@ namespace py ::meta {
     ### Usage
 
     When debugging template meta-functions it is sometimes helpful to see the resulting
-    type of an expression. To use get the compiler to emit a message, instantiate
-    `print_t` with the type of interest and access any member inside the type, for example
-    `::a`.
+    type of an expression. To get the compiler to emit a message, instantiate `print_t`
+    with the type of interest and access any member inside the type, for example `::a`.
 
     ```
     using T = std::remove_cv_t<std::remove_reference_t<const int&>>;
@@ -47,9 +46,8 @@ struct print_t;
     ### Usage
 
     When debugging template meta-functions it is sometimes helpful to see the resulting
-    value of an expression. To use get the compiler to emit a message, instantiate
-    `print_v` with the value of interest and access any member inside the type, for
-    example `::a`.
+    value of an expression. To get the compiler to emit a message, instantiate `print_v`
+    with the value of interest and access any member inside the type, for example `::a`.
 
     ```
     template<auto v>
