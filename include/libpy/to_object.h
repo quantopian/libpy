@@ -99,6 +99,13 @@ struct to_object<std::int64_t> {
     }
 };
 
+template<>
+struct to_object<double> {
+    static PyObject* f(double value) {
+        return PyFloat_FromDouble(value);
+    }
+};
+
 template<typename M>
 struct map_to_object {
     static PyObject* f(const M& m) {
