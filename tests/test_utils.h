@@ -6,6 +6,8 @@
 #include "Python.h"
 #include "gtest/gtest.h"
 
+#include "libpy/utils.h"
+
 class with_python_interpreter : public testing::Test {
 private:
     std::string format_exception(PyObject* type, PyObject* value, PyObject*) {
@@ -24,12 +26,12 @@ private:
             buf << "<nullptr>";
         }
         else {
-            PyObject* as_string = PyObject_ASCII(value);
+            PyObject* as_string = PyObject_Repr(value);
             if (!as_string) {
                 buf << "<nullptr>";
             }
             else {
-                buf << PyUnicode_AsUTF8(as_string);
+                buf << py::utils::pystring_to_cstring(as_string);
                 Py_DECREF(as_string);
             }
         }

@@ -18,6 +18,7 @@
 #include "libpy/demangle.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
+#include "libpy/utils.h"
 
 namespace py {
 namespace dispatch {
@@ -46,7 +47,7 @@ public:
         if (!repr) {
             throw py::exception("failed to call repr on ob");
         }
-        const char* data = PyUnicode_AsUTF8(repr.get());
+        const char* data = utils::pystring_to_cstring(repr.get());
         if (!data) {
             throw py::exception("failed to get utf8 string from repr result");
         }
@@ -99,11 +100,6 @@ struct from_object<std::array<char, n>> {
             size = PyBytes_GET_SIZE(cs);
             data = PyBytes_AS_STRING(cs);
         }
-        else if (PyUnicode_Check(cs)) {
-            if (!(data = PyUnicode_AsUTF8AndSize(cs, &size))) {
-                throw py::exception("failed to convert unicode to string");
-            }
-        }
         else {
             throw invalid_conversion::make<std::array<char, n>>(cs);
         }
@@ -122,11 +118,6 @@ struct from_object<char> {
         if (PyBytes_Check(cs)) {
             size = PyBytes_GET_SIZE(cs);
             data = PyBytes_AS_STRING(cs);
-        }
-        else if (PyUnicode_Check(cs)) {
-            if (!(data = PyUnicode_AsUTF8AndSize(cs, &size))) {
-                throw py::exception("failed to convert unicode to string");
-            }
         }
         else {
             throw invalid_conversion::make<char>(cs);
@@ -168,11 +159,6 @@ struct from_object<std::string_view> {
         if (PyBytes_Check(cs)) {
             size = PyBytes_GET_SIZE(cs);
             data = PyBytes_AS_STRING(cs);
-        }
-        else if (PyUnicode_Check(cs)) {
-            if (!(data = PyUnicode_AsUTF8AndSize(cs, &size))) {
-                throw py::exception("failed to convert unicode to string");
-            }
         }
         else {
             throw invalid_conversion::make<std::string_view>(cs);
