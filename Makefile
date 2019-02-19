@@ -1,7 +1,7 @@
 # Put custom environment stuff here.
 -include Makefile.local
 
-PYTHON ?= python3
+PYTHON ?= python
 
 CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
@@ -9,7 +9,7 @@ GTEST_BREAK ?= 1
 
 OPTLEVEL ?= 3
 # This uses = instead of := so that you we can conditionally change OPTLEVEL below.
-CXXFLAGS = -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL)
+CXXFLAGS = -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL) -Wno-register
 LDFLAGS := $(shell $(PYTHON)-config --ldflags)
 
 # Set this to 1 if you want to build with gcov support

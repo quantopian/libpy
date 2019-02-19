@@ -22,17 +22,21 @@ namespace py {
 class ensure_import_array {
 public:
     ensure_import_array() {
-        // this macro returns NULL so we need to put it in a function to call it to ignore
-        // the return statement
+#if PY_MAJOR_VERSION == 2
+        import_array();
+#else
+        // this macro returns NULL in Python 3 so we need to put it in a
+        // function to call it to ignore the return statement
         []() -> std::nullptr_t {
             import_array();
             return nullptr;
         }();
-    };
+#endif
+    }
 };
 
-/** A strong typedef of npy_bool to not be ambiguous with `unsigned char` but may still
-    be used in a vector without the dreaded `std::vector<bool>`.
+/** A strong typedef of npy_bool to not be ambiguous with `unsigned char` but may
+    still be used in a vector without the dreaded `std::vector<bool>`.
 */
 struct py_bool {
     bool value = false;
