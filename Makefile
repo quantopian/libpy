@@ -9,7 +9,7 @@ GTEST_BREAK ?= 1
 
 OPTLEVEL ?= 3
 # This uses = instead of := so that you we can conditionally change OPTLEVEL below.
-CXXFLAGS = -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL) -Wno-register
+CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL) -Wno-register
 LDFLAGS := $(shell $(PYTHON)-config --ldflags)
 
 # Set this to 1 if you want to build with gcov support
@@ -42,15 +42,15 @@ ASAN_SYMBOLIZER_PATH ?= llvm-symbolizer
 SANITIZE_ADDRESS ?= 0
 ifneq ($(SANITIZE_ADDRESS),0)
 	OPTLEVEL := 0
-	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
-	LDFLAGS += -fsanitize=address -static-libasan
+	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libsan
+	LDFLAGS += -fsanitize=address -static-libsan
 endif
 
 SANITIZE_UNDEFINED ?= 0
 ifneq ($(SANITIZE_UNDEFINED),0)
 	OPTLEVEL := 0
 	CXXFLAGS += -fsanitize=undefined
-	LDFLAGS += -lubsan
+	LDFLAGS += -fsanitize=undefined -lubsan
 endif
 
 # Coverage
@@ -173,7 +173,7 @@ coverage:
 
 .PHONY: __real-coverage
 __real-coverage: test
-	@GCOV=$(GCOV) ./etc/coverage-report src/ include/h5s3/ tests/
+	@GCOV=$(GCOV) ./etc/coverage-report src/ include/libpy/ tests/
 
 .PHONY: clean
 clean:

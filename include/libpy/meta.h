@@ -83,7 +83,7 @@ struct print_v;
 /** Remove reference then cv-qualifiers.
  */
 template<typename T>
-using remove_remove_cvref = std::remove_reference_t<std::remove_cv_t<T>>;
+using remove_cvref = std::remove_reference_t<std::remove_cv_t<T>>;
 
 /** Boolean variable template for checking if type appears in the fields of a
  * std::tuple.
