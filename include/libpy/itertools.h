@@ -3,6 +3,7 @@
 #include <functional>
 #include <tuple>
 
+#include "libpy/meta.h"
 #include "libpy/utils.h"
 
 namespace py {
@@ -18,11 +19,16 @@ private:
         std::tuple<Us...> m_iterators;
 
     protected:
-        friend class zipper<Ts...>;
+        friend class zipper;
 
-        constexpr generic_iterator(Us... iterators) : m_iterators(iterators...) {}
+        template<typename... Vs>
+        constexpr generic_iterator(Vs&&... iterators)
+            : m_iterators(std::forward<Vs>(iterators)...) {}
 
     public:
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::forward_iterator_tag;
+
         constexpr bool operator!=(const generic_iterator& other) const {
             return m_iterators != other.m_iterators;
         }
@@ -36,25 +42,21 @@ private:
             return *this;
         }
 
-        constexpr auto operator*() {
-            return std::apply(
-                [](Us&... iterators) { return std::forward_as_tuple(*iterators...); },
-                m_iterators);
-        }
-
-        constexpr auto operator-> () {
+        auto operator*() {
             return std::apply(
                 [](Us&... iterators) {
-                    return std::forward_as_tuple(iterators.operator->()...);
+                    return std::tuple<typename std::iterator_traits<Us>::reference...>(
+                        *iterators...);
                 },
                 m_iterators);
         }
     };
 
 public:
-    using iterator = generic_iterator<decltype(std::declval<Ts>().begin())...>;
-    using const_iterator =
-        generic_iterator<decltype(std::declval<const Ts>().begin())...>;
+    using iterator =
+        generic_iterator<py::meta::remove_cvref<decltype(std::declval<Ts>().begin())>...>;
+    using const_iterator = generic_iterator<
+        py::meta::remove_cvref<decltype(std::declval<const Ts>().begin())>...>;
 
     constexpr zipper(Ts&&... iterables) : m_iterables(std::forward<Ts>(iterables)...) {
         if (!utils::all_equal(iterables.size()...)) {
@@ -64,34 +66,24 @@ public:
 
     constexpr iterator begin() {
         return std::apply(
-            [](auto&&... iterables) {
-                return iterator(std::forward<Ts>(iterables).begin()...);
-            },
+            [](auto&... iterables) { return iterator(iterables.begin()...); },
             m_iterables);
     }
 
     constexpr iterator end() {
-        return std::apply(
-            [](auto&&... iterables) {
-                return iterator(std::forward<Ts>(iterables).end()...);
-            },
-            m_iterables);
+        return std::apply([](auto&... iterables) { return iterator(iterables.end()...); },
+                          m_iterables);
     }
 
     constexpr const_iterator begin() const {
         return std::apply(
-            [](auto&&... iterables) {
-                return iterator(std::forward<Ts>(iterables).begin()...);
-            },
+            [](auto&... iterables) { return iterator(iterables.begin()...); },
             m_iterables);
     }
 
     constexpr const_iterator end() const {
-        return std::apply(
-            [](auto&&... iterables) {
-                return iterator(std::forward<Ts>(iterables).end()...);
-            },
-            m_iterables);
+        return std::apply([](auto&... iterables) { return iterator(iterables.end()...); },
+                          m_iterables);
     }
 };
 }  // namespace detail

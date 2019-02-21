@@ -6,6 +6,8 @@
 #include "gtest/gtest.h"
 
 #include "libpy/array_view.h"
+#include "libpy/itertools.h"
+#include "libpy/utils.h"
 
 namespace test_array_view {
 /** A non-fundamental type.
@@ -132,4 +134,69 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
 using array_view_types =
     testing::Types<char, unsigned char, int, float, double, custom_object>;
 INSTANTIATE_TYPED_TEST_CASE_P(typed_, array_view, array_view_types);
+
+TEST(any_ref_array_view, test_read) {
+    std::array<int, 5> underlying = {0, 1, 2, 3, 4};
+    py::array_view<py::any_ref> dynamic_view(underlying);
+
+    ASSERT_EQ(dynamic_view.size(), underlying.size());
+
+    for (auto [a, b] : py::zip(dynamic_view, underlying)) {
+        EXPECT_EQ(a.cast<int>(), b);
+    }
+
+    for (std::size_t ix = 0; ix < dynamic_view.size(); ++ix) {
+        auto a = dynamic_view[ix];
+        auto b = underlying[ix];
+        EXPECT_EQ(a.cast<int>(), b);
+    }
+}
+
+TEST(any_ref_array_view, test_write) {
+    std::array<int, 5> underlying = {0, 1, 2, 3, 4};
+    std::array<int, 5> original_copy = underlying;
+
+    py::array_view<py::any_ref> dynamic_view(underlying);
+
+    ASSERT_EQ(dynamic_view.size(), underlying.size());
+
+    for (auto [a, b] : py::zip(dynamic_view, underlying)) {
+        a = b + 1;
+    }
+
+    for (auto [a, b] : py::zip(underlying, original_copy)) {
+        EXPECT_EQ(a, b + 1);
+    }
+
+    for (std::size_t ix = 0; ix < dynamic_view.size(); ++ix) {
+        dynamic_view[ix] = underlying[ix] + 1;
+
+        EXPECT_EQ(dynamic_view[ix].cast<int>(), original_copy[ix] + 2);
+    }
+}
+
+TEST(any_ref_array_view, test_cast) {
+    std::array<int, 5> underlying = {0, 1, 2, 3, 4};
+    py::array_view<py::any_ref> dynamic_view(underlying);
+
+    // simple struct that has the same storage as an int, but a different type
+    struct S {
+        int a;
+    };
+
+    EXPECT_THROW(dynamic_view.cast<float>(), std::bad_any_cast);
+    EXPECT_THROW(dynamic_view.cast<long>(), std::bad_any_cast);
+    EXPECT_THROW(dynamic_view.cast<S>(), std::bad_any_cast);
+
+    auto typed_view = dynamic_view.cast<int>();
+
+    for (auto [a, b, c] : py::zip(dynamic_view, typed_view, underlying)) {
+        EXPECT_THROW(a.cast<float>(), std::bad_any_cast);
+        EXPECT_THROW(a.cast<long>(), std::bad_any_cast);
+        EXPECT_THROW(a.cast<S>(), std::bad_any_cast);
+
+        EXPECT_EQ(a.cast<int>(), b);
+        EXPECT_EQ(a.cast<int>(), c);
+    }
+}
 }  // namespace test_array_view
