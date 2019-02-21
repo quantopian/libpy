@@ -10,6 +10,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
+#include "libpy/any.h"
 #include "libpy/array_view.h"
 #include "libpy/automethod.h"
 #include "libpy/char_sequence.h"
@@ -308,6 +309,64 @@ struct raise_format<PyArray_Descr*> {
     }
 };
 
+/** Lookup the proper any_ref_assign_func for the given numpy dtype.
+
+    @param dtype The runtime numpy dtype.
+    @return The any_ref_assign_func that corresponds to the given dtype.
+ */
+inline any_ref_assign_func dtype_to_assign_func(PyArray_Descr* dtype) {
+    switch (dtype->type_num) {
+    case NPY_BOOL:
+        return any_ref_assign<py_bool>;
+    case NPY_INT8:
+        return any_ref_assign<std::int8_t>;
+    case NPY_INT16:
+        return any_ref_assign<std::int16_t>;
+    case NPY_INT32:
+        return any_ref_assign<std::int32_t>;
+    case NPY_INT64:
+        return any_ref_assign<std::int64_t>;
+    case NPY_UINT8:
+        return any_ref_assign<std::uint8_t>;
+    case NPY_UINT16:
+        return any_ref_assign<std::uint16_t>;
+    case NPY_UINT32:
+        return any_ref_assign<std::uint32_t>;
+    case NPY_UINT64:
+        return any_ref_assign<std::uint64_t>;
+    case NPY_FLOAT32:
+        return any_ref_assign<float>;
+    case NPY_FLOAT64:
+        return any_ref_assign<double>;
+    case NPY_DATETIME:
+        switch (reinterpret_cast<PyArray_DatetimeDTypeMetaData*>(dtype->c_metadata)
+                    ->meta.base) {
+        case py_chrono_unit_to_numpy_unit<py::chrono::ns>:
+            return any_ref_assign<py::datetime64<py::chrono::ns>>;
+        case py_chrono_unit_to_numpy_unit<py::chrono::us>:
+            return any_ref_assign<py::datetime64<py::chrono::us>>;
+        case py_chrono_unit_to_numpy_unit<py::chrono::ms>:
+            return any_ref_assign<py::datetime64<py::chrono::ms>>;
+        case py_chrono_unit_to_numpy_unit<py::chrono::s>:
+            return any_ref_assign<py::datetime64<py::chrono::s>>;
+        case py_chrono_unit_to_numpy_unit<py::chrono::m>:
+            return any_ref_assign<py::datetime64<py::chrono::m>>;
+        case py_chrono_unit_to_numpy_unit<py::chrono::h>:
+            return any_ref_assign<py::datetime64<py::chrono::h>>;
+        case py_chrono_unit_to_numpy_unit<py::chrono::D>:
+            return any_ref_assign<py::datetime64<py::chrono::D>>;
+        default:
+            throw exception(PyExc_TypeError, "unknown datetime unit: ", dtype);
+        }
+    case NPY_OBJECT:
+        return any_ref_assign<scoped_ref<PyObject>>;
+    }
+
+    throw exception(PyExc_TypeError,
+                    "cannot create an any ref view over an ndarray of dtype: ",
+                    reinterpret_cast<PyObject*>(dtype));
+}
+
 template<typename T, std::size_t ndim>
 struct from_object<ndarray_view<T, ndim>> {
     static ndarray_view<T, ndim> f(PyObject* ob) {
@@ -325,28 +384,42 @@ struct from_object<ndarray_view<T, ndim>> {
                             PyArray_NDIM(array));
         }
 
-        auto dtype = py::new_dtype<T>();
-        if (!dtype) {
-            throw exception{};
-        }
-
-        if (!PyObject_RichCompareBool(reinterpret_cast<PyObject*>(PyArray_DTYPE(array)),
-                                      reinterpret_cast<PyObject*>(dtype.get()),
-                                      Py_EQ)) {
-            throw exception(PyExc_TypeError,
-                            "expected array of dtype: ",
-                            dtype,
-                            ", got array of type: ",
-                            PyArray_DTYPE(array));
-        }
-
         std::array<std::size_t, ndim> shape{0};
         std::array<std::int64_t, ndim> strides{0};
 
         std::copy_n(PyArray_SHAPE(array), ndim, shape.begin());
         std::copy_n(PyArray_STRIDES(array), ndim, strides.begin());
 
-        return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides);
+        auto given_dtype = PyArray_DTYPE(array);
+
+        if constexpr (std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) {
+            any_ref_assign_func assign = dtype_to_assign_func(given_dtype);
+            return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides, assign);
+        }
+        else {
+            // note: This is a "constexpr else", removing and unindenting this
+            // else block would have semantic meaning and be incorrect. This
+            // branch is only expanded when the above test is false; if the
+            // "else" is removed, it will always be expanded.
+
+            auto expected_dtype = py::new_dtype<T>();
+            if (!given_dtype) {
+                throw exception{};
+            }
+
+            if (!PyObject_RichCompareBool(reinterpret_cast<PyObject*>(given_dtype),
+                                          reinterpret_cast<PyObject*>(
+                                              expected_dtype.get()),
+                                          Py_EQ)) {
+                throw exception(PyExc_TypeError,
+                                "expected array of dtype: ",
+                                expected_dtype,
+                                ", got array of type: ",
+                                given_dtype);
+            }
+
+            return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides);
+        }
     }
 };
 

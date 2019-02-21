@@ -1,7 +1,10 @@
 #include <type_traits>
 
+#include "libpy/any.h"
 #include "libpy/demangle.h"
+#include "libpy/exception.h"
 #include "libpy/from_object.h"
+#include "libpy/numpy_utils.h"
 #include "libpy/scoped_ref.h"
 
 #include "test_utils.h"
@@ -93,5 +96,75 @@ TEST_F(from_object, test_overflow) {
 
     std::apply([&](auto... typed_value) { (check_type(typed_value), ...); },
                typed_values);
+}
+
+TEST_F(from_object, ndarray_view) {
+    py::ensure_import_array _;
+
+    {
+        auto ndarray = py::move_to_numpy_array(std::vector<std::int32_t>{0, 1, 2, 3});
+        auto view = py::from_object<py::array_view<std::int32_t>>(ndarray);
+
+        std::int32_t expected = 0;
+        for (auto v : view) {
+            EXPECT_EQ(v, expected);
+            ++expected;
+        }
+
+        EXPECT_THROW(py::from_object<py::array_view<std::int8_t>>(ndarray),
+                     py::exception);
+        EXPECT_THROW(py::from_object<py::array_view<std::int16_t>>(ndarray),
+                     py::exception);
+        EXPECT_THROW(py::from_object<py::array_view<std::int64_t>>(ndarray),
+                     py::exception);
+
+        PyErr_Clear();
+    }
+
+    {
+        auto ndarray = py::move_to_numpy_array(std::vector<std::int64_t>{0, 1, 2, 3});
+        auto view = py::from_object<py::array_view<std::int64_t>>(ndarray);
+
+        std::int64_t expected = 0;
+        for (auto v : view) {
+            EXPECT_EQ(v, expected);
+            ++expected;
+        }
+
+        EXPECT_THROW(py::from_object<py::array_view<std::int8_t>>(ndarray),
+                     py::exception);
+        EXPECT_THROW(py::from_object<py::array_view<std::int16_t>>(ndarray),
+                     py::exception);
+        EXPECT_THROW(py::from_object<py::array_view<std::int32_t>>(ndarray),
+                     py::exception);
+
+        PyErr_Clear();
+    }
+}
+
+TEST_F(from_object, ndarray_view_any_ref) {
+    py::ensure_import_array _;
+
+    {
+        auto ndarray = py::move_to_numpy_array(std::vector<std::int32_t>{0, 1, 2, 3});
+        auto view = py::from_object<py::array_view<py::any_ref>>(ndarray);
+
+        std::int32_t expected = 0;
+        for (auto v : view) {
+            EXPECT_EQ(v.cast<std::int32_t>(), expected);
+            ++expected;
+        }
+    }
+
+    {
+        auto ndarray = py::move_to_numpy_array(std::vector<std::int64_t>{0, 1, 2, 3});
+        auto view = py::from_object<py::array_view<py::any_ref>>(ndarray);
+
+        std::int64_t expected = 0;
+        for (auto v : view) {
+            EXPECT_EQ(v.cast<std::int64_t>(), expected);
+            ++expected;
+        }
+    }
 }
 }  // namespace test_from_object
