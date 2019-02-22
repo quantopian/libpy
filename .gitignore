@@ -44,3 +44,6 @@ Makefile.local
 .compiler_flags
 
 testbin
+
+# jenkins test output
+libpy_report.xml
