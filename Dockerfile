@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /virtualenvs
 RUN mkdir -p /src
 RUN python3.6 -m venv /virtualenvs/libpy3.6
-RUN virtualenv -p python2.7 /virtualenvs/libpy2.7
+RUN python3.7 -m venv -p python2.7 /virtualenvs/libpy2.7
 RUN mkdir -p ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
 ENV VENV_HOME=/virtualenvs
