@@ -166,4 +166,75 @@ template<typename T>
 auto enumerate(T&& iterable) {
     return detail::enumerator<T>(std::forward<T>(iterable));
 }
+
+namespace detail {
+template<typename F, typename T>
+class imapper {
+private:
+    F m_func;
+    T m_iterable;
+
+    template<typename U>
+    class generic_iterator {
+    private:
+        F m_func;
+        U m_iterator;
+
+    protected:
+        friend class imapper;
+
+        generic_iterator(F func, U iterator) : m_func(func), m_iterator(iterator) {}
+
+    public:
+        bool operator!=(const generic_iterator& other) const {
+            return m_iterator != other.m_iterator;
+        }
+
+        bool operator==(const generic_iterator& other) const {
+            return m_iterator == other.m_iterator;
+        }
+
+        generic_iterator& operator++() {
+            ++m_iterator;
+            return *this;
+        }
+
+        auto operator*() {
+            return m_func(*m_iterator);
+        }
+    };
+
+public:
+    using iterator =
+        generic_iterator<py::meta::remove_cvref<decltype(std::declval<T>().begin())>>;
+    using const_iterator = generic_iterator<
+        py::meta::remove_cvref<decltype(std::declval<const T>().begin())>>;
+
+    imapper(F&& func, T&& iterable)
+        : m_func(std::forward<F>(func)), m_iterable(std::forward<T>(iterable)) {}
+
+    iterator begin() {
+        return {m_func, m_iterable.begin()};
+    }
+
+    iterator end() {
+        return {m_func, m_iterable.end()};
+    }
+
+    const_iterator begin() const {
+        return {m_func, m_iterable.begin()};
+    }
+
+    const_iterator end() const {
+        return {m_func, m_iterable.end()};
+    }
+};
+}  // namespace detail
+
+/** Create an iterator that lazily applies `f` to every element of `iterable`.
+ */
+template<typename F, typename T>
+auto imap(F&& f, T&& iterable) {
+    return detail::imapper<F, T>(std::forward<F>(f), std::forward<T>(iterable));
+}
 }  // namespace py
