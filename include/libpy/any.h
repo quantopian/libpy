@@ -19,7 +19,7 @@ void any_ref_assign(void* lhs_addr, const void* rhs_addr) {
  */
 using any_ref_assign_func = void (*)(void*, const void*);
 
-/** A mutable dynamic reference to a type which isn't known until runtime.
+/** A mutable dynamic reference to a value whose type which isn't known until runtime.
 
     This object is like `std::any`, except it is *non-owning*. Assignment has
     reference semantics, meaning it will assign through to the referent.
@@ -99,7 +99,7 @@ any_ref make_any_ref(T& ob) {
     return {&ob, &any_ref_assign<T>};
 }
 
-/** A constant dynamic reference to a type which isn't known until runtime.
+/** A constant dynamic reference to a value whose type which isn't known until runtime.
 
     This object is like `std::any`, except it is *non-owning*. The object is
     like a constant reference, and thus may not be assigned to.

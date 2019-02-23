@@ -30,6 +30,9 @@ TEST(any_ref, test_assign) {
     ref.cast<int>() = 4;
     EXPECT_EQ(ref.cast<int>(), 4);
     EXPECT_EQ(underlying, 4);
+
+    // `ref` from another `py::any_ref` should have no affect on the `rhs`.
+    EXPECT_EQ(another_object, 3);
 }
 
 TEST(any_ref, test_assign_type_check) {

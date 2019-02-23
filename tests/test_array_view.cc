@@ -169,7 +169,17 @@ TEST(any_ref_array_view, test_write) {
     }
 
     for (std::size_t ix = 0; ix < dynamic_view.size(); ++ix) {
-        dynamic_view[ix] = underlying[ix] + 1;
+        dynamic_view[ix] = original_copy[ix] + 1;
+
+        EXPECT_EQ(dynamic_view[ix].cast<int>(), original_copy[ix] + 1);
+    }
+
+    auto typed_view = dynamic_view.cast<int>();
+    ASSERT_EQ(typed_view.size(), underlying.size());
+
+    for (std::size_t ix = 0; ix < dynamic_view.size(); ++ix) {
+        // assign through the typed view that comes from cast
+        typed_view[ix] = original_copy[ix] + 2;
 
         EXPECT_EQ(dynamic_view[ix].cast<int>(), original_copy[ix] + 2);
     }
@@ -189,6 +199,7 @@ TEST(any_ref_array_view, test_cast) {
     EXPECT_THROW(dynamic_view.cast<S>(), std::bad_any_cast);
 
     auto typed_view = dynamic_view.cast<int>();
+    testing::StaticAssertTypeEq<decltype(typed_view), py::array_view<int>>();
 
     for (auto [a, b, c] : py::zip(dynamic_view, typed_view, underlying)) {
         EXPECT_THROW(a.cast<float>(), std::bad_any_cast);
