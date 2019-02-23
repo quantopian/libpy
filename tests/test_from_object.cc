@@ -166,5 +166,43 @@ TEST_F(from_object, ndarray_view_any_ref) {
             ++expected;
         }
     }
+
+    {
+        auto ndarray = py::move_to_numpy_array(
+            std::vector<py::datetime64ns>{py::datetime64ns(0),
+                                          py::datetime64ns(1),
+                                          py::datetime64ns(2),
+                                          py::datetime64ns(3)});
+        auto view = py::from_object<py::array_view<py::any_ref>>(ndarray);
+
+        using namespace std::literals::chrono_literals;
+
+        py::datetime64ns expected(0);
+        for (auto v : view) {
+            EXPECT_EQ(v.cast<py::datetime64ns>(), expected);
+            expected += 1ns;
+        }
+    }
+
+    {
+        std::vector objects = {py::to_object(0),
+                               py::to_object(1),
+                               py::to_object(2),
+                               py::to_object(3)};
+        for (auto ob : objects) {
+            ASSERT_TRUE(ob);
+        }
+
+        std::vector<py::scoped_ref<PyObject>> objects_cp;
+        auto ndarray = py::move_to_numpy_array(std::move(objects_cp));
+        auto view = py::from_object<py::array_view<py::any_ref>>(ndarray);
+
+        std::size_t ix = 0;
+        for (auto v : view) {
+            // compare the underlying PyObject* which compares the objects on identity
+            EXPECT_EQ(v.cast<py::scoped_ref<PyObject>>().get(), objects[ix].get());
+            ++ix;
+        }
+    }
 }
 }  // namespace test_from_object
