@@ -1,2 +1,4 @@
 leak:libpython
 leak:_ctypes.cpython
+leak:_ctypes.x86_64-linux-gnu.so
+leak:numpy/core/src/multiarray/arraytypes.c.src

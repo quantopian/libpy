@@ -50,7 +50,7 @@ SANITIZE_UNDEFINED ?= 0
 ifneq ($(SANITIZE_UNDEFINED),0)
 	OPTLEVEL := 0
 	CXXFLAGS += -fsanitize=undefined
-	LDFLAGS += -fsanitize=undefined -lubsan
+	LDFLAGS += -lubsan
 endif
 
 # Coverage
@@ -137,10 +137,6 @@ test: $(TESTRUNNER)
 gdbtest: $(TESTRUNNER)
 	@LD_LIBRARY_PATH=. GTEST_BREAK_ON_FAILURE=$(GTEST_BREAK) gdb -ex run $<
 
-tests/test_python.o: tests/test_python.cc .compiler_flags $(PYTHON_EXTENSION)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) -MD -fPIC -c $< -o $@ \
-		$(shell $(PYTHON)-config --includes)
-
 tests/%.o: tests/%.cc .compiler_flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) -MD -fPIC -c $< -o $@
 
@@ -160,7 +156,7 @@ tidy:
 	$(CLANG_TIDY) $(ALL_SOURCES) $(ALL_HEADERS) --header-filter=include/ \
 		-checks=-*,clang-analyzer-*,clang-analyzer-* \
 		-- -x c++ --std=gnu++17 \
-		$(INCLUDE) $(TEST_INCLUDE) $(shell $(PYTHON)-config --includes)
+		$(INCLUDE) $(TEST_INCLUDE) $(shell)
 
 .PHONY: format
 format:

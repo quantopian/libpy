@@ -11,9 +11,7 @@ docker build -t libpy/test-image .
 # write the test-output
 shared_volume=$(mktemp -d --suffix="-libpy")
 docker run --cap-add SYS_PTRACE -v $shared_volume:/test-output libpy/test-image \
-       bash -c "cd /src/libpy && . /venv/libpy2.7/bin/activate && OUTPUT_DIR=/test-output ./etc/runtests"
-docker run --cap-add SYS_PTRACE -v $shared_volume:/test-output libpy/test-image \
-       bash -c "cd /src/libpy && . /venv/libpy3.6/bin/activate && OUTPUT_DIR=/test-output ./etc/runtests"
+       bash -c "cd /src/libpy && GTEST_OUTPUT=xml:/test-output/libpy_report.xml tox"
 
 # Copy libpy_report.xml out of shared volume.
 cp $shared_volume/libpy_report.xml .

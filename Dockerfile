@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     python-dev \
     python3.6-dev \
     python3.6-venv \
+    python-tox \
     tzdata \
     util-linux \
     valgrind \
@@ -32,14 +33,6 @@ RUN apt-get update && apt-get install -y \
 
 RUN mkdir -p ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-ENV VENV_HOME=/venv
-RUN mkdir -p $VENV_HOME
-RUN mkdir -p /src
-RUN python3.6 -m venv $VENV_HOME/libpy3.6
-RUN virtualenv -p python2.7 $VENV_HOME/libpy2.7
-
-RUN . $VENV_HOME/libpy3.6/bin/activate && pip install numpy==1.13.3
-RUN . $VENV_HOME/libpy2.7/bin/activate && pip install numpy==1.13.3
 WORKDIR /src/
 COPY . ./libpy
 COPY ./etc/Makefile.jenkins ./libpy/Makefile.local

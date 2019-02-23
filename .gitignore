@@ -47,3 +47,6 @@ testbin
 
 # jenkins test output
 libpy_report.xml
+
+# tox envs
+.tox/*
