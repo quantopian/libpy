@@ -42,8 +42,8 @@ ASAN_SYMBOLIZER_PATH ?= llvm-symbolizer
 SANITIZE_ADDRESS ?= 0
 ifneq ($(SANITIZE_ADDRESS),0)
 	OPTLEVEL := 0
-	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libsan
-	LDFLAGS += -fsanitize=address -static-libsan
+	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
+	LDFLAGS += -fsanitize=address -static-libasan
 endif
 
 SANITIZE_UNDEFINED ?= 0
