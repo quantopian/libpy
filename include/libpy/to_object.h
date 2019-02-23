@@ -85,19 +85,53 @@ struct to_object<bool> {
     }
 };
 
-template<>
-struct to_object<std::size_t> {
-    static PyObject* f(std::size_t value) {
-        return PyLong_FromSize_t(value);
+namespace detail {
+template<typename T>
+struct int_to_object {
+    static PyObject* f(T value) {
+
+        // convert the object to the widest type for the given signedness
+        if constexpr (std::is_signed_v<T>) {
+            return PyLong_FromLongLong(value);
+        }
+        else {
+            return PyLong_FromUnsignedLongLong(value);
+        }
     }
+};
+}  // namespace detail
+
+template<>
+struct to_object<signed long long> : public detail::int_to_object<signed long long> {
 };
 
 template<>
-struct to_object<std::int64_t> {
-    static PyObject* f(std::int64_t value) {
-        return PyLong_FromLong(value);
-    }
-};
+struct to_object<signed long> : public detail::int_to_object<signed long> {};
+
+template<>
+struct to_object<signed int> : public detail::int_to_object<signed int> {};
+
+template<>
+struct to_object<signed short> : public detail::int_to_object<signed short> {};
+
+template<>
+struct to_object<signed char> : public detail::int_to_object<signed char> {};
+
+template<>
+struct to_object<unsigned long long>
+    : public detail::int_to_object<unsigned long long> {};
+
+template<>
+struct to_object<unsigned long> : public detail::int_to_object<unsigned long> {};
+
+template<>
+struct to_object<unsigned int> : public detail::int_to_object<unsigned int> {};
+
+template<>
+struct to_object<unsigned short> : public detail::int_to_object<unsigned short> {};
+
+template<>
+struct to_object<unsigned char> : public detail::int_to_object<unsigned char> {};
 
 template<>
 struct to_object<double> {
