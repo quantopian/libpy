@@ -232,6 +232,25 @@ public:
 }  // namespace detail
 
 /** Create an iterator that lazily applies `f` to every element of `iterable`.
+
+    @param f The function to apply.
+    @param iterable The iterable to apply the function to.
+
+    # Notes
+    ```
+    for (auto v : imap(f, it)) {
+        // ...
+    }
+    ```
+
+    behaves the same as:
+
+    ```
+    for (auto& underlying : it) {
+        auto v = f(underlying);
+        // ...
+    }
+    ```
  */
 template<typename F, typename T>
 auto imap(F&& f, T&& iterable) {
