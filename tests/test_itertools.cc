@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <numeric>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -79,8 +78,39 @@ TEST(zip, mutable_iterator) {
 }
 
 TEST(imap, simple_iterator) {
-    std::vector<int> it(5);
-    std::iota(it.begin(), it.end(), 0);
+    std::vector<int> it = {0, 1, 2, 3, 4};
+
+    {
+        std::vector<int> expected = {0, 2, 4, 6, 8};
+
+        std::size_t ix = 0;
+        for (auto cs : py::imap([](auto i) { return i * 2; }, it)) {
+            EXPECT_EQ(cs, expected[ix++]);
+        }
+    }
+
+    {
+        std::vector<std::string> expected = {"0", "1", "2", "3", "4"};
+
+        std::size_t ix = 0;
+        for (auto cs : py::imap([](auto i) { return std::to_string(i); }, it)) {
+            EXPECT_EQ(cs, expected[ix++]);
+        }
+    }
+
+    {
+        std::vector<int> expected = {5, 6, 7, 8, 9};
+
+        int rhs = 5;  // test mapping a closure
+        std::size_t ix = 0;
+        for (auto cs : py::imap([rhs](auto i) { return i + rhs; }, it)) {
+            EXPECT_EQ(cs, expected[ix++]);
+        }
+    }
+}
+
+TEST(imap, const_iterator) {
+    const std::vector<int> it = {0, 1, 2, 3, 4};
 
     {
         std::vector<int> expected = {0, 2, 4, 6, 8};
