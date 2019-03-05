@@ -100,8 +100,7 @@ struct int_to_object {
 }  // namespace detail
 
 template<>
-struct to_object<signed long long> : public detail::int_to_object<signed long long> {
-};
+struct to_object<signed long long> : public detail::int_to_object<signed long long> {};
 
 template<>
 struct to_object<signed long> : public detail::int_to_object<signed long> {};
@@ -116,8 +115,8 @@ template<>
 struct to_object<signed char> : public detail::int_to_object<signed char> {};
 
 template<>
-struct to_object<unsigned long long>
-    : public detail::int_to_object<unsigned long long> {};
+struct to_object<unsigned long long> : public detail::int_to_object<unsigned long long> {
+};
 
 template<>
 struct to_object<unsigned long> : public detail::int_to_object<unsigned long> {};
