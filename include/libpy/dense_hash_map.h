@@ -24,7 +24,7 @@ private:
     using base = google::dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>;
 
 public:
-    dense_hash_map() = delete;
+    dense_hash_map() = delete;  // User must give a missing value.
 
     /**
        @param empty_key An element of type `Key` which denotes an empty slot.
