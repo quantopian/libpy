@@ -9,7 +9,7 @@
 namespace py {
 /** An RAII wrapper for ensuring an object is cleaned up in a given scope.
  */
-template<typename T>
+template<typename T = PyObject>
 class scoped_ref final {
 private:
     T* m_ref;
@@ -41,16 +41,15 @@ public:
     }
 
     scoped_ref& operator=(const scoped_ref& cpfrom) {
-        Py_XDECREF(m_ref);
+        PyObject* tmp = m_ref;
+        Py_XINCREF(cpfrom.m_ref);
         m_ref = cpfrom.m_ref;
-        Py_XINCREF(m_ref);
+        Py_XDECREF(tmp);
         return *this;
     }
 
     scoped_ref& operator=(scoped_ref&& mvfrom) noexcept {
-        Py_XDECREF(m_ref);
-        m_ref = mvfrom.m_ref;
-        mvfrom.m_ref = nullptr;
+        std::swap(m_ref, mvfrom.m_ref);
         return *this;
     }
 
