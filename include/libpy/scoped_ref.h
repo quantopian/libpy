@@ -41,10 +41,10 @@ public:
     }
 
     scoped_ref& operator=(const scoped_ref& cpfrom) {
-        PyObject* tmp = m_ref;
+        // we need to incref before we decref to support self assignment
         Py_XINCREF(cpfrom.m_ref);
+        Py_XDECREF(m_ref);
         m_ref = cpfrom.m_ref;
-        Py_XDECREF(tmp);
         return *this;
     }
 
