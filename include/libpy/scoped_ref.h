@@ -77,54 +77,26 @@ public:
         @return The pointer managed by this `scoped_ref`.
         @see escape
      */
-    T* get() {
+    T* get() const {
         return m_ref;
     }
 
-    /** Get the underlying managed pointer.
-
-        @return The pointer managed by this `scoped_ref`.
-        @see escape
-     */
-    const T* get() const {
-        return m_ref;
-    }
-
-    explicit operator T*() {
-        return m_ref;
-    }
-
-    explicit operator const T*() const {
+    explicit operator T*() const {
         return m_ref;
     }
 
     // use an enable_if to resolve the ambiguous dispatch when T is PyObject
     template<typename U = T,
              typename = std::enable_if_t<!std::is_same<U, PyObject>::value>>
-    explicit operator PyObject*() {
+    explicit operator PyObject*() const {
         return reinterpret_cast<PyObject*>(m_ref);
     }
 
-    // use an enable_if to resolve the ambiguous dispatch when T is PyObject
-    template<typename U = T,
-             typename = std::enable_if_t<!std::is_same<U, PyObject>::value>>
-    explicit operator const PyObject*() const {
-        return reinterpret_cast<const PyObject*>(m_ref);
-    }
-
-    T& operator*() {
+    T& operator*() const {
         return *m_ref;
     }
 
-    const T& operator*() const {
-        return *m_ref;
-    }
-
-    T* operator->() {
-        return m_ref;
-    }
-
-    const T* operator->() const {
+    T* operator->() const {
         return m_ref;
     }
 
