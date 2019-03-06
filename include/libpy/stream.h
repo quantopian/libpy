@@ -21,7 +21,7 @@ private:
 
     /** The reference to the file-like object.
      */
-    scoped_ref<PyObject> m_file_ob;
+    scoped_ref<> m_file_ob;
 
     std::array<CharT, 8192> m_write_buffer;
     std::size_t m_write_ix = 0;
@@ -61,8 +61,8 @@ protected:
     }
 
 public:
-    explicit basic_streambuf(const scoped_ref<PyObject>& file) : m_file_ob(file) {}
-    explicit basic_streambuf(scoped_ref<PyObject>&& file) : m_file_ob(std::move(file)) {}
+    explicit basic_streambuf(const scoped_ref<>& file) : m_file_ob(file) {}
+    explicit basic_streambuf(scoped_ref<>&& file) : m_file_ob(std::move(file)) {}
 };
 
 /** A C++ output stream which writes to a Python file-like object.
@@ -81,10 +81,10 @@ public:
         Py_INCREF(file);
     }
 
-    basic_ostream(const scoped_ref<PyObject>& file) : std::ios(0), m_buf(file) {
+    basic_ostream(const scoped_ref<>& file) : std::ios(0), m_buf(file) {
         this->rdbuf(&m_buf);
     }
-    basic_ostream(scoped_ref<PyObject>&& file) : std::ios(0), m_buf(std::move(file)) {
+    basic_ostream(scoped_ref<>&& file) : std::ios(0), m_buf(std::move(file)) {
         this->rdbuf(&m_buf);
     }
 

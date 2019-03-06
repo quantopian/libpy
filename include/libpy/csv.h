@@ -152,7 +152,7 @@ public:
         If this parser doesn't produce values, it just returns a new reference to
         `Py_None`.
      */
-    virtual py::scoped_ref<PyObject> move_to_python_tuple() && {
+    virtual py::scoped_ref<> move_to_python_tuple() && {
         Py_INCREF(Py_None);
         return py::scoped_ref(Py_None);
     }
@@ -178,7 +178,7 @@ public:
         m_mask.resize(nrows);
     }
 
-    py::scoped_ref<PyObject> move_to_python_tuple() && {
+    py::scoped_ref<> move_to_python_tuple() && {
         auto values = py::move_to_numpy_array(std::move(m_parsed));
         if (!values) {
             return nullptr;
@@ -1004,28 +1004,27 @@ parse_header(const std::string_view& data,
     @param dtypes The user-provided dtypes.
     @param header The actual header found in the CSV.
  */
-void verify_dtypes_dict(PyObject* dtypes, std::vector<py::scoped_ref<PyObject>>& header) {
-    auto expected_keys = py::scoped_ref(PySet_New(dtypes));
+void verify_dtypes_dict(PyObject* dtypes, std::vector<py::scoped_ref<>>& header) {
+    py::scoped_ref expected_keys(PySet_New(dtypes));
     if (!expected_keys) {
         throw py::exception();
     }
-    auto actual_keys = py::to_object(header);
+    py::scoped_ref actual_keys = py::to_object(header);
     if (!actual_keys) {
         throw py::exception();
     }
 
-    auto actual_keys_set = py::scoped_ref(PySet_New(actual_keys.get()));
+    py::scoped_ref actual_keys_set(PySet_New(actual_keys.get()));
     if (!actual_keys_set) {
         throw py::exception();
     }
 
-    auto diff = py::scoped_ref(
-        PyNumber_Subtract(expected_keys.get(), actual_keys_set.get()));
+    py::scoped_ref diff(PyNumber_Subtract(expected_keys.get(), actual_keys_set.get()));
     if (!diff) {
         throw py::exception();
     }
     if (PySet_GET_SIZE(diff.get())) {
-        auto as_list = py::scoped_ref(PySequence_List(diff.get()));
+        py::scoped_ref as_list(PySequence_List(diff.get()));
         if (PyList_Sort(as_list.get()) < 0) {
             throw py::exception();
         }
@@ -1088,7 +1087,7 @@ PyObject* py_parse(PyObject*,
         return nullptr;
     }
 
-    std::vector<py::scoped_ref<PyObject>> header;
+    std::vector<py::scoped_ref<>> header;
 
     auto get_parser =
         [&](const auto& cell) -> std::optional<std::unique_ptr<cell_parser>> {
@@ -1108,7 +1107,7 @@ PyObject* py_parse(PyObject*,
     detail::verify_dtypes_dict(dtypes, header);
     detail::parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
 
-    auto out = py::scoped_ref(PyDict_New());
+    py::scoped_ref out(PyDict_New());
     if (!out) {
         return nullptr;
     }

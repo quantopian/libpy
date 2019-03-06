@@ -359,7 +359,7 @@ inline any_ref_assign_func dtype_to_assign_func(PyArray_Descr* dtype) {
             throw exception(PyExc_TypeError, "unknown datetime unit: ", dtype);
         }
     case NPY_OBJECT:
-        return any_ref_assign<scoped_ref<PyObject>>;
+        return any_ref_assign<scoped_ref<>>;
     }
 
     throw exception(PyExc_TypeError,
@@ -430,7 +430,7 @@ struct from_object<datetime64<D>> {
             throw invalid_conversion::make<datetime64<D>>(ob);
         }
 
-        auto array = scoped_ref(
+        scoped_ref array(
             reinterpret_cast<PyArrayObject*>(PyArray_FromScalar(ob, nullptr)));
 
         auto dtype = py::new_dtype<datetime64<D>>();
@@ -529,7 +529,7 @@ public:
                 `std::tuple` of the python capsule object and the moved vector
                 it is refcounting for.
     */
-    static std::optional<std::tuple<scoped_ref<PyObject>, std::vector<T>&>>
+    static std::optional<std::tuple<scoped_ref<>, std::vector<T>&>>
     alloc(std::vector<T>&& vector) {
         capsule* cap;
         if (!(cap = reinterpret_cast<capsule*>(PyMem_Malloc(sizeof(capsule))))) {
@@ -558,9 +558,9 @@ public:
     @return An `ndarray` from the values.
  */
 template<typename T, std::size_t ndim>
-scoped_ref<PyObject> move_to_numpy_array(std::vector<T>&& values,
-                                         const std::array<std::size_t, ndim>& shape,
-                                         const std::array<std::int64_t, ndim>& strides) {
+scoped_ref<> move_to_numpy_array(std::vector<T>&& values,
+                                 const std::array<std::size_t, ndim>& shape,
+                                 const std::array<std::int64_t, ndim>& strides) {
     auto maybe_capsule = detail::capsule<T>::alloc(std::move(values));
 
     if (!maybe_capsule) {
@@ -575,7 +575,7 @@ scoped_ref<PyObject> move_to_numpy_array(std::vector<T>&& values,
         return nullptr;
     }
 
-    auto arr = scoped_ref(PyArray_NewFromDescr(
+    scoped_ref arr(PyArray_NewFromDescr(
         &PyArray_Type,
         descr.get(),
         ndim,
@@ -603,7 +603,7 @@ scoped_ref<PyObject> move_to_numpy_array(std::vector<T>&& values,
 }
 
 template<typename T>
-scoped_ref<PyObject> move_to_numpy_array(std::vector<T>&& values) {
+scoped_ref<> move_to_numpy_array(std::vector<T>&& values) {
     return move_to_numpy_array<T, 1>(std::move(values), {values.size()}, {sizeof(T)});
 }
 }  // namespace py

@@ -683,8 +683,8 @@ private:
     }
 
     template<std::size_t... ix>
-    void move_into_dict(std::index_sequence<ix...>, py::scoped_ref<PyObject>& out) {
-        std::array<std::tuple<py::scoped_ref<PyObject>, py::scoped_ref<PyObject>>,
+    void move_into_dict(std::index_sequence<ix...>, const py::scoped_ref<>& out) {
+        std::array<std::tuple<py::scoped_ref<PyObject>, py::scoped_ref<>>,
                    sizeof...(columns)>
             obs = {this->move_to_objects<ix>()...};
 
@@ -841,8 +841,8 @@ public:
 
         @return A Python dict of numpy arrays.
      */
-    py::scoped_ref<PyObject> to_python_dict() && {
-        auto out = py::scoped_ref(PyDict_New());
+    py::scoped_ref<> to_python_dict() && {
+        py::scoped_ref out(PyDict_New());
         if (!out) {
             return nullptr;
         }
@@ -1107,14 +1107,14 @@ public:
                 Py_TYPE(t)->tp_name);
         }
 
-        auto copy = py::scoped_ref(PyDict_Copy(t));
+        py::scoped_ref copy(PyDict_Copy(t));
         if (!copy) {
             throw py::exception();
         }
 
         type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
-            auto keys = py::scoped_ref(PyDict_Keys(copy.get()));
+            py::scoped_ref keys(PyDict_Keys(copy.get()));
             if (!keys) {
                 throw py::exception();
             }
@@ -1157,14 +1157,14 @@ public:
                 Py_TYPE(t)->tp_name);
         }
 
-        auto copy = py::scoped_ref(PyDict_Copy(t));
+        py::scoped_ref copy(PyDict_Copy(t));
         if (!copy) {
             throw py::exception();
         }
 
         type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
-            auto keys = py::scoped_ref(PyDict_Keys(copy.get()));
+            py::scoped_ref keys(PyDict_Keys(copy.get()));
             if (!keys) {
                 throw py::exception();
             }
