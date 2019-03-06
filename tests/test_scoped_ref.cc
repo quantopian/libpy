@@ -1,6 +1,7 @@
 #include "Python.h"
 #include "gtest/gtest.h"
 
+#include "libpy/call_function.h"
 #include "libpy/scoped_ref.h"
 #include "test_utils.h"
 
@@ -54,14 +55,58 @@ TEST_F(scoped_ref, copy_construct) {
 }
 
 TEST_F(scoped_ref, self_assign) {
-    PyObject* raw = Py_None;
-    Py_INCREF(raw);
+    py::scoped_ref ob = nullptr;
+    // we need to hold onto the ref when the namespace goes out of scope so that
+    // the callback will still fire
+    py::scoped_ref ref = nullptr;
+    py::scoped_ref destructions = nullptr;
+    {
+        py::scoped_ref ns = RUN_PYTHON(R"(
+            import weakref
 
-    auto starting_ref_count = Py_REFCNT(raw);
-    auto ref = py::scoped_ref(raw);
-    ref = ref;
-    auto ending_ref_count = Py_REFCNT(raw);
+            class EmptyObject(object):
+                pass
+
+            def setup():
+                ob = EmptyObject()
+
+                # use a list so we can see changes to this object without a cell
+                destructions = []
+
+                def callback():
+                    destructions.append(True)
+
+                return ob, weakref.ref(ob), destructions
+        )");
+        ASSERT_TRUE(ns);
+        ASSERT_TRUE(PyDict_CheckExact(ns.get()));
+
+        PyObject* setup = PyDict_GetItemString(ns.get(), "setup");
+        ASSERT_TRUE(setup);
+
+        auto res = py::call_function(setup);
+        ASSERT_TRUE(res);
+        ASSERT_TRUE(PyTuple_CheckExact(res.get()));
+        ASSERT_EQ(PyTuple_GET_SIZE(res.get()), 3);
+
+        ob = py::scoped_ref(PyTuple_GET_ITEM(res.get(), 0));
+        Py_INCREF(ob);
+
+        ref = py::scoped_ref(PyTuple_GET_ITEM(res.get(), 1));
+        Py_INCREF(ref);
+
+        destructions = py::scoped_ref(PyTuple_GET_ITEM(res.get(), 2));
+        Py_INCREF(destructions);
+        ASSERT_TRUE(PyList_CheckExact(destructions.get()));
+    }
+
+    auto starting_ref_count = Py_REFCNT(ob);
+    EXPECT_EQ(starting_ref_count, 1);
+
+    ob = ob;
+    auto ending_ref_count = Py_REFCNT(ob);
     EXPECT_EQ(ending_ref_count, starting_ref_count);
+    EXPECT_FALSE(PyList_GET_SIZE(destructions.get()));
 }
 
 TEST_F(scoped_ref, assign_same_underlying_pointer) {
