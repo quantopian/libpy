@@ -50,10 +50,8 @@ struct to_object<std::array<char, n>> {
  */
 template<typename T>
 struct to_object<scoped_ref<T>> {
-    static PyObject* f(scoped_ref<T>& ob) {
-        PyObject* out = ob.get();
-        Py_XINCREF(out);
-        return out;
+    static PyObject* f(scoped_ref<T> ob) {
+        return std::move(ob).escape();
     }
 };
 
@@ -166,31 +164,6 @@ struct map_to_object {
 
         return std::move(out).escape();
     }
-
-    static PyObject* f(M& m) {
-        auto out = py::scoped_ref(PyDict_New());
-
-        if (!out) {
-            return nullptr;
-        }
-
-        for (auto& [key, value] : m) {
-            auto key_ob = py::to_object(key);
-            if (!key_ob) {
-                return nullptr;
-            }
-            auto value_ob = py::to_object(value);
-            if (!value_ob) {
-                return nullptr;
-            }
-
-            if (PyDict_SetItem(out.get(), key_ob.get(), value_ob.get())) {
-                return nullptr;
-            }
-        }
-
-        return std::move(out).escape();
-    }
 };
 
 template<typename K, typename V, typename Hash, typename KeyEqual>
@@ -218,26 +191,6 @@ struct to_object<std::vector<T>> {
 
         return std::move(out).escape();
     }
-
-    static PyObject* f(std::vector<T>& v) {
-        auto out = py::scoped_ref(PyList_New(v.size()));
-
-        if (!out) {
-            return nullptr;
-        }
-
-        std::size_t ix = 0;
-        for (auto& elem : v) {
-            PyObject* ob = py::to_object(elem).escape();
-            if (!ob) {
-                return nullptr;
-            }
-
-            PyList_SET_ITEM(out.get(), ix++, ob);
-        }
-
-        return std::move(out).escape();
-    }
 };
 
 template<typename T>
@@ -250,26 +203,6 @@ struct to_object<std::unordered_set<T>> {
         }
 
         for (const auto& elem : s) {
-            auto ob = py::to_object(elem);
-            if (!ob) {
-                return nullptr;
-            }
-            if (PySet_Add(out.get(), ob.get())) {
-                return nullptr;
-            }
-        }
-
-        return std::move(out).escape();
-    }
-
-    static PyObject* f(std::unordered_set<T>& s) {
-        auto out = py::scoped_ref(PySet_New(nullptr));
-
-        if (!out) {
-            return nullptr;
-        }
-
-        for (auto& elem : s) {
             auto ob = py::to_object(elem);
             if (!ob) {
                 return nullptr;
@@ -306,20 +239,6 @@ private:
 
 public:
     static PyObject* f(const std::tuple<Ts...>& tup) {
-        auto out = py::scoped_ref(PyTuple_New(sizeof...(Ts)));
-
-        if (!out) {
-            return nullptr;
-        }
-
-        if (fill_tuple_as_objects(out.get(), tup, std::index_sequence_for<Ts...>{})) {
-            return nullptr;
-        }
-
-        return std::move(out).escape();
-    }
-
-    static PyObject* f(std::tuple<Ts...>& tup) {
         auto out = py::scoped_ref(PyTuple_New(sizeof...(Ts)));
 
         if (!out) {
