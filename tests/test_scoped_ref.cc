@@ -73,10 +73,10 @@ TEST_F(scoped_ref, self_assign) {
                 # use a list so we can see changes to this object without a cell
                 destructions = []
 
-                def callback():
+                def callback(wr):
                     destructions.append(True)
 
-                return ob, weakref.ref(ob), destructions
+                return ob, weakref.ref(ob, callback), destructions
         )");
         ASSERT_TRUE(ns);
         ASSERT_TRUE(PyDict_CheckExact(ns.get()));
@@ -107,6 +107,12 @@ TEST_F(scoped_ref, self_assign) {
     auto ending_ref_count = Py_REFCNT(ob);
     EXPECT_EQ(ending_ref_count, starting_ref_count);
     EXPECT_FALSE(PyList_GET_SIZE(destructions.get()));
+
+    // explicitly kill ob now
+    Py_DECREF(std::move(ob).escape());
+
+    // make sure the callback fired
+    EXPECT_EQ(PyList_GET_SIZE(destructions.get()), 1);
 }
 
 TEST_F(scoped_ref, assign_same_underlying_pointer) {
