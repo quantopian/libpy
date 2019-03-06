@@ -43,7 +43,7 @@ private:
 public:
     template<typename ConvertTo>
     static invalid_conversion make(PyObject* ob) {
-        auto repr = scoped_ref(PyObject_Repr(ob));
+        scoped_ref repr(PyObject_Repr(ob));
         if (!repr) {
             throw py::exception("failed to call repr on ob");
         }
@@ -83,7 +83,7 @@ T from_object(PyObject* ob) {
     @see py::dispatch::from_object
  */
 template<typename T, typename U>
-T from_object(scoped_ref<U>& ob) {
+T from_object(const scoped_ref<U>& ob) {
     return dispatch::from_object<T>::f(static_cast<PyObject*>(ob));
 }
 
@@ -310,12 +310,12 @@ struct from_object<std::unordered_set<T>> {
 
         std::unordered_set<T> out;
 
-        auto it = scoped_ref(PyObject_GetIter(s));
+        scoped_ref it(PyObject_GetIter(s));
         if (!it) {
             throw py::exception("failed to make iterator");
         }
 
-        while (auto item = scoped_ref(PyIter_Next(it.get()))) {
+        while (scoped_ref item = PyIter_Next(it.get())) {
             out.emplace(py::from_object<T>(item));
         }
         if (PyErr_Occurred()) {

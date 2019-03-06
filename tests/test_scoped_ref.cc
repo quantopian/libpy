@@ -17,7 +17,7 @@ TEST_F(scoped_ref, basic_lifetime) {
 
         // wrapping an object in a scoped ref claims the reference, it should not incref
         // again
-        auto sr = py::scoped_ref(raw);
+        py::scoped_ref sr(raw);
 
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
     }
@@ -31,7 +31,7 @@ TEST_F(scoped_ref, copy_construct) {
 
     {
         Py_INCREF(raw);
-        auto sr = py::scoped_ref(raw);
+        py::scoped_ref sr(raw);
 
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
 
@@ -136,12 +136,12 @@ TEST_F(scoped_ref, move_construct) {
 
     {
         Py_INCREF(raw);
-        auto sr = py::scoped_ref(raw);
+        py::scoped_ref sr(raw);
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
 
         {
             // move construct
-            py::scoped_ref<> moved(std::move(sr));
+            py::scoped_ref moved(std::move(sr));
 
             EXPECT_EQ(moved.get(), raw);
 
@@ -206,7 +206,7 @@ TEST_F(scoped_ref, escape) {
 
     {
         Py_INCREF(raw);
-        auto sr = py::scoped_ref(raw);
+        py::scoped_ref sr(raw);
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
 
         escape_into = std::move(sr).escape();

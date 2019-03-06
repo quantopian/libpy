@@ -13,7 +13,7 @@ namespace test_from_object {
 class from_object : public with_python_interpreter {};
 
 template<typename T>
-void check_integer(py::scoped_ref<PyObject>& ob, T expected_value) {
+void check_integer(const py::scoped_ref<>& ob, T expected_value) {
     auto v = py::from_object<T>(ob);
     static_assert(std::is_same_v<decltype(v), T>);
     EXPECT_EQ(v, expected_value);
@@ -22,7 +22,7 @@ void check_integer(py::scoped_ref<PyObject>& ob, T expected_value) {
 TEST_F(from_object, test_basic_integer) {
     // test a basic set of small integers
     for (std::size_t value = 0; value < 127; ++value) {
-        auto ob = py::scoped_ref(PyLong_FromLong(value));
+        py::scoped_ref ob(PyLong_FromLong(value));
         ASSERT_TRUE(ob) << "ob cannot be null";
 
         check_integer<std::int64_t>(ob, value);
@@ -38,7 +38,7 @@ TEST_F(from_object, test_basic_integer) {
 }
 
 template<typename T>
-void expect_overflow(py::scoped_ref<PyObject>& ob) {
+void expect_overflow(const py::scoped_ref<>& ob) {
     EXPECT_THROW(py::from_object<T>(ob), py::invalid_conversion)
         << py::util::type_name<T>().get();
     EXPECT_TRUE(PyErr_Occurred());
@@ -46,9 +46,9 @@ void expect_overflow(py::scoped_ref<PyObject>& ob) {
 }
 
 TEST_F(from_object, test_overflow) {
-    auto py_one = py::scoped_ref(PyLong_FromLong(1));
+    py::scoped_ref py_one(PyLong_FromLong(1));
     ASSERT_TRUE(py_one) << "py_one cannot be null";
-    auto py_neg_one = py::scoped_ref(PyLong_FromLong(-1));
+    py::scoped_ref py_neg_one(PyLong_FromLong(-1));
     ASSERT_TRUE(py_neg_one) << "py_neg_one cannot be null";
 
     // the types to check, the values in the tuple don't get read
@@ -64,10 +64,10 @@ TEST_F(from_object, test_overflow) {
                unsigned char>
         typed_values;
 
-    auto check_limit = [&](auto limit_value, py::scoped_ref<PyObject>& to_exceed) {
+    auto check_limit = [&](auto limit_value, const py::scoped_ref<>& to_exceed) {
         using T = decltype(limit_value);
 
-        py::scoped_ref<PyObject> limit_ob;
+        py::scoped_ref<> limit_ob;
 
         if constexpr (std::is_signed_v<T>) {
             limit_ob = py::scoped_ref(PyLong_FromLongLong(limit_value));
@@ -80,8 +80,7 @@ TEST_F(from_object, test_overflow) {
         // the limit value should be convertible
         check_integer<T>(limit_ob, limit_value);
 
-        auto exceeds_limit = py::scoped_ref(
-            PyNumber_Add(limit_ob.get(), to_exceed.get()));
+        py::scoped_ref exceeds_limit(PyNumber_Add(limit_ob.get(), to_exceed.get()));
         ASSERT_TRUE(exceeds_limit) << "exceeds_limit cannot be null";
 
         // after adding `to_exceed` to the limit value, the result should overflow
@@ -193,14 +192,14 @@ TEST_F(from_object, ndarray_view_any_ref) {
             ASSERT_TRUE(ob);
         }
 
-        std::vector<py::scoped_ref<PyObject>> objects_cp;
+        std::vector<py::scoped_ref<>> objects_cp;
         auto ndarray = py::move_to_numpy_array(std::move(objects_cp));
         auto view = py::from_object<py::array_view<py::any_ref>>(ndarray);
 
         std::size_t ix = 0;
         for (auto v : view) {
             // compare the underlying PyObject* which compares the objects on identity
-            EXPECT_EQ(v.cast<py::scoped_ref<PyObject>>().get(), objects[ix].get());
+            EXPECT_EQ(v.cast<py::scoped_ref<>>().get(), objects[ix].get());
             ++ix;
         }
     }

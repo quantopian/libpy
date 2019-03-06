@@ -33,7 +33,7 @@ struct to_object;
     @see py::dispatch::to_object
  */
 template<typename T>
-scoped_ref<PyObject> to_object(T&& ob) {
+scoped_ref<> to_object(T&& ob) {
     using underlying_type = std::remove_cv_t<std::remove_reference_t<T>>;
     return scoped_ref(dispatch::to_object<underlying_type>::f(std::forward<T>(ob)));
 }
@@ -140,7 +140,7 @@ struct to_object<double> {
 template<typename M>
 struct map_to_object {
     static PyObject* f(const M& m) {
-        auto out = py::scoped_ref(PyDict_New());
+        py::scoped_ref out(PyDict_New());
 
         if (!out) {
             return nullptr;
@@ -172,7 +172,7 @@ struct to_object<std::unordered_map<K, V, Hash, KeyEqual>>
 template<typename T>
 struct to_object<std::vector<T>> {
     static PyObject* f(const std::vector<T>& v) {
-        auto out = py::scoped_ref(PyList_New(v.size()));
+        py::scoped_ref out(PyList_New(v.size()));
 
         if (!out) {
             return nullptr;
@@ -195,7 +195,7 @@ struct to_object<std::vector<T>> {
 template<typename T>
 struct to_object<std::unordered_set<T>> {
     static PyObject* f(const std::unordered_set<T>& s) {
-        auto out = py::scoped_ref(PySet_New(nullptr));
+        py::scoped_ref out(PySet_New(nullptr));
 
         if (!out) {
             return nullptr;
@@ -238,7 +238,7 @@ private:
 
 public:
     static PyObject* f(const std::tuple<Ts...>& tup) {
-        auto out = py::scoped_ref(PyTuple_New(sizeof...(Ts)));
+        py::scoped_ref out(PyTuple_New(sizeof...(Ts)));
 
         if (!out) {
             return nullptr;

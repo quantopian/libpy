@@ -15,8 +15,8 @@
 namespace py {
 namespace detail {
 template<typename... Args, std::size_t... ixs>
-scoped_ref<PyObject> build_pyargs_tuple(std::index_sequence<ixs...>, Args&&... args) {
-    auto out = scoped_ref(PyTuple_New(sizeof...(ixs)));
+scoped_ref<> build_pyargs_tuple(std::index_sequence<ixs...>, Args&&... args) {
+    py::scoped_ref out(PyTuple_New(sizeof...(ixs)));
     if (!out) {
         return nullptr;
     }
@@ -35,7 +35,7 @@ scoped_ref<PyObject> build_pyargs_tuple(std::index_sequence<ixs...>, Args&&... a
     @return The result of the function call or nullptr if an error occurred.
  */
 template<typename... Args>
-scoped_ref<PyObject> call_function(PyObject* function, Args&&... args) {
+scoped_ref<> call_function(PyObject* function, Args&&... args) {
     auto pyargs = detail::build_pyargs_tuple(std::index_sequence_for<Args...>{},
                                              std::forward<Args>(args)...);
     return scoped_ref(PyObject_CallObject(function, pyargs.get()));
@@ -49,7 +49,7 @@ scoped_ref<PyObject> call_function(PyObject* function, Args&&... args) {
     @return The result of the function call or nullptr if an error occurred.
  */
 template<typename... Args>
-scoped_ref<PyObject> call_function(scoped_ref<PyObject>& function, Args&&... args) {
+scoped_ref<PyObject> call_function(const scoped_ref<>& function, Args&&... args) {
     return scoped_ref(function.get(), std::forward<Args>(args)...);
 }
 
@@ -62,9 +62,8 @@ scoped_ref<PyObject> call_function(scoped_ref<PyObject>& function, Args&&... arg
     @return The result of the method call or nullptr if an error occurred.
  */
 template<typename... Args>
-scoped_ref<PyObject>
-call_method(PyObject* ob, const std::string& method, Args&&... args) {
-    auto bound_method = scoped_ref(PyObject_GetAttrString(ob, method.data()));
+scoped_ref<> call_method(PyObject* ob, const std::string& method, Args&&... args) {
+    scoped_ref bound_method(PyObject_GetAttrString(ob, method.data()));
     if (!bound_method) {
         return nullptr;
     }
@@ -81,8 +80,8 @@ call_method(PyObject* ob, const std::string& method, Args&&... args) {
     @return The result of the method call or nullptr if an error occurred.
  */
 template<typename... Args>
-scoped_ref<PyObject>
-call_method(scoped_ref<PyObject>& ob, const std::string& method, Args&&... args) {
+scoped_ref<>
+call_method(const scoped_ref<>& ob, const std::string& method, Args&&... args) {
     return call_method(ob.get(), method, std::forward<Args>(args)...);
 }
 }  // namespace py

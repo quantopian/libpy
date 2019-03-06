@@ -36,7 +36,6 @@ inline std::string format_current_python_exception() {
     return PyUnicode_AsUTF8(contents.get());
 }
 
-
 class with_python_interpreter : public testing::Test {
 public:
     inline static void SetUpTestCase() {
