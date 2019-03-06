@@ -14,6 +14,8 @@ inline std::string format_current_python_exception() {
     PyErr_Fetch(&exc[0], &exc[1], &exc[2]);
 
     if (PyErr_ExceptionMatches(PyExc_SystemExit)) {
+        // PyErr_PrintEx() will call exit (without printing) when the exception is a
+        // SystemExit
         return "<SystemExit>";
     }
 
@@ -91,7 +93,7 @@ run_python(const std::string_view& python_source,
             return nullptr;
         }
 
-        if (PyDict_Merge(python_namespace.get(), main_dict.get(), 1)) {
+        if (PyDict_Update(python_namespace.get(), main_dict.get())) {
             return nullptr;
         }
     }
@@ -138,58 +140,7 @@ run_python(const std::string_view& python_source,
     }
     return python_namespace;
 }
-
-inline void python_test(const std::string_view& test_name,
-                        const std::string_view& file,
-                        std::size_t line,
-                        py::scoped_ref<>& PYTHON_NAMESPACE,
-                        const std::string_view& python_source) {
-    std::stringstream full_source;
-
-    // the line number reported is the *last* line of the macro, we need to
-    // subtract out the newlines from the python_source
-    std::size_t lines_in_source =
-        std::count(python_source.begin(), python_source.end(), '\n');
-
-    // Add a bunch of newlines so that the errors in the tests correspond to
-    // the line of the files. Subtract some lines to account for the code we
-    // inject around the test source.
-    for (std::size_t n = 0; n < line - lines_in_source - 3; ++n) {
-        full_source << '\n';
-    }
-
-    // Put the user's test in a function. We share a module dict in this test
-    // suite so assignments in a test should not bleed into other tests.
-    full_source << "def " << test_name << "():\n"
-                << "    test_name = '" << test_name << "'\n"
-                << python_source << "\n"
-                << test_name << "()";
-
-    py::scoped_ref code_object(
-        Py_CompileString(full_source.str().data(), file.data(), Py_file_input));
-    ASSERT_TRUE(code_object.get());
-
-    py::scoped_ref result(PyEval_EvalCode(code_object.get(),
-                                          PYTHON_NAMESPACE.get(),
-                                          PYTHON_NAMESPACE.get()));
-
-    ASSERT_TRUE(result.get());
-}
 }  // namespace detail
-
-/** Define a test case for the Python bindings.
-
-    @param name The name of the test case.
-    @param python_source The body of the test as a string of Python source code.
- */
-#define PYTHON_TEST(case, name, python_source)                                           \
-    TEST_F(case, name) {                                                                 \
-        ::detail::python_test(#name,                                                     \
-                              __FILE__,                                                  \
-                              __LINE__,                                                  \
-                              PYTHON_NAMESPACE,                                          \
-                              python_source);                                            \
-    }
 
 /** Run some Python code.
 
