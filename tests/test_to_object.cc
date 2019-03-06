@@ -95,16 +95,15 @@ void test_map_to_object_impl(M m) {
         }
     };
 
-    // Convert map to object.
+    // Check to_object with value, const value, and rvalue reference.
+
     py::scoped_ref<PyObject> result = py::to_object(m);
     check_python_map(result);
 
-    // Check const ref.
     const M& const_ref = m;
     py::scoped_ref<PyObject> constref_result = py::to_object(const_ref);
     check_python_map(constref_result);
 
-    // Check rvalue reference.
     M copy = m;  // Make a copy before moving b/c the lambda above uses ``m``.
     py::scoped_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
     check_python_map(rvalueref_result);
@@ -152,6 +151,8 @@ void test_vector_to_object_impl(V v) {
         }
     };
 
+    // Check to_object with value, const value, and rvalue reference.
+
     py::scoped_ref<PyObject> result = py::to_object(v);
     check_python_list(result);
 
@@ -159,8 +160,7 @@ void test_vector_to_object_impl(V v) {
     py::scoped_ref<PyObject> constref_result = py::to_object(const_ref);
     check_python_list(constref_result);
 
-    // Check rvalue reference.
-    V copy = v;  // Make a copy before moving b/c the lambda above uses ``m``.
+    V copy = v;  // Make a copy before moving b/c the lambda above uses ``v``.
     py::scoped_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
     check_python_list(rvalueref_result);
 }
