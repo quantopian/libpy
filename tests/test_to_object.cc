@@ -73,19 +73,18 @@ void test_map_to_object_impl(M m) {
 
     auto check_python_map = [&](py::scoped_ref<PyObject> ob) {
         ASSERT_TRUE(ob) << "to_object should not return null";
-        EXPECT_EQ(PyDict_Check(ob.get()), 1) << "ob should be a dict";
+        EXPECT_TRUE(PyDict_Check(ob.get()));
 
         // Python map should be the same length as C++ map.
-        Py_ssize_t len = PyObject_Length(ob.get());
-        ASSERT_TRUE(len > 0) << "Error getting length from ob";
+        Py_ssize_t len = PyDict_Size(ob.get());
         EXPECT_EQ(std::size_t(len), m.size())
             << "Python dict length should match C++ map length.";
 
         // Key/Value pairs in the python map should match the result of calling
         // to_object on each key/value pair in the C++ map.
         for (auto& [cxx_key, cxx_value] : m) {
-            auto py_key(py::to_object(cxx_key));
-            auto py_value(py::to_object(cxx_value));
+            auto py_key = py::to_object(cxx_key);
+            auto py_value = py::to_object(cxx_value);
 
             PyObject* result = PyDict_GetItem(ob.get(), py_key.get());
             ASSERT_TRUE(result) << "Key should have been in the map";
@@ -132,15 +131,14 @@ void test_vector_to_object_impl(V v) {
         ASSERT_TRUE(ob) << "to_object should not return null";
         EXPECT_EQ(PyList_Check(ob.get()), 1) << "ob should be a list";
 
-        Py_ssize_t len = PyObject_Length(ob.get());
-        ASSERT_TRUE(len > 0) << "Error getting length from ob";
+        Py_ssize_t len = PyList_GET_SIZE(ob.get());
         EXPECT_EQ(std::size_t(len), v.size())
             << "Python list length should match C++ vector length.";
 
         // Values in Python list should be the result of calling to_object on each entry
         // in the C++ vector.
         for (auto [i, cxx_value] : py::enumerate(v)) {
-            auto py_value(py::to_object(cxx_value));
+            auto py_value = py::to_object(cxx_value);
 
             PyObject* result = PyList_GetItem(ob.get(), i);
             ASSERT_TRUE(result) << "Should have had a value at index " << i;
