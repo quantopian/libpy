@@ -453,13 +453,37 @@ public:
         return *reinterpret_cast<T*>(&this->m_buffer[this->pos_to_index({pos})]);
     }
 
+    /** Access the first element of this array. The array must be non-empty.
+     */
+    const T& front() const {
+        return (*this)[0];
+    }
+
+    /** Access the first element of this array. The array must be non-empty.
+     */
+    T& front() {
+        return (*this)[0];
+    }
+
+    /** Access the last element of this array. The array must be non-empty.
+     */
+    const T& back() const {
+        return (*this)[this->size() - 1];
+    }
+
+    /** Access the last element of this array. The array must be non-empty.
+     */
+    T& back() {
+        return (*this)[this->size() - 1];
+    }
+
     /** Create a view over a subsection of the viewed memory.
 
-    @param start The start index of the slice.
-    @param stop The stop index of the slice, exclusive.
-    @param step The value to increment each index by.
-    @return A view over a subset of the memory.
- */
+        @param start The start index of the slice.
+        @param stop The stop index of the slice, exclusive.
+        @param step The value to increment each index by.
+        @return A view over a subset of the memory.
+    */
     ndarray_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
         std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
         std::int64_t stride = this->m_strides[0] * step;
@@ -961,6 +985,30 @@ public:
      */
     reference operator[](std::size_t pos) {
         return {&this->m_buffer[this->pos_to_index({pos})], this->m_assign};
+    }
+
+    /** Access the first element of this array. The array must be non-empty.
+     */
+    const T& front() const {
+        return (*this)[0];
+    }
+
+    /** Access the first element of this array. The array must be non-empty.
+     */
+    T& front() {
+        return (*this)[0];
+    }
+
+    /** Access the last element of this array. The array must be non-empty.
+     */
+    const T& back() const {
+        return (*this)[this->size() - 1];
+    }
+
+    /** Access the last element of this array. The array must be non-empty.
+     */
+    T& back() {
+        return (*this)[this->size() - 1];
     }
 
     /** Cast the array to a static type.

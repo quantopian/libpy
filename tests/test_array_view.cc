@@ -103,6 +103,24 @@ TYPED_TEST_P(array_view, _2d_indexing) {
     }
 }
 
+TYPED_TEST_P(array_view, front_back) {
+    std::array<TypeParam, 5> arr = {1, 2, 3, 4, 5};
+    py::array_view<TypeParam> view(arr);
+
+    EXPECT_EQ(view.front(), arr.front());
+    EXPECT_EQ(view.back(), arr.back());
+
+    view.front() = 6;
+    EXPECT_EQ(view.front(), 6);
+    EXPECT_EQ(view[0], 6);
+    EXPECT_EQ(arr.front(), 6);
+
+    view.back() = 7;
+    EXPECT_EQ(view.back(), 7);
+    EXPECT_EQ(view[4], 7);
+    EXPECT_EQ(arr.back(), 7);
+}
+
 TYPED_TEST_P(array_view, virtual_array) {
     TypeParam value(1);
 
@@ -129,6 +147,7 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
                            iterator,
                            reverse_iterator,
                            _2d_indexing,
+                           front_back,
                            virtual_array);
 
 using array_view_types =
