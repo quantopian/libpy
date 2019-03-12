@@ -109,7 +109,8 @@ TEST_F(scoped_ref, self_assign) {
     EXPECT_FALSE(PyList_GET_SIZE(destructions.get()));
 
     // explicitly kill ob now
-    Py_DECREF(std::move(ob).escape());
+    PyObject* escaped = std::move(ob).escape();
+    Py_DECREF(escaped);
 
     // make sure the callback fired
     EXPECT_EQ(PyList_GET_SIZE(destructions.get()), 1);
