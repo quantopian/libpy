@@ -1,0 +1,45 @@
+steps:
+  # Build the libpy container
+  - label: ":docker: docker build"
+    plugins:
+      - docker-compose#v2.6.0:
+          build:
+            - libpy
+          image-repository: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy
+          # n.b. - only the first cache found is used
+          cache-from:
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:staging-deployed
+
+  - wait:
+
+  # Push image for caching.
+  - label: ":docker: docker push latest"
+    plugins:
+      - docker-compose#v3.0.0:
+          push:
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:latest
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
+
+  # Run libpy tests.
+  - label: ":python: tox"
+    command:
+      - cd /src/libpy
+      - tox
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  - wait:
+
+  # Deploy staging container.
+  - label: ":docker: docker push staging-deployed"
+    plugins:
+      - docker-compose#v3.0.0:
+          push:
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:staging-deployed
+    branches: "master"
+    concurrency: 1
+    concurrency_group: "libpy/ecr-push"
