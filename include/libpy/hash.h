@@ -32,7 +32,7 @@ auto hash_many(const Ts&... vs) {
  */
 template<typename... Ts>
 auto hash_tuple(const std::tuple<Ts...>& t) {
-    return std::apply(hash_many, t);
+    return std::apply<decltype(hash_many<Ts...>)>(hash_many, t);
 }
 
 namespace detail {
