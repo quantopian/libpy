@@ -18,7 +18,6 @@ steps:
     plugins:
       - docker-compose#v3.0.0:
           push:
-            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:latest
             - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
 
   # Run libpy tests.
