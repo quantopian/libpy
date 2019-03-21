@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     libatlas-base-dev \
     libblas-dev \
     libffi-dev \
+    libsparsehash-dev \
     libssl-dev \
     make \
     openssh-client \

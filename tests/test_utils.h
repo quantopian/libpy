@@ -35,7 +35,7 @@ inline std::string format_current_python_exception() {
     if (!contents) {
         return "<unknown>";
     }
-    return PyUnicode_AsUTF8(contents.get());
+    return py::utils::pystring_to_cstring(contents.get());
 }
 
 class with_python_interpreter : public testing::Test {
@@ -131,9 +131,17 @@ run_python(const std::string_view& python_source,
         return nullptr;
     }
 
-    py::scoped_ref result(PyEval_EvalCode(code_object.get(),
+#if PY_MAJOR_VERSION == 2
+#define LIBPY_CODE_CAST(x) reinterpret_cast<PyCodeObject*>(x)
+#else
+#define LIBPY_CODE_CAST(x) (x)
+#endif
+
+    py::scoped_ref result(PyEval_EvalCode(LIBPY_CODE_CAST(code_object.get()),
                                           python_namespace.get(),
                                           python_namespace.get()));
+
+#undef LIBPY_CODE_CAST
 
     if (!result) {
         return nullptr;
