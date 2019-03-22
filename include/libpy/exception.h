@@ -1,131 +1,74 @@
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <tuple>
 
 #include <Python.h>
 
 #include "libpy/char_sequence.h"
+#include "libpy/meta.h"
+#include "libpy/scoped_ref.h"
+#include "libpy/utils.h"
 
 namespace py {
 namespace dispatch {
 /** Handlers for formatting C++ data types into Python exception messages.
 
-    To add a new formatter, add a new explicit template specialization for the
-    given type with a `static constexpr cs::char_sequence` member called `fmt`
-    which is the format string part for this object. The format strings come
-    from https://docs.python.org/3.6/c-api/unicode.html#c.PyUnicode_FromFormat.
-    Also add a static function called `prepare` which returns the object
-    as it should be fed into the `PyErr_Format` call.
+    To add a new formatter, add a new explicit template specialization for the type and
+    implement `static std::ostream& f(std::ostream& out, T value)` which
+    should append the new data to the output message.
  */
 template<typename T>
-struct raise_format;
+struct raise_format {
+    static std::ostream& f(std::ostream& out, const T& value) {
+        return out << value;
+    }
+};
 
 template<>
 struct raise_format<char> {
-    using fmt = cs::char_sequence<'c'>;
-
-    static auto prepare(char c) {
-        return c;
+    static std::ostream& f(std::ostream& out, char value) {
+        out.put(value);
+        return out;
     }
 };
 
 template<>
-struct raise_format<int> {
-    using fmt = cs::char_sequence<'d'>;
-
-    static auto prepare(int i) {
-        return i;
-    }
-};
-
-template<>
-struct raise_format<unsigned int> {
-    using fmt = cs::char_sequence<'u'>;
-
-    static auto prepare(unsigned int u) {
-        return u;
-    }
-};
-
-template<>
-struct raise_format<long> {
-    using fmt = cs::char_sequence<'u'>;
-
-    static auto prepare(long l) {
-        return l;
-    }
-};
-
-template<>
-struct raise_format<unsigned long> {
-    using fmt = cs::char_sequence<'l', 'u'>;
-
-    static auto prepare(unsigned long ul) {
-        return ul;
-    }
-};
-
-template<>
-struct raise_format<const char*> {
-    using fmt = cs::char_sequence<'s'>;
-
-    static auto prepare(const char* cs) {
-        return cs;
-    }
-};
-
-template<>
-struct raise_format<char*> {
-    using fmt = cs::char_sequence<'s'>;
-
-    static auto prepare(char* cs) {
-        return cs;
-    }
-};
-
-template<std::size_t n>
-struct raise_format<const char[n]> {
-    using fmt = cs::char_sequence<'s'>;
-
-    static auto prepare(const char* cs) {
-        return cs;
-    }
-};
-
-template<>
-struct raise_format<std::string> {
-    using fmt = cs::char_sequence<'s'>;
-
-    static auto prepare(const std::string& cs) {
-        return cs.c_str();
-    }
-};
-
-template<>
-struct raise_format<void*> {
-    using fmt = cs::char_sequence<'p'>;
-
-    static auto prepare(void* p) {
-        return p;
+struct raise_format<bool> {
+    static std::ostream& f(std::ostream& out, bool value) {
+        if (value) {
+            return out << "true";
+        }
+        return out << "false";
     }
 };
 
 template<>
 struct raise_format<PyObject*> {
-    using fmt = cs::char_sequence<'S'>;
-
-    static auto prepare(PyObject* ob) {
-        return ob;
+    static std::ostream& f(std::ostream& out, PyObject* value) {
+        py::scoped_ref as_str(py::utils::pystr(value));
+        if (!as_str) {
+            out << "<error calling str on id=" << static_cast<void*>(value) << '>';
+        }
+        else {
+            out << py::utils::pystring_to_cstring(as_str.get());
+        }
+        return out;
     }
 };
 
 template<>
 struct raise_format<PyTypeObject*> {
-    using fmt = cs::char_sequence<'R'>;
+    static std::ostream& f(std::ostream& out, PyTypeObject* value) {
+        return raise_format<PyObject*>::f(out, reinterpret_cast<PyObject*>(value));
+    }
+};
 
-    static auto prepare(PyTypeObject* ob) {
-        return ob;
+template<typename T>
+struct raise_format<py::scoped_ref<T>> {
+    static std::ostream& f(std::ostream& out, const py::scoped_ref<T>& value) {
+        return raise_format<PyObject*>::f(out, static_cast<PyObject*>(value));
     }
 };
 }  // namespace dispatch
@@ -147,17 +90,6 @@ struct raise_buffer {
 private:
     PyObject* m_exc;
     std::tuple<Ts...> m_elements;
-
-    /** Prepare the elements to be passed as the variadic arguments to
-        `PyErr_Format`.
-
-        @param elements The elements to prepare.
-     */
-    static auto prepare(Ts&&... elements) {
-        return std::make_tuple(
-            dispatch::raise_format<std::remove_reference_t<Ts>>::prepare(
-                std::forward<Ts>(elements))...);
-    }
 
 protected:
     friend raise_buffer<> py::raise(PyObject*);
@@ -223,17 +155,15 @@ public:
      */
     ~raise_buffer() {
         if (m_exc) {
-            auto fmt = cs::to_array(cs::join(
-                cs::char_sequence<'%'>{},
-                // Prepend the sequence with an empty string to get a %
-                // before all of the formatters. If `Ts` is empty this
-                // will become `join('%', '')` which is still empty.
-                cs::char_sequence<>{},
-                typename dispatch::raise_format<std::remove_reference_t<Ts>>::fmt{}...));
-
-            std::apply(PyErr_Format,
-                       std::tuple_cat(std::make_tuple(m_exc, fmt.data()),
-                                      std::apply(prepare, std::move(m_elements))));
+            std::stringstream msg;
+            std::apply(
+                [&](auto&&... elements) {
+                    (dispatch::raise_format<
+                         py::meta::remove_cvref<decltype(elements)>>::f(msg, elements),
+                     ...);
+                },
+                std::move(m_elements));
+            PyErr_SetString(m_exc, msg.str().c_str());
         }
     }
 

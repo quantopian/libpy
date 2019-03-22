@@ -4,8 +4,6 @@
 
 #include <Python.h>
 
-#include "libpy/exception.h"
-
 namespace py {
 /** An RAII wrapper for ensuring an object is cleaned up in a given scope.
  */
@@ -120,15 +118,4 @@ public:
         return m_ref != other.get();
     }
 };
-
-namespace dispatch {
-template<typename T>
-struct raise_format<scoped_ref<T>> {
-    using fmt = cs::char_sequence<'R'>;
-
-    static auto prepare(const scoped_ref<T>& ob) {
-        return ob.get();
-    }
-};
-}  // namespace dispatch
 }  // namespace py

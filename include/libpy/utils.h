@@ -2,6 +2,8 @@
 
 #include <Python.h>
 
+#include "libpy/scoped_ref.h"
+
 /** Miscellaneous utilities.
  */
 namespace py::utils {
@@ -21,6 +23,16 @@ inline const char* pystring_to_cstring(PyObject* ob) {
     return PyString_AsString(ob);
 #else
     return PyUnicode_AsUTF8(ob);
+#endif
+}
+
+/** Call `PyObject_ASCII` in Python 3, and `PyObject_Str` in Python 2.
+ */
+inline py::scoped_ref<> pystr(PyObject* ob) {
+#if PY_MAJOR_VERSION == 2
+    return py::scoped_ref(PyObject_Str(ob));
+#else
+    return py::scoped_ref(PyObject_ASCII(ob));
 #endif
 }
 

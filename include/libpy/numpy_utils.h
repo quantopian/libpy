@@ -302,10 +302,8 @@ scoped_ref<PyArray_Descr> new_dtype() {
 namespace dispatch {
 template<>
 struct raise_format<PyArray_Descr*> {
-    using fmt = cs::char_sequence<'R'>;
-
-    static auto prepare(PyArray_Descr* ob) {
-        return reinterpret_cast<PyObject*>(ob);
+    static std::ostream& f(std::ostream& out, PyArray_Descr* value) {
+        return raise_format<PyObject*>::f(out, reinterpret_cast<PyObject*>(value));
     }
 };
 
