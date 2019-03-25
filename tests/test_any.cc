@@ -60,6 +60,14 @@ TEST(any_ref, test_cast) {
     // simple struct that has the same storage as an int, but a different type
     struct S {
         int a;
+
+        bool operator==(const S& other) const {
+            return a == other.a;
+        }
+
+        bool operator!=(const S& other) const {
+            return !(*this == other);
+        }
     };
 
     EXPECT_THROW(ref.cast<float>(), std::bad_any_cast);
@@ -109,6 +117,14 @@ TEST(any_cref, test_cast) {
     // simple struct that has the same storage as an int, but a different type
     struct S {
         int a;
+
+        bool operator==(const S& other) const {
+            return a == other.a;
+        }
+
+        bool operator!=(const S& other) const {
+            return !(*this == other);
+        }
     };
 
     EXPECT_THROW(ref.cast<float>(), std::bad_any_cast);

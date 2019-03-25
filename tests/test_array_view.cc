@@ -232,6 +232,14 @@ TEST(any_ref_array_view, test_cast) {
     // simple struct that has the same storage as an int, but a different type
     struct S {
         int a;
+
+        bool operator==(const S& other) const {
+            return a == other.a;
+        }
+
+        bool operator!=(const S& other) const {
+            return !(*this == other);
+        }
     };
 
     EXPECT_THROW(dynamic_view.cast<float>(), std::bad_any_cast);
@@ -251,23 +259,23 @@ TEST(any_ref_array_view, test_cast) {
     }
 }
 
-TEST(any_ref_ndarray_view, negative_strides) {
+TEST(any_ref_array_view, negative_strides) {
     std::array<int, 5> arr = {1, 2, 3, 4, 5};
     py::array_view<py::any_ref> reverse_view(reinterpret_cast<char*>(&arr.back()),
                                              {5},
                                              {-static_cast<std::int64_t>(sizeof(int))},
-                                             py::any_ref_assign<int>);
+                                             py::any_ref_vtable<int>);
 
-    EXPECT_EQ(reverse_view[0].cast<int>(), arr[arr.size() - 1]);
-    EXPECT_EQ(reverse_view[1].cast<int>(), arr[arr.size() - 2]);
-    EXPECT_EQ(reverse_view[2].cast<int>(), arr[arr.size() - 3]);
-    EXPECT_EQ(reverse_view[3].cast<int>(), arr[arr.size() - 4]);
-    EXPECT_EQ(reverse_view[4].cast<int>(), arr[arr.size() - 5]);
+    EXPECT_EQ(reverse_view[0], arr[arr.size() - 1]);
+    EXPECT_EQ(reverse_view[1], arr[arr.size() - 2]);
+    EXPECT_EQ(reverse_view[2], arr[arr.size() - 3]);
+    EXPECT_EQ(reverse_view[3], arr[arr.size() - 4]);
+    EXPECT_EQ(reverse_view[4], arr[arr.size() - 5]);
 
     // check the iterator properly decrements the pointer
     std::size_t ix = 0;
     for (const auto& value : reverse_view) {
-        EXPECT_EQ(value.cast<int>(), arr[arr.size() - ix++ - 1]);
+        EXPECT_EQ(value, arr[arr.size() - ix++ - 1]);
     }
 
 }

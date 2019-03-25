@@ -8,8 +8,8 @@ namespace py {
 struct any_ref_vtable_type {
     std::size_t size;
     void (*assign)(void* lhs, const void* rhs);
-    bool (*ne)(void* lhs, void* rhs);
-    bool (*eq)(void* lhs, void* rhs);
+    bool (*ne)(const void* lhs, const void* rhs);
+    bool (*eq)(const void* lhs, const void* rhs);
     void (*default_construct)(void* dest);
     void (*copy_construct)(void* dest, const void* value);
     void (*move_construct)(void* dest, void* value);
@@ -29,11 +29,11 @@ constexpr any_ref_vtable_type any_ref_vtable_instance = {
     [](void* lhs, const void* rhs) {
         *static_cast<T*>(lhs) = *static_cast<const T*>(rhs);
     },
-    [](void* lhs, void* rhs) -> bool {
-        return *static_cast<T*>(lhs) != *static_cast<const T*>(rhs);
+    [](const void* lhs, const void* rhs) -> bool {
+        return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
     },
-    [](void* lhs, void* rhs) -> bool {
-        return *static_cast<T*>(lhs) == *static_cast<const T*>(rhs);
+    [](const void* lhs, const void* rhs) -> bool {
+        return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
     },
     [](void* dest) {
         new(dest) T();
@@ -79,7 +79,7 @@ private:
     }
 
     template<typename T>
-    bool cmp(bool (*f)(void*, void*), const T& other) const {
+    bool cmp(bool (*f)(const void*, const void*), const T& other) const {
         typecheck(other);
         if constexpr (std::is_same_v<T, any_ref>) {
             return f(m_addr, other.m_addr);
@@ -198,7 +198,7 @@ private:
     }
 
     template<typename T>
-    bool cmp(bool (*f)(void*, void*), const T& other) const {
+    bool cmp(bool (*f)(const void*, const void*), const T& other) const {
         typecheck(other);
         if constexpr (std::is_same_v<T, any_cref>) {
             return f(m_addr, other.m_addr);
