@@ -1,11 +1,14 @@
 #pragma once
 
 #include <any>
+#include <typeinfo>
 
 #include "libpy/demangle.h"
 
 namespace py {
-struct any_ref_vtable_type {
+namespace detail {
+struct any_ref_vtable_impl {
+    const std::type_info& type_info;
     std::size_t size;
     void (*assign)(void* lhs, const void* rhs);
     bool (*ne)(const void* lhs, const void* rhs);
@@ -13,18 +16,13 @@ struct any_ref_vtable_type {
     void (*default_construct)(void* dest);
     void (*copy_construct)(void* dest, const void* value);
     void (*move_construct)(void* dest, void* value);
+    void (*destruct)(void* addr);
     py::util::demangled_cstring (*type_name)();
 };
 
-namespace detail {
-/** A unique function for dispatching to the `operator=` of another type.
-
-    @tparam The type to dispatch to.
-    @param lhs_addr The address of the left hand side of the assignment.
-    @param rhs_addr The address of the right hand side of the assignment.
- */
 template<typename T>
-constexpr any_ref_vtable_type any_ref_vtable_instance = {
+constexpr any_ref_vtable_impl any_ref_vtable_instance = {
+    typeid(T),
     sizeof(T),
     [](void* lhs, const void* rhs) {
         *static_cast<T*>(lhs) = *static_cast<const T*>(rhs);
@@ -44,14 +42,81 @@ constexpr any_ref_vtable_type any_ref_vtable_instance = {
     [](void* dest, void* value) {
         new(dest) T(std::move(*static_cast<T*>(value)));
     },
+    [](void* addr) {
+        static_cast<T*>(addr)->~T();
+    },
     []() {
         return py::util::type_name<T>();
     },
 };
 }  // namespace detail
 
-template<typename T>
-constexpr const any_ref_vtable_type* any_ref_vtable = &detail::any_ref_vtable_instance<T>;
+class any_ref_vtable {
+private:
+    const detail::any_ref_vtable_impl* m_impl;
+
+protected:
+    inline constexpr any_ref_vtable(const detail::any_ref_vtable_impl* impl)
+        : m_impl(impl) {}
+
+public:
+    template<typename T>
+    static inline constexpr any_ref_vtable make() {
+        return &detail::any_ref_vtable_instance<T>;
+    }
+
+    const detail::any_ref_vtable_impl* impl() const {
+        return m_impl;
+    }
+
+    inline const std::type_info& type_info() const {
+        return m_impl->type_info;
+    }
+
+    inline std::size_t size() const {
+        return m_impl->size;
+    }
+
+    inline void assign(void* lhs, const void* rhs) const {
+        return m_impl->assign(lhs, rhs);
+    }
+
+    inline bool ne(const void* lhs, const void* rhs) const {
+        return m_impl->ne(lhs, rhs);
+    }
+
+    inline bool eq(const void* lhs, const void* rhs) {
+        return m_impl->eq(lhs, rhs);
+    }
+
+    inline void default_construct(void* dest) const {
+        return m_impl->default_construct(dest);
+    }
+
+    inline void copy_construct(void* dest, const void* value) const {
+        return m_impl->copy_construct(dest, value);
+    }
+
+    inline void move_construct(void* dest, void* value) const {
+        return m_impl->move_construct(dest, value);
+    }
+
+    inline void destruct(void* dest) const {
+        return m_impl->destruct(dest);
+    }
+
+    inline py::util::demangled_cstring type_name() const {
+        return m_impl->type_name();
+    }
+
+    inline bool operator==(const any_ref_vtable& other) const {
+        return m_impl == other.m_impl || m_impl->type_info == other.m_impl->type_info;
+    }
+
+    inline bool operator!=(const any_ref_vtable& other) const {
+        return !(*this == other);
+    }
+};
 
 /** A mutable dynamic reference to a value whose type isn't known until runtime.
 
@@ -63,11 +128,11 @@ constexpr const any_ref_vtable_type* any_ref_vtable = &detail::any_ref_vtable_in
 class any_ref {
 private:
     void* m_addr;
-    const any_ref_vtable_type* m_vtable;
+    any_ref_vtable m_vtable;
 
     template<typename T>
     void typecheck(const T&) const {
-        if (any_ref_vtable<T> != m_vtable) {
+        if (any_ref_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
     }
@@ -97,33 +162,33 @@ public:
         @param addr The address of the referent.
         @param vtable The vtable for the type of the referent.
      */
-    inline any_ref(void* addr, const any_ref_vtable_type* vtable)
+    inline any_ref(void* addr, const any_ref_vtable& vtable)
         : m_addr(addr), m_vtable(vtable) {}
 
     inline any_ref& operator=(const any_ref& rhs) {
         typecheck(rhs);
-        m_vtable->assign(m_addr, rhs.m_addr);
+        m_vtable.assign(m_addr, rhs.m_addr);
         return *this;
     }
 
     template<typename T>
     any_ref& operator=(const T& rhs) {
         typecheck(rhs);
-        m_vtable->assign(m_addr, std::addressof(rhs));
+        m_vtable.assign(m_addr, std::addressof(rhs));
         return *this;
     }
 
     template<typename T>
     bool operator!=(const T& rhs) const {
-        return cmp(m_vtable->ne, rhs);
+        return cmp(m_vtable.impl()->ne, rhs);
     }
 
     template<typename T>
     bool operator==(const T& rhs) const {
-        return cmp(m_vtable->eq, rhs);
+        return cmp(m_vtable.impl()->eq, rhs);
     }
 
-    const any_ref_vtable_type* vtable() const {
+    const any_ref_vtable& vtable() const {
         return m_vtable;
     }
 
@@ -133,7 +198,7 @@ public:
      */
     template<typename T>
     T& cast() {
-        if (any_ref_vtable<T> != m_vtable) {
+        if (any_ref_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -146,7 +211,7 @@ public:
      */
     template<typename T>
     const T& cast() const {
-        if (any_ref_vtable<T> != m_vtable) {
+        if (any_ref_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -169,7 +234,7 @@ public:
  */
 template<typename T>
 any_ref make_any_ref(T& ob) {
-    return {&ob, any_ref_vtable<T>};
+    return {&ob, any_ref_vtable::make<T>()};
 }
 
 /** A constant dynamic reference to a value whose type isn't known until runtime.
@@ -182,11 +247,11 @@ any_ref make_any_ref(T& ob) {
 class any_cref {
 private:
     const void* m_addr;
-    const any_ref_vtable_type* m_vtable;
+    any_ref_vtable m_vtable;
 
     template<typename T>
     void typecheck(const T&) const {
-        if (any_ref_vtable<T> != m_vtable) {
+        if (any_ref_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
     }
@@ -216,7 +281,7 @@ public:
         @param addr The address of the referent.
         @param vtable The vtable for the type of the referent.
      */
-    inline any_cref(const void* addr, const any_ref_vtable_type* vtable)
+    inline any_cref(const void* addr, const any_ref_vtable& vtable)
         : m_addr(addr), m_vtable(vtable) {}
 
     // movable but not assignable
@@ -227,15 +292,15 @@ public:
 
     template<typename T>
     bool operator!=(const T& rhs) const {
-        return cmp(m_vtable->ne, rhs);
+        return cmp(m_vtable.impl()->ne, rhs);
     }
 
     template<typename T>
     bool operator==(const T& rhs) const {
-        return cmp(m_vtable->eq, rhs);
+        return cmp(m_vtable.impl()->eq, rhs);
     }
 
-    const any_ref_vtable_type* vtable() const {
+    inline const any_ref_vtable& vtable() const {
         return m_vtable;
     }
 
@@ -245,7 +310,7 @@ public:
      */
     template<typename T>
     const T& cast() const {
-        if (any_ref_vtable<T> != m_vtable) {
+        if (any_ref_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -264,6 +329,6 @@ public:
  */
 template<typename T>
 any_cref make_any_cref(T& ob) {
-    return {&ob, any_ref_vtable<T>};
+    return {&ob, any_ref_vtable::make<T>()};
 }
 }  // namespace py

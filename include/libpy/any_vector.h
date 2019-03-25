@@ -6,15 +6,15 @@
 #include "libpy/any.h"
 
 namespace py {
-class any_vector {
+class any_vector final {
 private:
-    const py::any_ref_vtable_type* m_vtable;
+    py::any_ref_vtable m_vtable;
     std::vector<char> m_storage;
 
     std::ptrdiff_t pos_to_index(std::ptrdiff_t pos) const {
-        std::size_t ix;
-        if (__builtin_mul_overflow(pos, m_vtable->size, &ix)) {
-            throw std::overflow_error("pos * m_strides overflows std::size_t");
+        std::ptrdiff_t ix;
+        if (__builtin_mul_overflow(pos, m_vtable.size(), &ix)) {
+            throw std::overflow_error("pos * m_strides overflows std::ptrdiff_t");
         }
 
         return ix;
@@ -22,7 +22,7 @@ private:
 
     template<typename T>
     void typecheck(const T&) const {
-        if (&any_ref_vtable<T> != m_vtable) {
+        if (any_ref_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
     }
@@ -47,12 +47,12 @@ private:
         char* m_ptr;
         std::size_t m_ix;
         std::int64_t m_stride;
-        const any_ref_vtable_type* m_vtable;
+        any_ref_vtable m_vtable;
 
         generic_iterator(char* buffer,
                          std::size_t ix,
                          std::int64_t stride,
-                         const any_ref_vtable_type* vtable)
+                         any_ref_vtable vtable)
             : m_ptr(buffer), m_ix(ix), m_stride(stride), m_vtable(vtable) {}
 
     public:
@@ -153,26 +153,35 @@ private:
 
 public:
     any_vector() = delete;
-    inline any_vector(const any_ref_vtable_type* vtable) : m_vtable(vtable) {}
-    inline any_vector(const any_ref_vtable_type* vtable, std::size_t size)
-        : m_vtable(vtable), m_storage(size * vtable->size) {
+    inline any_vector(const any_ref_vtable& vtable) : m_vtable(vtable) {}
+    inline any_vector(const any_ref_vtable& vtable, std::size_t size)
+        : m_vtable(vtable), m_storage(size * vtable.size()) {
         for (std::size_t pos = 0; pos < this->size(); ++pos) {
-            vtable->default_construct(&m_storage[pos_to_index(pos)]);
+            vtable.default_construct(&m_storage[pos_to_index(pos)]);
         }
     }
 
     template<typename T>
-    inline any_vector(const any_ref_vtable_type* vtable, std::size_t size, const T& value)
-        : m_vtable(vtable), m_storage(size * vtable->size) {
+    inline any_vector(const any_ref_vtable& vtable, std::size_t size, const T& value)
+        : m_vtable(vtable), m_storage(size * vtable.size()) {
         typecheck(value);
         for (std::size_t pos = 0; pos < this->size(); ++pos) {
             auto addr = &m_storage[pos_to_index(pos)];
             if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-                m_vtable->copy_construct(addr, value.addr());
+                m_vtable.copy_construct(addr, value.addr());
             }
             else {
-                m_vtable->copy_construct(addr, std::addressof(value));
+                m_vtable.copy_construct(addr, std::addressof(value));
             }
+        }
+    }
+
+    inline ~any_vector() {
+        std::size_t itemsize = m_vtable.size();
+        char* data = m_storage.data();
+        for (std::ptrdiff_t ix = 0; ix < static_cast<std::ptrdiff_t>(size()); ++ix) {
+            m_vtable.destruct(data);
+            data += itemsize;
         }
     }
 
@@ -184,29 +193,29 @@ public:
     using const_reverse_iterator = const_iterator;
 
     inline iterator begin() {
-        return {m_storage.data(), 0, static_cast<std::int64_t>(m_vtable->size), m_vtable};
+        return {m_storage.data(), 0, static_cast<std::int64_t>(m_vtable.size()), m_vtable};
     }
 
     inline const_iterator begin() const {
         return {const_cast<char*>(m_storage.data()),
                 0,
-                static_cast<std::int64_t>(m_vtable->size),
+                static_cast<std::int64_t>(m_vtable.size()),
                 m_vtable};
     }
 
     inline iterator end() {
-        return {m_storage.data(), size(), static_cast<std::int64_t>(m_vtable->size), m_vtable};
+        return {m_storage.data(), size(), static_cast<std::int64_t>(m_vtable.size()), m_vtable};
     }
 
     inline const_iterator end() const {
         return {const_cast<char*>(m_storage.data()),
                 size(),
-                static_cast<std::int64_t>(m_vtable->size),
+                static_cast<std::int64_t>(m_vtable.size()),
                 m_vtable};
     }
 
     inline std::size_t size() const {
-        return m_storage.size() / m_vtable->size;
+        return m_storage.size() / m_vtable.size();
     }
 
     inline reference operator[](std::ptrdiff_t pos) {
@@ -214,7 +223,7 @@ public:
     }
 
     inline reference at(std::ptrdiff_t pos) {
-        if (pos < 0 || static_cast<size_t>(pos) >= m_storage.size() / m_vtable->size) {
+        if (pos < 0 || static_cast<size_t>(pos) >= m_storage.size() / m_vtable.size()) {
             throw std::out_of_range("pos out of bounds");
         }
 
@@ -257,12 +266,12 @@ public:
     void push_back(const T& value) {
         typecheck(value);
         void* addr = &m_storage.back();
-        m_storage.insert(m_storage.end(), m_vtable->size, ' ');
+        m_storage.insert(m_storage.end(), m_vtable.size(), ' ');
         if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-            m_vtable->copy_construct(addr, value.addr());
+            m_vtable.copy_construct(addr, value.addr());
         }
         else {
-            m_vtable->copy_construct(addr, std::addressof(value));
+            m_vtable.copy_construct(addr, std::addressof(value));
         }
     }
 
@@ -270,17 +279,17 @@ public:
     void push_back(T&& value) {
         typecheck(value);
         void* addr = &m_storage.back();
-        m_storage.insert(m_storage.end(), m_vtable->size, ' ');
+        m_storage.insert(m_storage.end(), m_vtable.size(), ' ');
         if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-            m_vtable->move_construct(addr, value.addr());
+            m_vtable.move_construct(addr, value.addr());
         }
         else {
-            m_vtable->move_construct(addr, std::addressof(value));
+            m_vtable.move_construct(addr, std::addressof(value));
         }
     }
 
     inline void pop_back() {
-        for (std::size_t b = 0; b < m_vtable->size; ++b) {
+        for (std::size_t b = 0; b < m_vtable.size(); ++b) {
             m_storage.pop_back();
         }
     }
@@ -293,7 +302,7 @@ public:
         return m_storage.data();
     }
 
-    inline const any_ref_vtable_type* vtable() const {
+    inline const any_ref_vtable& vtable() const {
         return m_vtable;
     }
 };
