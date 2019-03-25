@@ -36,7 +36,7 @@ RUN mkdir -p ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
 WORKDIR /src/
 COPY . ./libpy
-COPY ./etc/Makefile.jenkins ./libpy/Makefile.local
+COPY ./etc/Makefile.buildkite ./libpy/Makefile.local
 
 # clean up by resetting DEBIAN_FRONTEND to its default value:
 ENV DEBIAN_FRONTEND newt

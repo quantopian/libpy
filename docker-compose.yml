@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  libpy:
+    image: libpy
+    build:
+      context: .
+    privileged: true
+    environment:
+      - BUILDKITE_BUILD_NUMBER
+      - BUILDKITE_PARALLEL_JOB
+      - BUILDKITE_PARALLEL_JOB_COUNT

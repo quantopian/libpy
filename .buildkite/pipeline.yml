@@ -1,0 +1,79 @@
+steps:
+  # Build the libpy container
+  - label: ":docker: docker build"
+    plugins:
+      - docker-compose#v2.6.0:
+          build:
+            - libpy
+          image-repository: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy
+          # n.b. - only the first cache found is used
+          cache-from:
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:ci-cache
+
+  - wait:
+
+  # Push image for caching.
+  - label: ":docker: docker push latest"
+    plugins:
+      - docker-compose#v3.0.0:
+          push:
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
+
+  # Run libpy tests for Python 2.
+  - label: ":python: tox py2 (release)"
+    command:
+      - cd /src/libpy
+      - tox -e py27-release
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  # Run libpy tests for Python 2, with address sanitizer.
+  - label: ":python: tox py2 (asan)"
+    command:
+      - cd /src/libpy
+      - tox -e py27-sanitize
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  # Run libpy tests for Python 3.
+  - label: ":python: tox py3 (release)"
+    command:
+      - cd /src/libpy
+      - tox -e py36-release
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  # Run libpy tests for Python 3.
+  - label: ":python: tox py3 (asan)"
+    command:
+      - cd /src/libpy
+      - tox -e py36-sanitize
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  - wait:
+
+  # Push CI cache image for use in future builds. We don't use
+  # "staging-deployed" for this like we do with most builds because libpy is
+  # never deployed standalone.
+  - label: ":docker: docker push ci-cache"
+    plugins:
+      - docker-compose#v3.0.0:
+          push:
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:ci-cache
+    branches: "master"
+    concurrency: 1
+    concurrency_group: "libpy/ecr-push"
