@@ -5,6 +5,7 @@ services:
     image: libpy
     build:
       context: .
+    privileged: true
     environment:
       - BUILDKITE_BUILD_NUMBER
       - BUILDKITE_PARALLEL_JOB
