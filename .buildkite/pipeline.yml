@@ -24,7 +24,18 @@ steps:
   - label: ":python: tox py2"
     command:
       - cd /src/libpy
-      - tox -e py27
+      - tox -e py27-nosanitize
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  # Run libpy tests for Python 2, with address sanitizer.
+  - label: ":python: tox py2 w/ address sanitizer"
+    command:
+      - cd /src/libpy
+      - tox -e py27-sanitize
     timeout_in_minutes: 10
     plugins:
       docker-compose#v3.0.0:
@@ -32,10 +43,21 @@ steps:
         shell: ["/bin/bash", "-c"]
 
   # Run libpy tests for Python 3.
-  - label: ":python: tox py2"
+  - label: ":python: tox py3"
     command:
       - cd /src/libpy
-      - tox -e py36
+      - tox -e py36-nosanitize
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  # Run libpy tests for Python 3.
+  - label: ":python: tox py3 w/ address sanitizer"
+    command:
+      - cd /src/libpy
+      - tox -e py36-sanitize
     timeout_in_minutes: 10
     plugins:
       docker-compose#v3.0.0:
