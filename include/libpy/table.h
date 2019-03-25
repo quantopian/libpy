@@ -339,6 +339,10 @@ public:
         return *this;
     }
 
+    operator std::tuple<column_type<detail::remove_const_column<columns>>...>() const {
+        return std::apply([](auto... data) { return std::make_tuple(*data...); }, m_data);
+    }
+
     /** Copy a view into an owning row.
      */
     row<detail::remove_const_column<columns>...> copy() const {
@@ -507,9 +511,11 @@ private:
             : m_columns(cs), m_ix(ix) {}
 
     public:
-        using difference_type = std::size_t;
+        using difference_type = std::int64_t;
         using value_type = row_view<inner_columns...>;
         using const_value_type = row_view<detail::const_column<inner_columns>...>;
+        using reference = const_value_type;
+        using pointer = value_type*;
         using iterator_category = std::random_access_iterator_tag;
 
         value_type operator*() {
