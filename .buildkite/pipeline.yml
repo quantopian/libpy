@@ -9,7 +9,7 @@ steps:
           # n.b. - only the first cache found is used
           cache-from:
             - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
-            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:staging-deployed
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:ci-cache
 
   - wait:
 
@@ -20,11 +20,22 @@ steps:
           push:
             - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
 
-  # Run libpy tests.
-  - label: ":python: tox"
+  # Run libpy tests for Python 2.
+  - label: ":python: tox py2"
     command:
       - cd /src/libpy
-      - tox
+      - tox -e py27
+    timeout_in_minutes: 10
+    plugins:
+      docker-compose#v3.0.0:
+        run: libpy
+        shell: ["/bin/bash", "-c"]
+
+  # Run libpy tests for Python 3.
+  - label: ":python: tox py2"
+    command:
+      - cd /src/libpy
+      - tox -e py36
     timeout_in_minutes: 10
     plugins:
       docker-compose#v3.0.0:
@@ -33,12 +44,14 @@ steps:
 
   - wait:
 
-  # Deploy staging container.
-  - label: ":docker: docker push staging-deployed"
+  # Push CI cache image for use in future builds. We don't use
+  # "staging-deployed" for this like we do with most builds because libpy is
+  # never deployed standalone.
+  - label: ":docker: docker push ci-cache"
     plugins:
       - docker-compose#v3.0.0:
           push:
-            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:staging-deployed
+            - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:ci-cache
     branches: "master"
     concurrency: 1
     concurrency_group: "libpy/ecr-push"
