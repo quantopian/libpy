@@ -535,16 +535,16 @@ protected:
     char* m_buffer;
     any_ref_assign_func m_assign;
 
-    std::size_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
-        std::size_t ix = 0;
+    std::ptrdiff_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
+        std::ptrdiff_t ix = 0;
 
         for (std::size_t n = 0; n < ndim; ++n) {
-            std::size_t along_axis;
+            std::ptrdiff_t along_axis;
             if (__builtin_mul_overflow(pos[n], m_strides[n], &along_axis)) {
-                throw std::overflow_error("pos * m_strides overflows std::size_t");
+                throw std::overflow_error("pos * m_strides overflows std::ptrdiff_t");
             }
             if (__builtin_add_overflow(ix, along_axis, &ix)) {
-                throw std::overflow_error("ix + along_axis overflows std::size_t");
+                throw std::overflow_error("ix + along_axis overflows std::ptrdiff_t");
             }
         }
 
