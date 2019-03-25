@@ -21,10 +21,10 @@ steps:
             - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:${BUILDKITE_BRANCH}
 
   # Run libpy tests for Python 2.
-  - label: ":python: tox py2"
+  - label: ":python: tox py2 (release)"
     command:
       - cd /src/libpy
-      - tox -e py27-nosanitize
+      - tox -e py27-release
     timeout_in_minutes: 10
     plugins:
       docker-compose#v3.0.0:
@@ -32,7 +32,7 @@ steps:
         shell: ["/bin/bash", "-c"]
 
   # Run libpy tests for Python 2, with address sanitizer.
-  - label: ":python: tox py2 w/ address sanitizer"
+  - label: ":python: tox py2 (asan)"
     command:
       - cd /src/libpy
       - tox -e py27-sanitize
@@ -43,10 +43,10 @@ steps:
         shell: ["/bin/bash", "-c"]
 
   # Run libpy tests for Python 3.
-  - label: ":python: tox py3"
+  - label: ":python: tox py3 (release)"
     command:
       - cd /src/libpy
-      - tox -e py36-nosanitize
+      - tox -e py36-release
     timeout_in_minutes: 10
     plugins:
       docker-compose#v3.0.0:
@@ -54,7 +54,7 @@ steps:
         shell: ["/bin/bash", "-c"]
 
   # Run libpy tests for Python 3.
-  - label: ":python: tox py3 w/ address sanitizer"
+  - label: ":python: tox py3 (asan)"
     command:
       - cd /src/libpy
       - tox -e py36-sanitize
