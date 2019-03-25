@@ -141,6 +141,26 @@ TYPED_TEST_P(array_view, virtual_array) {
     EXPECT_EQ(iterations, size);
 }
 
+TYPED_TEST_P(array_view, negative_strides) {
+    std::array<TypeParam, 5> arr = {1, 2, 3, 4, 5};
+    py::array_view<TypeParam> reverse_view(reinterpret_cast<char*>(&arr.back()),
+                                           {5},
+                                           {-static_cast<std::int64_t>(
+                                               sizeof(TypeParam))});
+
+    EXPECT_EQ(reverse_view[0], arr[arr.size() - 1]);
+    EXPECT_EQ(reverse_view[1], arr[arr.size() - 2]);
+    EXPECT_EQ(reverse_view[2], arr[arr.size() - 3]);
+    EXPECT_EQ(reverse_view[3], arr[arr.size() - 4]);
+    EXPECT_EQ(reverse_view[4], arr[arr.size() - 5]);
+
+    // check the iterator properly decrements the pointer
+    std::size_t ix = 0;
+    for (const auto& value : reverse_view) {
+        EXPECT_EQ(value, arr[arr.size() - ix++ - 1]);
+    }
+}
+
 REGISTER_TYPED_TEST_CASE_P(array_view,
                            from_std_array,
                            from_std_vector,
@@ -148,7 +168,8 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
                            reverse_iterator,
                            _2d_indexing,
                            front_back,
-                           virtual_array);
+                           virtual_array,
+                           negative_strides);
 
 using array_view_types =
     testing::Types<char, unsigned char, int, float, double, custom_object>;
