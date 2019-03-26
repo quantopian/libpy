@@ -182,6 +182,10 @@ public:
     }
 
     inline bool operator==(const any_vtable& other) const {
+        // The m_impl can be the same based on optimization/linking; however, it is not
+        // guaranteed to be the same if the type is the same. If `m_impl` is the same, we
+        // know it must point to the same type, but if not, fall back to the slower
+        // `type_info::operator=`.
         return m_impl == other.m_impl || m_impl->type_info == other.m_impl->type_info;
     }
 
