@@ -2,6 +2,7 @@
 
 #include <any>
 #include <typeinfo>
+#include <type_traits>
 
 #include "libpy/demangle.h"
 
@@ -10,6 +11,12 @@ namespace detail {
 struct any_ref_vtable_impl {
     const std::type_info& type_info;
     std::size_t size;
+    std::size_t align;
+    bool move_is_noexcept;
+    bool is_trivially_destructible;
+    bool is_trivially_default_constructible;
+    bool is_trivially_move_constructible;
+    bool is_trivially_copy_constructible;
     void (*assign)(void* lhs, const void* rhs);
     bool (*ne)(const void* lhs, const void* rhs);
     bool (*eq)(const void* lhs, const void* rhs);
@@ -24,6 +31,12 @@ template<typename T>
 constexpr any_ref_vtable_impl any_ref_vtable_instance = {
     typeid(T),
     sizeof(T),
+    alignof(T),
+    std::is_nothrow_move_constructible_v<T>,
+    std::is_trivially_destructible_v<T>,
+    std::is_trivially_default_constructible_v<T>,
+    std::is_trivially_move_constructible_v<T>,
+    std::is_trivially_copy_constructible_v<T>,
     [](void* lhs, const void* rhs) {
         *static_cast<T*>(lhs) = *static_cast<const T*>(rhs);
     },
@@ -77,6 +90,10 @@ public:
         return m_impl->size;
     }
 
+    inline std::size_t align() const {
+        return m_impl->align;
+    }
+
     inline void assign(void* lhs, const void* rhs) const {
         return m_impl->assign(lhs, rhs);
     }
@@ -103,6 +120,31 @@ public:
 
     inline void destruct(void* dest) const {
         return m_impl->destruct(dest);
+    }
+
+    inline void move_if_noexcept(void* dest, void* value) const {
+        if (m_impl->move_is_noexcept) {
+            m_impl->move_construct(dest, value);
+        }
+        else {
+            m_impl->copy_construct(dest, value);
+        }
+    }
+
+    inline bool is_trivially_default_constructible() const {
+        return m_impl->is_trivially_default_constructible;
+    }
+
+    inline bool is_trivially_destructible() const {
+        return m_impl->is_trivially_destructible;
+    }
+
+    inline bool is_trivially_move_constructible() const {
+        return m_impl->is_trivially_move_constructible;
+    }
+
+    inline bool is_trivially_copy_constructible() const {
+        return m_impl->is_trivially_copy_constructible;
     }
 
     inline py::util::demangled_cstring type_name() const {
