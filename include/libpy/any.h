@@ -8,7 +8,7 @@
 
 namespace py {
 namespace detail {
-struct any_ref_vtable_impl {
+struct any_vtable_impl {
     const std::type_info& type_info;
     std::size_t size;
     std::size_t align;
@@ -17,18 +17,25 @@ struct any_ref_vtable_impl {
     bool is_trivially_default_constructible;
     bool is_trivially_move_constructible;
     bool is_trivially_copy_constructible;
-    void (*assign)(void* lhs, const void* rhs);
-    bool (*ne)(const void* lhs, const void* rhs);
-    bool (*eq)(const void* lhs, const void* rhs);
+    bool is_trivially_copyable;
+    void (*copy_assign)(void* lhs, const void* rhs);
+    void (*move_assign)(void* lhs, void* rhs);
     void (*default_construct)(void* dest);
     void (*copy_construct)(void* dest, const void* value);
     void (*move_construct)(void* dest, void* value);
     void (*destruct)(void* addr);
+    bool (*ne)(const void* lhs, const void* rhs);
+    bool (*eq)(const void* lhs, const void* rhs);
     py::util::demangled_cstring (*type_name)();
 };
 
+/** The actual structure that holds all the function pointers. This should be accessed
+    through an `py::any_vtable`.
+
+    NOTE: Do not explicitly specialize this unless you really know what you are doing.
+ */
 template<typename T>
-constexpr any_ref_vtable_impl any_ref_vtable_instance = {
+constexpr any_vtable_impl any_vtable_instance = {
     typeid(T),
     sizeof(T),
     alignof(T),
@@ -37,14 +44,12 @@ constexpr any_ref_vtable_impl any_ref_vtable_instance = {
     std::is_trivially_default_constructible_v<T>,
     std::is_trivially_move_constructible_v<T>,
     std::is_trivially_copy_constructible_v<T>,
+    std::is_trivially_copyable_v<T>,
     [](void* lhs, const void* rhs) {
         *static_cast<T*>(lhs) = *static_cast<const T*>(rhs);
     },
-    [](const void* lhs, const void* rhs) -> bool {
-        return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
-    },
-    [](const void* lhs, const void* rhs) -> bool {
-        return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+    [](void* lhs, void* rhs) {
+        *static_cast<T*>(lhs) = std::move(*static_cast<T*>(rhs));
     },
     [](void* dest) {
         new(dest) T();
@@ -58,27 +63,40 @@ constexpr any_ref_vtable_impl any_ref_vtable_instance = {
     [](void* addr) {
         static_cast<T*>(addr)->~T();
     },
+    [](const void* lhs, const void* rhs) -> bool {
+        return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
+    },
+    [](const void* lhs, const void* rhs) -> bool {
+        return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+    },
     []() {
         return py::util::type_name<T>();
     },
 };
 }  // namespace detail
 
-class any_ref_vtable {
-private:
-    const detail::any_ref_vtable_impl* m_impl;
+/** A collection of operations and metadata about a type to implement type-erased
+    containers.
 
-protected:
-    inline constexpr any_ref_vtable(const detail::any_ref_vtable_impl* impl)
+    The constructor is private, use `py::any_vtable::make<T>()` to look up the vtable for
+    a given type.
+ */
+class any_vtable {
+private:
+    const detail::any_vtable_impl* m_impl;
+
+    inline constexpr any_vtable(const detail::any_vtable_impl* impl)
         : m_impl(impl) {}
 
 public:
     template<typename T>
-    static inline constexpr any_ref_vtable make() {
-        return &detail::any_ref_vtable_instance<T>;
+    static inline constexpr any_vtable make() {
+        return &detail::any_vtable_instance<T>;
     }
 
-    const detail::any_ref_vtable_impl* impl() const {
+    /** Get access to the underlying collection of function pointers.
+     */
+    const detail::any_vtable_impl* impl() const {
         return m_impl;
     }
 
@@ -92,43 +110,6 @@ public:
 
     inline std::size_t align() const {
         return m_impl->align;
-    }
-
-    inline void assign(void* lhs, const void* rhs) const {
-        return m_impl->assign(lhs, rhs);
-    }
-
-    inline bool ne(const void* lhs, const void* rhs) const {
-        return m_impl->ne(lhs, rhs);
-    }
-
-    inline bool eq(const void* lhs, const void* rhs) {
-        return m_impl->eq(lhs, rhs);
-    }
-
-    inline void default_construct(void* dest) const {
-        return m_impl->default_construct(dest);
-    }
-
-    inline void copy_construct(void* dest, const void* value) const {
-        return m_impl->copy_construct(dest, value);
-    }
-
-    inline void move_construct(void* dest, void* value) const {
-        return m_impl->move_construct(dest, value);
-    }
-
-    inline void destruct(void* dest) const {
-        return m_impl->destruct(dest);
-    }
-
-    inline void move_if_noexcept(void* dest, void* value) const {
-        if (m_impl->move_is_noexcept) {
-            m_impl->move_construct(dest, value);
-        }
-        else {
-            m_impl->copy_construct(dest, value);
-        }
     }
 
     inline bool is_trivially_default_constructible() const {
@@ -147,15 +128,64 @@ public:
         return m_impl->is_trivially_copy_constructible;
     }
 
+    inline bool is_trivially_copyable() const {
+        return m_impl->is_trivially_copyable;
+    }
+
+    inline void copy_assign(void* lhs, const void* rhs) const {
+        return m_impl->copy_assign(lhs, rhs);
+    }
+
+    inline void move_assign(void* lhs, void* rhs) const {
+        return m_impl->copy_assign(lhs, rhs);
+    }
+
+    inline void default_construct(void* dest) const {
+        return m_impl->default_construct(dest);
+    }
+
+    inline void copy_construct(void* dest, const void* value) const {
+        return m_impl->copy_construct(dest, value);
+    }
+
+    inline void move_construct(void* dest, void* value) const {
+        return m_impl->move_construct(dest, value);
+    }
+
+    inline void destruct(void* dest) const {
+        return m_impl->destruct(dest);
+    }
+
+    inline bool move_is_noexcept() const {
+        return m_impl->move_is_noexcept;
+    }
+
+    inline void move_if_noexcept(void* dest, void* value) const {
+        if (m_impl->move_is_noexcept) {
+            m_impl->move_construct(dest, value);
+        }
+        else {
+            m_impl->copy_construct(dest, value);
+        }
+    }
+
+    inline bool ne(const void* lhs, const void* rhs) const {
+        return m_impl->ne(lhs, rhs);
+    }
+
+    inline bool eq(const void* lhs, const void* rhs) {
+        return m_impl->eq(lhs, rhs);
+    }
+
     inline py::util::demangled_cstring type_name() const {
         return m_impl->type_name();
     }
 
-    inline bool operator==(const any_ref_vtable& other) const {
+    inline bool operator==(const any_vtable& other) const {
         return m_impl == other.m_impl || m_impl->type_info == other.m_impl->type_info;
     }
 
-    inline bool operator!=(const any_ref_vtable& other) const {
+    inline bool operator!=(const any_vtable& other) const {
         return !(*this == other);
     }
 };
@@ -170,11 +200,11 @@ public:
 class any_ref {
 private:
     void* m_addr;
-    any_ref_vtable m_vtable;
+    any_vtable m_vtable;
 
     template<typename T>
     void typecheck(const T&) const {
-        if (any_ref_vtable::make<T>() != m_vtable) {
+        if (any_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
     }
@@ -204,19 +234,19 @@ public:
         @param addr The address of the referent.
         @param vtable The vtable for the type of the referent.
      */
-    inline any_ref(void* addr, const any_ref_vtable& vtable)
+    inline any_ref(void* addr, const any_vtable& vtable)
         : m_addr(addr), m_vtable(vtable) {}
 
     inline any_ref& operator=(const any_ref& rhs) {
         typecheck(rhs);
-        m_vtable.assign(m_addr, rhs.m_addr);
+        m_vtable.copy_assign(m_addr, rhs.m_addr);
         return *this;
     }
 
     template<typename T>
     any_ref& operator=(const T& rhs) {
         typecheck(rhs);
-        m_vtable.assign(m_addr, std::addressof(rhs));
+        m_vtable.copy_assign(m_addr, std::addressof(rhs));
         return *this;
     }
 
@@ -230,7 +260,7 @@ public:
         return cmp(m_vtable.impl()->eq, rhs);
     }
 
-    const any_ref_vtable& vtable() const {
+    const any_vtable& vtable() const {
         return m_vtable;
     }
 
@@ -240,7 +270,7 @@ public:
      */
     template<typename T>
     T& cast() {
-        if (any_ref_vtable::make<T>() != m_vtable) {
+        if (any_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -253,7 +283,7 @@ public:
      */
     template<typename T>
     const T& cast() const {
-        if (any_ref_vtable::make<T>() != m_vtable) {
+        if (any_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -276,7 +306,7 @@ public:
  */
 template<typename T>
 any_ref make_any_ref(T& ob) {
-    return {&ob, any_ref_vtable::make<T>()};
+    return {&ob, any_vtable::make<T>()};
 }
 
 /** A constant dynamic reference to a value whose type isn't known until runtime.
@@ -289,11 +319,11 @@ any_ref make_any_ref(T& ob) {
 class any_cref {
 private:
     const void* m_addr;
-    any_ref_vtable m_vtable;
+    any_vtable m_vtable;
 
     template<typename T>
     void typecheck(const T&) const {
-        if (any_ref_vtable::make<T>() != m_vtable) {
+        if (any_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
     }
@@ -323,7 +353,7 @@ public:
         @param addr The address of the referent.
         @param vtable The vtable for the type of the referent.
      */
-    inline any_cref(const void* addr, const any_ref_vtable& vtable)
+    inline any_cref(const void* addr, const any_vtable& vtable)
         : m_addr(addr), m_vtable(vtable) {}
 
     // movable but not assignable
@@ -342,7 +372,7 @@ public:
         return cmp(m_vtable.impl()->eq, rhs);
     }
 
-    inline const any_ref_vtable& vtable() const {
+    inline const any_vtable& vtable() const {
         return m_vtable;
     }
 
@@ -352,7 +382,7 @@ public:
      */
     template<typename T>
     const T& cast() const {
-        if (any_ref_vtable::make<T>() != m_vtable) {
+        if (any_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -371,6 +401,6 @@ public:
  */
 template<typename T>
 any_cref make_any_cref(T& ob) {
-    return {&ob, any_ref_vtable::make<T>()};
+    return {&ob, any_vtable::make<T>()};
 }
 }  // namespace py

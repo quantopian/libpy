@@ -264,7 +264,7 @@ TEST(any_ref_array_view, negative_strides) {
     py::array_view<py::any_ref> reverse_view(reinterpret_cast<char*>(&arr.back()),
                                              {5},
                                              {-static_cast<std::int64_t>(sizeof(int))},
-                                             py::any_ref_vtable::make<int>());
+                                             py::any_vtable::make<int>());
 
     EXPECT_EQ(reverse_view[0], arr[arr.size() - 1]);
     EXPECT_EQ(reverse_view[1], arr[arr.size() - 2]);

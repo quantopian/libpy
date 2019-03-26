@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
@@ -9,18 +10,18 @@
 namespace py {
 class any_vector {
 private:
-    py::any_ref_vtable m_vtable;
+    py::any_vtable m_vtable;
     char* m_storage;
     std::size_t m_size;
     std::size_t m_capacity;
 
     inline std::ptrdiff_t pos_to_index(std::ptrdiff_t pos) const {
-        return pos * m_vtable.align();
+        return pos * m_vtable.size();
     }
 
     template<typename T>
     void typecheck(const T&) const {
-        if (any_ref_vtable::make<T>() != m_vtable) {
+        if (any_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
     }
@@ -44,9 +45,9 @@ private:
 
         ptr m_ptr;
         std::int64_t m_stride;
-        any_ref_vtable m_vtable;
+        any_vtable m_vtable;
 
-        generic_iterator(ptr buffer, std::int64_t stride, any_ref_vtable vtable)
+        generic_iterator(ptr buffer, std::int64_t stride, any_vtable vtable)
             : m_ptr(buffer), m_stride(stride), m_vtable(vtable) {}
 
     public:
@@ -138,41 +139,146 @@ private:
         }
     };
 
-    void realloc(std::size_t count) {
-        char* new_data = static_cast<char*>(
-            aligned_alloc(m_vtable.align(), m_vtable.align() * count));
-        if (!new_data) {
-            throw std::bad_alloc{};
+    template<typename F>
+    void map_old_new(F&& f, char* new_data, char* old_data) {
+        std::size_t itemsize = m_vtable.size();
+        for (std::size_t ix = 0; ix < size(); ++ix) {
+            f(new_data, old_data);
+            new_data += itemsize;
+            old_data += itemsize;
         }
+    }
+
+    /** Grow the vector in place, `count` must be greater than `capacity`.
+     */
+    inline void grow(std::size_t count) {
+        if (!count) {
+            count = 1;
+        }
+
+        char* new_data;
         char* old_data = m_storage;
 
-        if (m_vtable.is_trivially_copy_constructible() ||
-            m_vtable.is_trivially_move_constructible()) {
-            std::memcpy(new_data, old_data, m_vtable.align() * size());
-        }
-        else {
-            std::size_t itemsize = m_vtable.align();
-            for (std::size_t ix = 0; ix < size(); ++ix) {
-                m_vtable.move_if_noexcept(new_data, old_data);
-                m_vtable.destruct(old_data);
-                old_data += itemsize;
-                new_data += itemsize;
+        if (m_vtable.is_trivially_copyable()) {
+            // the data is trivially copyable, so we will attempt to grow the current
+            // allocation falling back to `std::memcpy`.
+            if (m_vtable.align() <= alignof(std::max_align_t)) {
+                new_data = static_cast<char*>(
+                    std::realloc(m_storage, m_vtable.size() * count));
+                if (!new_data) {
+                    throw std::bad_alloc{};
+                }
+            }
+            else {
+                // `std::realloc` uses `std::mallow` when it can't grow the allocation,
+                // this doesn't respect any explicit over-alignment so it is only safe for
+                // types whose `align()` is less than or equal to that of the
+                // `max_align_t`.
+                new_data = static_cast<char*>(
+                    std::aligned_alloc(m_vtable.align(), m_vtable.size() * count));
+                if (!new_data) {
+                    throw std::bad_alloc{};
+                }
+                std::memcpy(new_data, old_data, size() * m_vtable.size());
+                std::free(old_data);
             }
         }
+        else {
+            new_data = static_cast<char*>(
+                std::aligned_alloc(m_vtable.align(), m_vtable.size() * count));
+            if (!new_data) {
+                throw std::bad_alloc{};
+            }
 
-        std::free(m_storage);
+            if (m_vtable.move_is_noexcept() && m_vtable.is_trivially_destructible()) {
+                // move can't throw and the object doesn't need to be destructed: just
+                // move from the old to the new and free the old in one big chunk
+                map_old_new([&](void* new_,
+                                void* old) { m_vtable.move_construct(new_, old); },
+                            new_data,
+                            old_data);
+            }
+            else if (m_vtable.move_is_noexcept()) {
+                // move can't throw, but the object has a non trivial destructor:
+                // move from the old to the new and then destruct the old right away
+                map_old_new(
+                    [&](void* new_, void* old) {
+                        m_vtable.move_construct(new_, old);
+                        m_vtable.destruct(old);
+                    },
+                    new_data,
+                    old_data);
+            }
+            else {
+                // Move can throw so we need to copy from the old to the new.
+                // If copying throws, we need to destruct all of successfully copied
+                // objects in the new array
+
+                // track one past the last successfully copied element, if an exception
+                // occurs, we need to destruct everything up to, but not including, this
+                // object
+                char* new_end;
+                try {
+                    map_old_new(
+                        [&](char* new_, char* old) {
+                            new_end = new_;
+                            m_vtable.copy_construct(new_, old);
+                        },
+                        new_data,
+                        old_data);
+                }
+                catch (...) {
+                    // if the copying throws an exception, unwind the new vector but leave
+                    // our original storage and capacity alone
+                    for (char* p = new_data; p != new_end; p += m_vtable.size()) {
+                        m_vtable.destruct(p);
+                    }
+
+                    // free the new array and re-raise the exception without modifying our
+                    // state (`m_storage` nor `m_capacity`).
+                    std::free(new_data);
+                    throw;
+                }
+            }
+
+            std::free(old_data);
+        }
+
+        // if we make it here, we have successfully initialized `new_data` and unwound
+        // `old_data`, now we can swap our new state over to the new array
+        m_storage = new_data;
         m_capacity = count;
+    }
+
+    template<typename F, typename T>
+    void push_back(F&& construct, T&& value) {
+        typecheck(value);
+
+        if (size() == capacity()) {
+            grow(capacity() * 2);
+        }
+
+        char* addr = m_storage + pos_to_index(size());
+        if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
+            construct(addr, value.addr());
+        }
+        else {
+            construct(addr, std::addressof(value));
+        }
+
+        ++m_size;
+
     }
 
 public:
     any_vector() = delete;
-    inline any_vector(const any_ref_vtable& vtable)
+    inline any_vector(const any_vtable& vtable)
         : m_vtable(vtable), m_storage(nullptr), m_size(0), m_capacity(0) {}
 
-    inline any_vector(const any_ref_vtable& vtable, std::size_t count)
+    inline any_vector(const any_vtable& vtable, std::size_t count)
         : m_vtable(vtable),
-          m_storage(
-              static_cast<char*>(aligned_alloc(vtable.align(), vtable.align() * count))),
+          m_storage(static_cast<char*>(
+              std::aligned_alloc(vtable.align(), vtable.size() * count))),
           m_size(count),
           m_capacity(count) {
 
@@ -181,7 +287,7 @@ public:
         }
 
         if (!m_vtable.is_trivially_default_constructible()) {
-            std::size_t itemsize = m_vtable.align();
+            std::size_t itemsize = m_vtable.size();
             char* data = m_storage;
             for (std::size_t ix = 0; ix < size(); ++ix) {
                 vtable.default_construct(data);
@@ -191,10 +297,10 @@ public:
     }
 
     template<typename T>
-    inline any_vector(const any_ref_vtable& vtable, std::size_t count, const T& value)
+    inline any_vector(const any_vtable& vtable, std::size_t count, const T& value)
         : m_vtable(vtable),
           m_storage(static_cast<char*>(
-              std::aligned_alloc(vtable.align(), vtable.align() * count))),
+              std::aligned_alloc(vtable.align(), vtable.size() * count))),
           m_size(count),
           m_capacity(count) {
 
@@ -204,7 +310,7 @@ public:
 
         typecheck(value);
 
-        std::size_t itemsize = m_vtable.align();
+        std::size_t itemsize = m_vtable.size();
         char* data = m_storage;
         for (std::size_t ix = 0; ix < size(); ++ix) {
             if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
@@ -221,7 +327,7 @@ public:
         : m_vtable(cpfrom.m_vtable),
           m_storage(static_cast<char*>(
               std::aligned_alloc(cpfrom.m_vtable.align(),
-                                 cpfrom.m_vtable.align() * cpfrom.size()))),
+                                 cpfrom.m_vtable.size() * cpfrom.size()))),
           m_size(cpfrom.size()),
           m_capacity(cpfrom.size()) {
 
@@ -230,10 +336,10 @@ public:
         }
 
         if (!m_vtable.is_trivially_copy_constructible()) {
-            std::memcpy(m_storage, cpfrom.m_storage, m_vtable.align() * size());
+            std::memcpy(m_storage, cpfrom.m_storage, m_vtable.size() * size());
         }
         else {
-            std::size_t itemsize = m_vtable.align();
+            std::size_t itemsize = m_vtable.size();
             char* new_data = m_storage;
             char* old_data = cpfrom.m_storage;
             for (std::size_t ix = 0; ix < size(); ++ix) {
@@ -259,7 +365,7 @@ public:
         return *this;
     }
 
-    void swap(any_vector& other) noexcept {
+    inline void swap(any_vector& other) noexcept {
         std::swap(m_vtable, other.m_vtable);
         std::swap(m_storage, other.m_storage);
         std::swap(m_size, other.m_size);
@@ -268,9 +374,7 @@ public:
 
     inline ~any_vector() {
         clear();
-        if (m_storage) {
-            std::free(m_storage);
-        }
+        std::free(m_storage);
     }
 
     using reference = any_ref;
@@ -281,21 +385,21 @@ public:
     using const_reverse_iterator = const_iterator;
 
     inline iterator begin() {
-        return {m_storage, static_cast<std::int64_t>(m_vtable.align()), m_vtable};
+        return {m_storage, static_cast<std::int64_t>(m_vtable.size()), m_vtable};
     }
 
     inline const_iterator begin() const {
-        return {m_storage, static_cast<std::int64_t>(m_vtable.align()), m_vtable};
+        return {m_storage, static_cast<std::int64_t>(m_vtable.size()), m_vtable};
     }
 
     inline iterator end() {
-        return {m_storage + size() * m_vtable.align(),
+        return {m_storage + pos_to_index(size()),
                 static_cast<std::int64_t>(m_vtable.size()),
                 m_vtable};
     }
 
     inline const_iterator end() const {
-        return {m_storage + size() * m_vtable.align(),
+        return {m_storage + pos_to_index(size()),
                 static_cast<std::int64_t>(m_vtable.size()),
                 m_vtable};
     }
@@ -350,7 +454,7 @@ public:
 
     inline void clear() {
         if (!m_vtable.is_trivially_destructible()) {
-            std::size_t itemsize = m_vtable.align();
+            std::size_t itemsize = m_vtable.size();
             char* data = m_storage;
             for (std::size_t ix = 0; ix < size(); ++ix) {
                 m_vtable.destruct(data);
@@ -362,44 +466,19 @@ public:
 
     template<typename T>
     void push_back(const T& value) {
-        typecheck(value);
-
-        if (size() == capacity()) {
-            realloc(capacity() * 2);
-        }
-
-        char* addr = m_storage + size();
-        if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-            m_vtable.copy_construct(addr, value.addr());
-        }
-        else {
-            m_vtable.copy_construct(addr, std::addressof(value));
-        }
-
-        ++m_size;
+        push_back([&](void* new_,
+                      const void* old) { m_vtable.copy_construct(new_, old); },
+                  value);
     }
 
     template<typename T>
     void push_back(T&& value) {
-        typecheck(value);
-
-        if (size() == capacity()) {
-            realloc(capacity() * 2);
-        }
-
-        char* addr = m_storage + size();
-        if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-            m_vtable.move_construct(addr, value.addr());
-        }
-        else {
-            m_vtable.move_construct(addr, std::addressof(value));
-        }
-
-        ++m_size;
+        push_back([&](void* new_, void* old) { m_vtable.move_construct(new_, old); },
+                  std::move(value));
     }
 
     inline void pop_back() {
-        m_vtable.destruct(m_storage + size() - 1);
+        m_vtable.destruct(m_storage + pos_to_index(size() - 1));
         --m_size;
     }
 
@@ -411,7 +490,7 @@ public:
         return m_storage;
     }
 
-    inline const any_ref_vtable& vtable() const {
+    inline const any_vtable& vtable() const {
         return m_vtable;
     }
 };

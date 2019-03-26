@@ -79,6 +79,7 @@ GTEST_HEADERS := $(wildcard $(GTEST_DIR)/include/gtest/*.h) \
 	$(wildcard $(GTEST_DIR)/include/gtest/internal/*.h)
 GTEST_SRCS := $(wildcard $(GTEST_DIR)/src/*.cc) \
 	$(wildcard $(GTEST_DIR)/src/*.h) $(GTEST_HEADERS)
+GTEST_FILTER ?= '*'
 
 TEST_SOURCES := $(wildcard tests/*.cc)
 TEST_DFILES := $(TEST_SOURCES:.cc=.d)
@@ -131,7 +132,7 @@ test: $(TESTRUNNER)
 	@GTEST_OUTPUT=$(GTEST_OUTPUT) \
 		LD_LIBRARY_PATH=. \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
-		$<
+		$< --gtest_filter=$(GTEST_FILTER)
 
 .PHONY: gdbtest
 gdbtest: $(TESTRUNNER)

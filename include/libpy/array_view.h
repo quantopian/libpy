@@ -534,7 +534,7 @@ protected:
     std::array<std::size_t, ndim> m_shape;
     std::array<std::int64_t, ndim> m_strides;
     char* m_buffer;
-    any_ref_vtable m_vtable;
+    any_vtable m_vtable;
 
     std::ptrdiff_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
         std::ptrdiff_t ix = 0;
@@ -584,7 +584,7 @@ public:
         : m_shape({0}),
           m_strides({0}),
           m_buffer(nullptr),
-          m_vtable(py::any_ref_vtable::make<char>()) {}
+          m_vtable(py::any_vtable::make<char>()) {}
 
     /** Take a view over `buffer`.
 
@@ -595,7 +595,7 @@ public:
     any_ref_ndarray_view(char* buffer,
                          const std::array<std::size_t, ndim> shape,
                          const std::array<std::int64_t, ndim>& strides,
-                         const any_ref_vtable& vtable)
+                         const any_vtable& vtable)
         : m_shape(shape), m_strides(strides), m_buffer(buffer), m_vtable(vtable) {}
 
     /** Access the element at the given index with bounds checking.
@@ -682,7 +682,7 @@ public:
      */
     template<typename U>
     ndarray_view<U, ndim, higher_dimensional> cast() {
-        if (any_ref_vtable::make<U>() != m_vtable) {
+        if (any_vtable::make<U>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -693,7 +693,7 @@ public:
      */
     template<typename U>
     ndarray_view<const U, ndim, higher_dimensional> cast() const {
-        if (any_ref_vtable::make<U>() != m_vtable) {
+        if (any_vtable::make<U>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -722,7 +722,7 @@ public:
                m_strides == other.m_strides && m_vtable == other.m_vtable;
     }
 
-    any_ref_vtable vtable() const {
+    any_vtable vtable() const {
         return m_vtable;
     }
 };
@@ -743,7 +743,7 @@ private:
         char* m_ptr;
         std::size_t m_ix;
         std::int64_t m_stride;
-        any_ref_vtable m_vtable;
+        any_vtable m_vtable;
 
     protected:
         friend any_ref_ndarray_view;
@@ -751,7 +751,7 @@ private:
         generic_iterator(char* buffer,
                          std::size_t ix,
                          std::int64_t stride,
-                         const any_ref_vtable& vtable)
+                         const any_vtable& vtable)
             : m_ptr(buffer), m_ix(ix), m_stride(stride), m_vtable(vtable) {}
 
     public:
@@ -875,7 +875,7 @@ public:
         : generic_ndarray_impl(reinterpret_cast<char*>(contiguous_container.data()),
                                {contiguous_container.size()},
                                {sizeof(U)},
-                               any_ref_vtable::make<U>()) {}
+                               any_vtable::make<U>()) {}
 
     /** Create a view over an any_vector.
 
@@ -899,7 +899,7 @@ public:
         return {reinterpret_cast<char*>(std::addressof(value)),
                 shape,
                 {0},
-                any_ref_vtable::make<U>()};
+                any_vtable::make<U>()};
     }
 
     /** Create a virtual array of length ``size`` holding the scalar ``value``.
@@ -913,7 +913,7 @@ public:
         return {reinterpret_cast<char*>(std::addressof(value)),
                 {size},
                 {0},
-                any_ref_vtable::make<U>()};
+                any_vtable::make<U>()};
     }
 
     iterator begin() {
@@ -1033,7 +1033,7 @@ public:
      */
     template<typename U>
     ndarray_view<U, 1, false> cast() {
-        if (any_ref_vtable::make<U>() != this->m_vtable) {
+        if (any_vtable::make<U>() != this->m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -1044,7 +1044,7 @@ public:
      */
     template<typename U>
     ndarray_view<const U, 1, false> cast() const {
-        if (any_ref_vtable::make<U>() != this->m_vtable) {
+        if (any_vtable::make<U>() != this->m_vtable) {
             throw std::bad_any_cast{};
         }
 
