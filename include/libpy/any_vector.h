@@ -239,6 +239,15 @@ private:
                     std::free(new_data);
                     throw;
                 }
+
+                // now that we have successfully copied everything to the `new_data`, we
+                // can go through and destruct the elements of `old_data`
+                char* p = old_data;
+                std::size_t itemsize = m_vtable.size();
+                for (std::size_t ix = 0; ix < size(); ++ix) {
+                    m_vtable.destruct(p);
+                    p += itemsize;
+                }
             }
 
             std::free(old_data);
