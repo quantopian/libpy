@@ -281,10 +281,8 @@ private:
 
 public:
     any_vector() = delete;
-    inline any_vector(const any_vtable& vtable)
-        : m_vtable(vtable), m_storage(nullptr), m_size(0), m_capacity(0) {}
 
-    inline any_vector(const any_vtable& vtable, std::size_t count)
+    inline any_vector(const any_vtable& vtable, std::size_t count = 0)
         : m_vtable(vtable),
           m_storage(static_cast<char*>(
               std::aligned_alloc(vtable.align(), vtable.size() * count))),
@@ -296,11 +294,22 @@ public:
         }
 
         if (!m_vtable.is_trivially_default_constructible()) {
-            std::size_t itemsize = m_vtable.size();
             char* data = m_storage;
-            for (std::size_t ix = 0; ix < size(); ++ix) {
-                vtable.default_construct(data);
-                data += itemsize;
+            std::size_t itemsize = m_vtable.size();
+            try {
+                for (std::size_t ix = 0; ix < count; ++ix) {
+                    vtable.default_construct(data);
+                    data += itemsize;
+                }
+            }
+            catch (...) {
+                // if an exception occurs default constructing the vector, be sure to
+                // unwind the partially initialized state
+                for (char* p = m_storage; p < data; p += itemsize) {
+                    vtable.destruct(p);
+                }
+                std::free(m_storage);
+                throw;
             }
         }
     }
@@ -321,14 +330,25 @@ public:
 
         std::size_t itemsize = m_vtable.size();
         char* data = m_storage;
-        for (std::size_t ix = 0; ix < size(); ++ix) {
-            if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-                m_vtable.copy_construct(data, value.addr());
+        try {
+            for (std::size_t ix = 0; ix < count; ++ix) {
+                if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
+                        m_vtable.copy_construct(data, value.addr());
+                    }
+                else {
+                    m_vtable.copy_construct(data, std::addressof(value));
+                }
+                data += itemsize;
             }
-            else {
-                m_vtable.copy_construct(data, std::addressof(value));
+        }
+        catch (...) {
+            // if an exception occurs default constructing the vector, be sure to
+            // unwind the partially initialized state
+            for (char* p = m_storage; p < data; p += itemsize) {
+                vtable.destruct(p);
             }
-            data += itemsize;
+            std::free(m_storage);
+            throw;
         }
     }
 

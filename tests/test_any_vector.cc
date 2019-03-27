@@ -7,6 +7,138 @@
 #include <libpy/any_vector.h>
 
 namespace test_any_vector {
+TEST(any_vector, construct_from_vtable) {
+    auto f = [](const py::any_vtable& vtable) {
+        py::any_vector vec(vtable);
+
+        ASSERT_EQ(vec.size(), 0ul);
+        ASSERT_EQ(vec.capacity(), 0ul);
+        ASSERT_EQ(vec.vtable(), vtable);
+    };
+
+    struct S {
+        int data;
+
+        bool operator==(S other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(S other) const {
+            return data != other.data;
+        }
+    };
+
+    f(py::any_vtable::make<int>());
+    f(py::any_vtable::make<float>());
+    f(py::any_vtable::make<S>());
+}
+
+TEST(any_vector, trivially_default_construct_elements) {
+    auto f = [](const py::any_vtable& vtable, std::size_t count) {
+        py::any_vector vec(vtable, count);
+
+        ASSERT_EQ(vec.size(), count);
+        ASSERT_GE(vec.capacity(), count);
+        ASSERT_EQ(vec.vtable(), vtable);
+
+        // don't check the values because it's unitialized
+    };
+
+    struct S {
+        int data;
+
+        bool operator==(S other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(S other) const {
+            return data != other.data;
+        }
+    };
+
+    // S has no explicit constructors and consists entirely of trivially default
+    // constructible elements so it is also trivially default constructible
+    ASSERT_TRUE(py::any_vtable::make<S>().is_trivially_default_constructible());
+
+    for (std::size_t count = 0; count < 256; count += 8) {
+        f(py::any_vtable::make<int>(), count);
+        f(py::any_vtable::make<float>(), count);
+        f(py::any_vtable::make<S>(), count);
+    }
+}
+
+TEST(any_vector, default_construct_elements) {
+    auto f =
+        [](const py::any_vtable& vtable, std::size_t count, const auto& expected_value) {
+            py::any_vector vec(vtable, count);
+
+            ASSERT_EQ(vec.size(), count);
+            ASSERT_GE(vec.capacity(), count);
+            ASSERT_EQ(vec.vtable(), vtable);
+
+            for (std::size_t ix = 0; ix < vec.size(); ++ix) {
+                EXPECT_EQ(vec[ix], expected_value);
+            }
+        };
+
+    struct S {
+        int data = 0;
+
+        bool operator==(S other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(S other) const {
+            return data != other.data;
+        }
+    };
+
+    for (std::size_t count = 0; count < 256; count += 8) {
+        f(py::any_vtable::make<S>(), count, S{0});
+    }
+}
+
+TEST(any_vector, copy_construct_elements) {
+    auto f =
+        [](const py::any_vtable& vtable, std::size_t count, const auto& expected_value) {
+            py::any_vector vec(vtable, count, expected_value);
+
+            ASSERT_EQ(vec.size(), count);
+            ASSERT_GE(vec.capacity(), count);
+            ASSERT_EQ(vec.vtable(), vtable);
+
+            for (std::size_t ix = 0; ix < vec.size(); ++ix) {
+                EXPECT_EQ(vec[ix], expected_value);
+            }
+        };
+
+    struct S {
+        int data = 0;
+
+        bool operator==(S other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(S other) const {
+            return data != other.data;
+        }
+    };
+
+    for (std::size_t count = 0; count < 256; count += 8) {
+        f(py::any_vtable::make<int>(), count, 0);
+        f(py::any_vtable::make<int>(), count, 1);
+        f(py::any_vtable::make<int>(), count, 3);
+
+        f(py::any_vtable::make<float>(), count, 0.0f);
+        f(py::any_vtable::make<float>(), count, 1.0f);
+        f(py::any_vtable::make<float>(), count, 3.0f);
+
+        f(py::any_vtable::make<S>(), count, S{0});
+        f(py::any_vtable::make<S>(), count, S{1});
+        f(py::any_vtable::make<S>(), count, S{3});
+    }
+}
+
 TEST(any_vector, trivial_copy_push_back) {
     struct S {
         int data = 0;
