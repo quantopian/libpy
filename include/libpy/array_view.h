@@ -12,6 +12,7 @@
 #include <type_traits>
 
 #include "libpy/any.h"
+#include "libpy/any_vector.h"
 
 namespace py {
 /** A struct to wrap an array of type T whose shape is not known until runtime.
@@ -533,7 +534,7 @@ protected:
     std::array<std::size_t, ndim> m_shape;
     std::array<std::int64_t, ndim> m_strides;
     char* m_buffer;
-    any_ref_assign_func m_assign;
+    any_vtable m_vtable;
 
     std::ptrdiff_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
         std::ptrdiff_t ix = 0;
@@ -580,7 +581,10 @@ public:
     /** Default constructor creates an empty view over nothing.
      */
     any_ref_ndarray_view()
-        : m_shape({0}), m_strides({0}), m_buffer(nullptr), m_assign(nullptr) {}
+        : m_shape({0}),
+          m_strides({0}),
+          m_buffer(nullptr),
+          m_vtable(py::any_vtable::make<char>()) {}
 
     /** Take a view over `buffer`.
 
@@ -591,8 +595,8 @@ public:
     any_ref_ndarray_view(char* buffer,
                          const std::array<std::size_t, ndim> shape,
                          const std::array<std::int64_t, ndim>& strides,
-                         any_ref_assign_func assign)
-        : m_shape(shape), m_strides(strides), m_buffer(buffer), m_assign(assign) {}
+                         const any_vtable& vtable)
+        : m_shape(shape), m_strides(strides), m_buffer(buffer), m_vtable(vtable) {}
 
     /** Access the element at the given index with bounds checking.
 
@@ -640,7 +644,7 @@ public:
     }
 
     const_reference operator()(const std::array<std::size_t, ndim>& ixs) const {
-        return {&m_buffer[pos_to_index(ixs)], m_assign};
+        return {&m_buffer[pos_to_index(ixs)], m_vtable};
     }
 
     template<typename... Ixs>
@@ -649,7 +653,7 @@ public:
     }
 
     reference operator()(const std::array<std::size_t, ndim>& ixs) {
-        return {&m_buffer[pos_to_index(ixs)], m_assign};
+        return {&m_buffer[pos_to_index(ixs)], m_vtable};
     }
 
     /** The number of elements in this array.
@@ -678,7 +682,7 @@ public:
      */
     template<typename U>
     ndarray_view<U, ndim, higher_dimensional> cast() {
-        if (&any_ref_assign<U> != m_assign) {
+        if (any_vtable::make<U>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -689,7 +693,7 @@ public:
      */
     template<typename U>
     ndarray_view<const U, ndim, higher_dimensional> cast() const {
-        if (&any_ref_assign<U> != m_assign) {
+        if (any_vtable::make<U>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -715,7 +719,11 @@ public:
      */
     bool operator==(const any_ref_ndarray_view& other) const {
         return m_buffer == other.m_buffer && m_shape == other.m_shape &&
-               m_strides == other.m_strides && m_assign == other.m_assign;
+               m_strides == other.m_strides && m_vtable == other.m_vtable;
+    }
+
+    any_vtable vtable() const {
+        return m_vtable;
     }
 };
 
@@ -735,7 +743,7 @@ private:
         char* m_ptr;
         std::size_t m_ix;
         std::int64_t m_stride;
-        any_ref_assign_func m_assign;
+        any_vtable m_vtable;
 
     protected:
         friend any_ref_ndarray_view;
@@ -743,8 +751,8 @@ private:
         generic_iterator(char* buffer,
                          std::size_t ix,
                          std::int64_t stride,
-                         any_ref_assign_func assign)
-            : m_ptr(buffer), m_ix(ix), m_stride(stride), m_assign(assign) {}
+                         const any_vtable& vtable)
+            : m_ptr(buffer), m_ix(ix), m_stride(stride), m_vtable(vtable) {}
 
     public:
         using difference_type = std::int64_t;
@@ -755,11 +763,11 @@ private:
         using iterator_category = std::random_access_iterator_tag;
 
         reference operator*() {
-            return {m_ptr, m_assign};
+            return {m_ptr, m_vtable};
         }
 
         const_reference operator*() const {
-            return {m_ptr, m_assign};
+            return {m_ptr, m_vtable};
         }
 
         reference operator[](difference_type ix) {
@@ -790,7 +798,7 @@ private:
         }
 
         generic_iterator operator+(difference_type n) const {
-            return {m_ptr + n * m_stride, m_ix + n, m_stride, m_assign};
+            return {m_ptr + n * m_stride, m_ix + n, m_stride, m_vtable};
         }
 
         generic_iterator& operator--() {
@@ -867,7 +875,17 @@ public:
         : generic_ndarray_impl(reinterpret_cast<char*>(contiguous_container.data()),
                                {contiguous_container.size()},
                                {sizeof(U)},
-                               &any_ref_assign<U>) {}
+                               any_vtable::make<U>()) {}
+
+    /** Create a view over an any_vector.
+
+        @param any_vector The `any_vector` to view.
+     */
+    any_ref_ndarray_view(py::any_vector& any_vector)
+        : generic_ndarray_impl(reinterpret_cast<char*>(any_vector.data()),
+                               {any_vector.size()},
+                               {static_cast<std::int64_t>(any_vector.vtable().size())},
+                               any_vector.vtable()) {}
 
     /** Create a virtual array of length ``size`` holding the scalar ``value``.
 
@@ -881,7 +899,7 @@ public:
         return {reinterpret_cast<char*>(std::addressof(value)),
                 shape,
                 {0},
-                &any_ref_assign<U>};
+                any_vtable::make<U>()};
     }
 
     /** Create a virtual array of length ``size`` holding the scalar ``value``.
@@ -895,76 +913,76 @@ public:
         return {reinterpret_cast<char*>(std::addressof(value)),
                 {size},
                 {0},
-                &any_ref_assign<U>};
+                any_vtable::make<U>()};
     }
 
     iterator begin() {
-        return {this->m_buffer, 0, this->m_strides[0], this->m_assign};
+        return {this->m_buffer, 0, this->m_strides[0], this->m_vtable};
     }
 
     const_iterator cbegin() {
-        return {this->m_buffer, 0, this->m_strides[0], this->m_assign};
+        return {this->m_buffer, 0, this->m_strides[0], this->m_vtable};
     }
 
     const_iterator begin() const {
-        return {this->m_buffer, 0, this->m_strides[0], this->m_assign};
+        return {this->m_buffer, 0, this->m_strides[0], this->m_vtable};
     }
 
     iterator end() {
         return {this->m_buffer + this->pos_to_index(this->m_shape),
                 this->size(),
                 this->m_strides[0],
-                this->m_assign};
+                this->m_vtable};
     }
 
     const_iterator end() const {
         return {this->m_buffer + this->pos_to_index(this->m_shape),
                 this->size(),
                 this->m_strides[0],
-                this->m_assign};
+                this->m_vtable};
     }
 
     const_iterator cend() {
         return {this->m_buffer + this->pos_to_index(this->m_shape),
                 this->size(),
                 this->m_strides[0],
-                this->m_assign};
+                this->m_vtable};
     }
 
     reverse_iterator rbegin() {
         return {this->m_buffer + this->pos_to_index({this->size() - 1}),
                 0,
                 -this->m_strides[0],
-                this->m_assign};
+                this->m_vtable};
     }
 
     const_reverse_iterator crbegin() {
         return {this->m_buffer + this->pos_to_index({this->size() - 1}),
                 0,
                 -this->m_strides[0],
-                this->m_assign};
+                this->m_vtable};
     }
 
     const_reverse_iterator rbegin() const {
         return {this->m_buffer + this->pos_to_index({this->size() - 1}),
                 0,
                 -this->m_strides[0],
-                this->m_assign};
+                this->m_vtable};
     }
 
     reverse_iterator rend() {
         auto stride = -this->m_strides[0];
-        return {this->m_buffer + stride, this->size(), stride, this->m_assign};
+        return {this->m_buffer + stride, this->size(), stride, this->m_vtable};
     }
 
     const_reverse_iterator rend() const {
         auto stride = -this->m_strides[0];
-        return {this->m_buffer + stride, this->size(), stride, this->m_assign};
+        return {this->m_buffer + stride, this->size(), stride, this->m_vtable};
     }
 
     const_reverse_iterator crend() {
         auto stride = -this->m_strides[0];
-        return {this->m_buffer + stride, this->size(), stride, this->m_assign};
+        return {this->m_buffer + stride, this->size(), stride, this->m_vtable};
     }
 
     /**  Access the element at the given index without bounds checking.
@@ -974,7 +992,7 @@ public:
                  out of bounds.
      */
     const_reference operator[](std::size_t pos) const {
-        return {&this->m_buffer[this->pos_to_index({pos})], this->m_assign};
+        return {&this->m_buffer[this->pos_to_index({pos})], this->m_vtable};
     }
 
     /**  Access the element at the given index without bounds checking.
@@ -984,30 +1002,30 @@ public:
                  out of bounds.
      */
     reference operator[](std::size_t pos) {
-        return {&this->m_buffer[this->pos_to_index({pos})], this->m_assign};
+        return {&this->m_buffer[this->pos_to_index({pos})], this->m_vtable};
     }
 
     /** Access the first element of this array. The array must be non-empty.
      */
-    const T& front() const {
+    const_reference front() const {
         return (*this)[0];
     }
 
     /** Access the first element of this array. The array must be non-empty.
      */
-    T& front() {
+    reference front() {
         return (*this)[0];
     }
 
     /** Access the last element of this array. The array must be non-empty.
      */
-    const T& back() const {
+    const_reference back() const {
         return (*this)[this->size() - 1];
     }
 
     /** Access the last element of this array. The array must be non-empty.
      */
-    T& back() {
+    reference back() {
         return (*this)[this->size() - 1];
     }
 
@@ -1015,7 +1033,7 @@ public:
      */
     template<typename U>
     ndarray_view<U, 1, false> cast() {
-        if (&any_ref_assign<U> != this->m_assign) {
+        if (any_vtable::make<U>() != this->m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -1026,7 +1044,7 @@ public:
      */
     template<typename U>
     ndarray_view<const U, 1, false> cast() const {
-        if (&any_ref_assign<U> != this->m_assign) {
+        if (any_vtable::make<U>() != this->m_vtable) {
             throw std::bad_any_cast{};
         }
 
@@ -1060,7 +1078,7 @@ public:
         return {this->m_buffer + this->pos_to_index({start}),
                 {size},
                 {stride},
-                this->m_assign};
+                this->m_vtable};
     }
 
     /** Create a view over a subsection of the viewed memory.
@@ -1077,7 +1095,7 @@ public:
         return {this->m_buffer + this->pos_to_index({start}),
                 {size},
                 {stride},
-                this->m_assign};
+                this->m_vtable};
     }
 
     /** Create a new immutable view over the same memory.
@@ -1085,7 +1103,7 @@ public:
         @return The frozen view.
      */
     ndarray_view<any_cref, 1, false> freeze() const {
-        return {this->m_buffer, this->m_shape, this->m_strides, this->m_assign};
+        return {this->m_buffer, this->m_shape, this->m_strides, this->m_vtable};
     }
 };
 
@@ -1114,7 +1132,7 @@ public:
         return {this->m_buffer + this->pos_to_index({start}),
                 {size},
                 {stride},
-                this->m_assign};
+                this->m_vtable};
     }
 
     /** Create a view over a subsection of the viewed memory.
@@ -1131,7 +1149,7 @@ public:
         return {this->m_buffer + this->pos_to_index({start}),
                 {size},
                 {stride},
-                this->m_assign};
+                this->m_vtable};
     }
 
     /** Create a new immutable view over the same memory.
@@ -1139,7 +1157,7 @@ public:
         @return The frozen view.
      */
     ndarray_view<any_cref, 1, false> freeze() const {
-        return {this->m_buffer, this->m_shape, this->m_strides, this->m_assign};
+        return {this->m_buffer, this->m_shape, this->m_strides, this->m_vtable};
     }
 };
 
@@ -1162,7 +1180,7 @@ public:
         @return The frozen view.
      */
     ndarray_view<any_cref, ndim, higher_dimensional> freeze() const {
-        return {this->m_buffer, this->m_shape, this->m_strides, this->m_assign};
+        return {this->m_buffer, this->m_shape, this->m_strides, this->m_vtable};
     }
 };
 
@@ -1183,7 +1201,7 @@ public:
         @return The frozen view.
      */
     ndarray_view<any_cref, ndim, higher_dimensional> freeze() const {
-        return {this->m_buffer, this->m_shape, this->m_strides, this->m_assign};
+        return {this->m_buffer, this->m_shape, this->m_strides, this->m_vtable};
     }
 };
 }  // namespace py

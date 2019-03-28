@@ -315,7 +315,7 @@ struct from_object<std::unordered_set<T>> {
             throw py::exception("failed to make iterator");
         }
 
-        while (scoped_ref item = PyIter_Next(it.get())) {
+        while (scoped_ref<> item{PyIter_Next(it.get())}) {
             out.emplace(py::from_object<T>(item));
         }
         if (PyErr_Occurred()) {

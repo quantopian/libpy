@@ -302,69 +302,117 @@ scoped_ref<PyArray_Descr> new_dtype() {
 namespace dispatch {
 template<>
 struct raise_format<PyArray_Descr*> {
-    using fmt = cs::char_sequence<'R'>;
-
-    static auto prepare(PyArray_Descr* ob) {
-        return reinterpret_cast<PyObject*>(ob);
+    static std::ostream& f(std::ostream& out, PyArray_Descr* value) {
+        return raise_format<PyObject*>::f(out, reinterpret_cast<PyObject*>(value));
     }
 };
 
-/** Lookup the proper any_ref_assign_func for the given numpy dtype.
+/** Lookup the proper any_vtable for the given numpy dtype.
 
     @param dtype The runtime numpy dtype.
-    @return The any_ref_assign_func that corresponds to the given dtype.
+    @return The any_vtable that corresponds to the given dtype.
  */
-inline any_ref_assign_func dtype_to_assign_func(PyArray_Descr* dtype) {
+inline any_vtable dtype_to_vtable(PyArray_Descr* dtype) {
     switch (dtype->type_num) {
     case NPY_BOOL:
-        return any_ref_assign<py_bool>;
+        return any_vtable::make<py_bool>();
     case NPY_INT8:
-        return any_ref_assign<std::int8_t>;
+        return any_vtable::make<std::int8_t>();
     case NPY_INT16:
-        return any_ref_assign<std::int16_t>;
+        return any_vtable::make<std::int16_t>();
     case NPY_INT32:
-        return any_ref_assign<std::int32_t>;
+        return any_vtable::make<std::int32_t>();
     case NPY_INT64:
-        return any_ref_assign<std::int64_t>;
+        return any_vtable::make<std::int64_t>();
     case NPY_UINT8:
-        return any_ref_assign<std::uint8_t>;
+        return any_vtable::make<std::uint8_t>();
     case NPY_UINT16:
-        return any_ref_assign<std::uint16_t>;
+        return any_vtable::make<std::uint16_t>();
     case NPY_UINT32:
-        return any_ref_assign<std::uint32_t>;
+        return any_vtable::make<std::uint32_t>();
     case NPY_UINT64:
-        return any_ref_assign<std::uint64_t>;
+        return any_vtable::make<std::uint64_t>();
     case NPY_FLOAT32:
-        return any_ref_assign<float>;
+        return any_vtable::make<float>();
     case NPY_FLOAT64:
-        return any_ref_assign<double>;
+        return any_vtable::make<double>();
     case NPY_DATETIME:
         switch (reinterpret_cast<PyArray_DatetimeDTypeMetaData*>(dtype->c_metadata)
                     ->meta.base) {
         case py_chrono_unit_to_numpy_unit<py::chrono::ns>:
-            return any_ref_assign<py::datetime64<py::chrono::ns>>;
+            return any_vtable::make<py::datetime64<py::chrono::ns>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::us>:
-            return any_ref_assign<py::datetime64<py::chrono::us>>;
+            return any_vtable::make<py::datetime64<py::chrono::us>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::ms>:
-            return any_ref_assign<py::datetime64<py::chrono::ms>>;
+            return any_vtable::make<py::datetime64<py::chrono::ms>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::s>:
-            return any_ref_assign<py::datetime64<py::chrono::s>>;
+            return any_vtable::make<py::datetime64<py::chrono::s>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::m>:
-            return any_ref_assign<py::datetime64<py::chrono::m>>;
+            return any_vtable::make<py::datetime64<py::chrono::m>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::h>:
-            return any_ref_assign<py::datetime64<py::chrono::h>>;
+            return any_vtable::make<py::datetime64<py::chrono::h>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::D>:
-            return any_ref_assign<py::datetime64<py::chrono::D>>;
+            return any_vtable::make<py::datetime64<py::chrono::D>>();
         default:
             throw exception(PyExc_TypeError, "unknown datetime unit: ", dtype);
         }
     case NPY_OBJECT:
-        return any_ref_assign<scoped_ref<>>;
+        return any_vtable::make<scoped_ref<>>();
     }
 
     throw exception(PyExc_TypeError,
                     "cannot create an any ref view over an ndarray of dtype: ",
                     reinterpret_cast<PyObject*>(dtype));
+}
+
+/** Lookup the proper dtype for the given vtable.
+
+    @param vtable The runtime vtable.
+    @return The numpy dtype that corresponds to the given vtable.
+ */
+inline scoped_ref<PyArray_Descr> vtable_to_dtype(const any_vtable& vtable) {
+    if (vtable == any_vtable::make<py_bool>())
+        return py::new_dtype<py_bool>();
+    if (vtable == any_vtable::make<std::int8_t>())
+        return py::new_dtype<std::int8_t>();
+    if (vtable == any_vtable::make<std::int16_t>())
+        return py::new_dtype<std::int16_t>();
+    if (vtable == any_vtable::make<std::int32_t>())
+        return py::new_dtype<std::int32_t>();
+    if (vtable == any_vtable::make<std::int64_t>())
+        return py::new_dtype<std::int64_t>();
+    if (vtable == any_vtable::make<std::uint8_t>())
+        return py::new_dtype<uint8_t>();
+    if (vtable == any_vtable::make<std::uint16_t>())
+        return py::new_dtype<uint16_t>();
+    if (vtable == any_vtable::make<std::uint32_t>())
+        return py::new_dtype<uint32_t>();
+    if (vtable == any_vtable::make<std::uint64_t>())
+        return py::new_dtype<uint64_t>();
+    if (vtable == any_vtable::make<float>())
+        return py::new_dtype<float>();
+    if (vtable == any_vtable::make<double>())
+        return py::new_dtype<double>();
+    if (vtable == any_vtable::make<py::datetime64<py::chrono::ns>>())
+        return py::new_dtype<py::datetime64<py::chrono::ns>>();
+    if (vtable == any_vtable::make<py::datetime64<py::chrono::us>>())
+        return py::new_dtype<py::datetime64<py::chrono::us>>();
+    if (vtable == any_vtable::make<py::datetime64<py::chrono::ms>>())
+        return py::new_dtype<py::datetime64<py::chrono::ms>>();
+    if (vtable == any_vtable::make<py::datetime64<py::chrono::s>>())
+        return py::new_dtype<py::datetime64<py::chrono::s>>();
+    if (vtable == any_vtable::make<py::datetime64<py::chrono::m>>())
+        return py::new_dtype<py::datetime64<py::chrono::m>>();
+    if (vtable == any_vtable::make<py::datetime64<py::chrono::h>>())
+        return py::new_dtype<py::datetime64<py::chrono::h>>();
+    if (vtable == any_vtable::make<py::datetime64<py::chrono::D>>())
+        return py::new_dtype<py::datetime64<py::chrono::D>>();
+    if (vtable == any_vtable::make<scoped_ref<>>())
+        return py::new_dtype<PyObject*>();
+
+    throw exception(PyExc_TypeError,
+                    "cannot create an dtype from the vtable for type: ",
+                    vtable.type_name().get());
 }
 
 template<typename T, std::size_t ndim>
@@ -393,8 +441,8 @@ struct from_object<ndarray_view<T, ndim>> {
         auto given_dtype = PyArray_DTYPE(array);
 
         if constexpr (std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) {
-            any_ref_assign_func assign = dtype_to_assign_func(given_dtype);
-            return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides, assign);
+            any_vtable vtable = dtype_to_vtable(given_dtype);
+            return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides, vtable);
         }
         else {
             // note: This is a "constexpr else", removing and unindenting this
@@ -479,23 +527,50 @@ struct to_object<datetime64<D>> {
         return PyArray_Scalar(&as_int, descr.get(), NULL);
     }
 };
+
+template<>
+struct to_object<py::any_ref> {
+    static PyObject* f(const py::any_ref& ref) {
+        auto descr = py::dispatch::vtable_to_dtype(ref.vtable());
+        if (!descr) {
+            return nullptr;
+        }
+
+        scoped_ref arr(PyArray_NewFromDescr(&PyArray_Type,
+                                            descr.get(),
+                                            0,
+                                            nullptr,
+                                            nullptr,
+                                            nullptr,
+                                            NPY_ARRAY_CARRAY,
+                                            nullptr));
+        if (!arr) {
+            return nullptr;
+        }
+
+        ref.vtable().copy_construct(PyArray_DATA(
+                                        reinterpret_cast<PyArrayObject*>(arr.get())),
+                                    ref.addr());
+        return std::move(arr).escape();
+    }
+};
 }  // namespace dispatch
 
 namespace detail {
-/** A capsule to add Python reference counting to a `std::vector`. This is
+/** A capsule to add Python reference counting to a contiguous container. This is
     used to allow Python to manage the lifetimes of vectors fed to
     `move_to_numpy_array`.
 
     For more info on ``PyCapsule`` objects, see:
     https://docs.python.org/3/c-api/capsule.html
  */
-template<typename T>
+template<typename C>
 struct capsule {
 private:
     /** The backing vector, this should not be mutated during the capsule's
         lifetime by anyone but the owning `ndarray`.
      */
-    std::vector<T> vector;
+    C container;
 
     /** Free this object with PyMem_Free after properly destructing members
      */
@@ -519,7 +594,7 @@ private:
     /** Private constructor because you should only ever create this with
         `alloc` which will box this in a `PyCapsuleObject*`.
     */
-    capsule(std::vector<T>&& vector) : vector(std::move(vector)) {}
+    capsule(C&& container) : container(std::move(container)) {}
 
 public:
     /** Allocate a new capsule object on the python heap.
@@ -529,15 +604,14 @@ public:
                 `std::tuple` of the python capsule object and the moved vector
                 it is refcounting for.
     */
-    static std::optional<std::tuple<scoped_ref<>, std::vector<T>&>>
-    alloc(std::vector<T>&& vector) {
+    static std::optional<std::tuple<scoped_ref<>, C&>> alloc(C&& container) {
         capsule* cap;
         if (!(cap = reinterpret_cast<capsule*>(PyMem_Malloc(sizeof(capsule))))) {
             return {};
         }
-        // placement move construct our vector in the memory alloced with
+        // placement move construct our container in the memory alloced with
         // PyMem_Malloc
-        new (cap) capsule(std::move(vector));
+        new (cap) capsule(std::move(container));
 
         PyObject* pycapsule = PyCapsule_New(cap, nullptr, capsule::py_capsule_dealloc);
         if (!pycapsule) {
@@ -545,35 +619,31 @@ public:
             return {};
         }
 
-        return std::make_tuple(scoped_ref(pycapsule), std::ref(cap->vector));
+        return std::make_tuple(scoped_ref(pycapsule), std::ref(cap->container));
     }
 };
 }  // namespace detail
 
-/** Convert a `py::vector<T>` into a numpy `ndarray`. This steals the underlying
+/** Convert a container into a numpy `ndarray`. This steals the underlying
     buffer from the values array.
 
-    @param values The vector to convert. On success this buffer gets moved from
+    @param values The container to convert. On success this buffer gets moved from
            and will be invalidated.
     @return An `ndarray` from the values.
  */
-template<typename T, std::size_t ndim>
-scoped_ref<> move_to_numpy_array(std::vector<T>&& values,
+template<typename C, std::size_t ndim>
+scoped_ref<> move_to_numpy_array(C&& values,
+                                 py::scoped_ref<PyArray_Descr> descr,
                                  const std::array<std::size_t, ndim>& shape,
                                  const std::array<std::int64_t, ndim>& strides) {
-    auto maybe_capsule = detail::capsule<T>::alloc(std::move(values));
+    auto maybe_capsule = detail::capsule<C>::alloc(std::move(values));
 
     if (!maybe_capsule) {
         // we failed to allocate the python capsule, reraise
         return nullptr;
     }
 
-    auto& [pycapsule, vector] = *maybe_capsule;
-
-    auto descr = new_dtype<T>();
-    if (!descr) {
-        return nullptr;
-    }
+    auto& [pycapsule, container] = *maybe_capsule;
 
     scoped_ref arr(PyArray_NewFromDescr(
         &PyArray_Type,
@@ -581,7 +651,7 @@ scoped_ref<> move_to_numpy_array(std::vector<T>&& values,
         ndim,
         const_cast<npy_intp*>(reinterpret_cast<const npy_intp*>(shape.data())),
         const_cast<npy_intp*>(reinterpret_cast<const npy_intp*>(strides.data())),
-        vector.data(),
+        container.data(),
         NPY_ARRAY_CARRAY,
         nullptr));
     if (!arr) {
@@ -604,6 +674,26 @@ scoped_ref<> move_to_numpy_array(std::vector<T>&& values,
 
 template<typename T>
 scoped_ref<> move_to_numpy_array(std::vector<T>&& values) {
-    return move_to_numpy_array<T, 1>(std::move(values), {values.size()}, {sizeof(T)});
+    auto descr = new_dtype<T>();
+    if (!descr) {
+        return nullptr;
+    }
+    return move_to_numpy_array<std::vector<T>, 1>(std::move(values),
+                                                  descr,
+                                                  {values.size()},
+                                                  {sizeof(T)});
+}
+
+inline scoped_ref<> move_to_numpy_array(py::any_vector&& values) {
+
+    auto descr = py::dispatch::vtable_to_dtype(values.vtable());
+    if (!descr) {
+        return nullptr;
+    }
+    return move_to_numpy_array<py::any_vector, 1>(std::move(values),
+                                                  descr,
+                                                  {values.size()},
+                                                  {static_cast<std::int64_t>(
+                                                      values.vtable().size())});
 }
 }  // namespace py

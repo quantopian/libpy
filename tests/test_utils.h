@@ -6,6 +6,7 @@
 #include "Python.h"
 #include "gtest/gtest.h"
 
+#include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/utils.h"
 

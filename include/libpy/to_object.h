@@ -51,7 +51,7 @@ struct to_object<std::array<char, n>> {
 template<typename T>
 struct to_object<scoped_ref<T>> {
     static PyObject* f(scoped_ref<T> ob) {
-        return std::move(ob).escape();
+        return reinterpret_cast<PyObject*>(std::move(ob).escape());
     }
 };
 
