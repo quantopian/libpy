@@ -170,7 +170,7 @@ private:
                 }
             }
             else {
-                // `std::realloc` uses `std::mallow` when it can't grow the allocation,
+                // `std::realloc` uses `std::malloc` when it can't grow the allocation,
                 // this doesn't respect any explicit over-alignment so it is only safe for
                 // types whose `align()` is less than or equal to that of the
                 // `max_align_t`.
