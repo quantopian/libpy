@@ -277,6 +277,5 @@ TEST(any_ref_array_view, negative_strides) {
     for (const auto& value : reverse_view) {
         EXPECT_EQ(value, arr[arr.size() - ix++ - 1]);
     }
-
 }
 }  // namespace test_array_view

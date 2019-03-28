@@ -1,8 +1,11 @@
 #pragma once
 
 #include <any>
-#include <typeinfo>
+#include <cstddef>
+#include <cstdlib>
+#include <cstring>
 #include <type_traits>
+#include <typeinfo>
 
 #include "libpy/demangle.h"
 
@@ -51,27 +54,17 @@ constexpr any_vtable_impl any_vtable_instance = {
     [](void* lhs, void* rhs) {
         *static_cast<T*>(lhs) = std::move(*static_cast<T*>(rhs));
     },
-    [](void* dest) {
-        new(dest) T();
-    },
-    [](void* dest, const void* value) {
-        new(dest) T(*static_cast<const T*>(value));
-    },
-    [](void* dest, void* value) {
-        new(dest) T(std::move(*static_cast<T*>(value)));
-    },
-    [](void* addr) {
-        static_cast<T*>(addr)->~T();
-    },
+    [](void* dest) { new (dest) T(); },
+    [](void* dest, const void* value) { new (dest) T(*static_cast<const T*>(value)); },
+    [](void* dest, void* value) { new (dest) T(std::move(*static_cast<T*>(value))); },
+    [](void* addr) { static_cast<T*>(addr)->~T(); },
     [](const void* lhs, const void* rhs) -> bool {
         return *static_cast<const T*>(lhs) != *static_cast<const T*>(rhs);
     },
     [](const void* lhs, const void* rhs) -> bool {
         return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
     },
-    []() {
-        return py::util::type_name<T>();
-    },
+    []() { return py::util::type_name<T>(); },
 };
 }  // namespace detail
 
@@ -85,8 +78,7 @@ class any_vtable {
 private:
     const detail::any_vtable_impl* m_impl;
 
-    inline constexpr any_vtable(const detail::any_vtable_impl* impl)
-        : m_impl(impl) {}
+    inline constexpr any_vtable(const detail::any_vtable_impl* impl) : m_impl(impl) {}
 
 public:
     template<typename T>
@@ -179,6 +171,29 @@ public:
 
     inline py::util::demangled_cstring type_name() const {
         return m_impl->type_name();
+    }
+
+    /** Allocate memory for objects to be default constructed into. If the object is
+        trivially default constructible, the memory will be zeroed, otherwise it will
+        return `alloc(count)`.
+     */
+    inline void* default_construct_alloc(std::size_t count) const {
+        if (is_trivially_default_constructible()) {
+            if (align() < alignof(std::max_align_t)) {
+                return std::calloc(count, size());
+            }
+            else {
+                void* out = alloc(count);
+                std::memset(out, 0, size() * count);
+            }
+        }
+        return alloc(count);
+    }
+
+    /** Allocate initialized memory memory for `count` objects of the given type.
+     */
+    inline void* alloc(std::size_t count) const {
+        return std::aligned_alloc(align(), size() * count);
     }
 
     inline bool operator==(const any_vtable& other) const {

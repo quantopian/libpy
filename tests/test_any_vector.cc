@@ -34,14 +34,16 @@ TEST(any_vector, construct_from_vtable) {
 }
 
 TEST(any_vector, trivially_default_construct_elements) {
-    auto f = [](const py::any_vtable& vtable, std::size_t count) {
+    auto f = [](const py::any_vtable& vtable, std::size_t count, auto expected_value) {
         py::any_vector vec(vtable, count);
 
         ASSERT_EQ(vec.size(), count);
         ASSERT_GE(vec.capacity(), count);
         ASSERT_EQ(vec.vtable(), vtable);
 
-        // don't check the values because it's unitialized
+        for (auto v : vec) {
+            EXPECT_EQ(v, expected_value);
+        }
     };
 
     struct S {
@@ -61,9 +63,9 @@ TEST(any_vector, trivially_default_construct_elements) {
     ASSERT_TRUE(py::any_vtable::make<S>().is_trivially_default_constructible());
 
     for (std::size_t count = 0; count < 256; count += 8) {
-        f(py::any_vtable::make<int>(), count);
-        f(py::any_vtable::make<float>(), count);
-        f(py::any_vtable::make<S>(), count);
+        f(py::any_vtable::make<int>(), count, 0);
+        f(py::any_vtable::make<float>(), count, 0.0f);
+        f(py::any_vtable::make<S>(), count, S{0});
     }
 }
 
@@ -139,20 +141,176 @@ TEST(any_vector, copy_construct_elements) {
     }
 }
 
-TEST(any_vector, trivial_copy_push_back) {
+TEST(any_vector, copy_constructor_not_trivially_copyable) {
     struct S {
+        std::unordered_set<int>* copy_constructions = nullptr;
         int data = 0;
 
-        bool operator==(S other) const {
+        S() = default;
+
+        S(std::unordered_set<int>& copy_constructions, int data)
+            : copy_constructions(&copy_constructions), data(data) {}
+
+        S(const S& cpfrom)
+            : copy_constructions(cpfrom.copy_constructions), data(cpfrom.data) {
+            copy_constructions->insert(data);
+        }
+
+        S& operator=(const S&) = default;
+
+        S(S&&) = default;
+        S& operator=(S&&) = default;
+
+        bool operator==(const S& other) const {
             return data == other.data;
         }
 
-        bool operator!=(S other) const {
+        bool operator!=(const S& other) const {
             return data != other.data;
         }
     };
+
     auto vtable = py::any_vtable::make<S>();
-    ASSERT_TRUE(vtable.is_trivially_copyable());
+    ASSERT_FALSE(vtable.is_trivially_copy_constructible());
+
+    std::unordered_set<int> copy_constructions;
+    py::any_vector vec1(vtable);
+
+    vec1.push_back(S{copy_constructions, 0});
+    vec1.push_back(S{copy_constructions, 1});
+    vec1.push_back(S{copy_constructions, 2});
+
+    ASSERT_EQ(copy_constructions.size(), 0ul);
+
+    py::any_vector vec2(vec1);
+
+    ASSERT_EQ(vec1.vtable(), vec2.vtable());
+    ASSERT_EQ(vec1.size(), vec2.size());
+    EXPECT_GE(vec1.capacity(), vec2.size());
+    for (std::size_t ix = 0; ix < vec1.size(); ++ix) {
+        EXPECT_EQ(vec1[ix], vec2[ix]);
+    }
+    EXPECT_EQ(copy_constructions.size(), 3ul);
+    EXPECT_EQ(copy_constructions.count(0), 1ul);
+    EXPECT_EQ(copy_constructions.count(1), 1ul);
+    EXPECT_EQ(copy_constructions.count(2), 1ul);
+}
+
+TEST(any_vector, copy_assign_not_trivially_copyable) {
+    struct rhs_element {
+        std::unordered_set<int>* copy_constructions = nullptr;
+        int data = 0;
+
+        rhs_element() = default;
+
+        rhs_element(std::unordered_set<int>& copy_constructions, int data)
+            : copy_constructions(&copy_constructions), data(data) {}
+
+        rhs_element(const rhs_element& cpfrom)
+            : copy_constructions(cpfrom.copy_constructions), data(cpfrom.data) {
+            copy_constructions->insert(data);
+        }
+
+        rhs_element& operator=(const rhs_element&) = default;
+
+        rhs_element(rhs_element&&) = default;
+        rhs_element& operator=(rhs_element&&) = default;
+
+        bool operator==(const rhs_element& other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(const rhs_element& other) const {
+            return data != other.data;
+        }
+    };
+
+    struct lhs_element {
+        std::unordered_set<int>* destroyed = nullptr;
+        int data = 0;
+
+        lhs_element() = default;
+        lhs_element(std::unordered_set<int>& destroyed, int data)
+            : destroyed(&destroyed), data(data) {}
+        lhs_element(const lhs_element&) = default;
+        lhs_element& operator=(const lhs_element&) = default;
+
+        lhs_element(lhs_element&& mvfrom) noexcept
+            : destroyed(mvfrom.destroyed), data(mvfrom.data) {
+            mvfrom.data = -1;
+        }
+
+        lhs_element& operator=(lhs_element&& mvfrom) noexcept {
+            destroyed = mvfrom.destroyed;
+            data = mvfrom.data;
+            mvfrom.data = -1;
+            return *this;
+        }
+
+        ~lhs_element() {
+            if (data >= 0) {
+                destroyed->emplace(data);
+            }
+        }
+
+        bool operator==(const lhs_element& other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(const lhs_element& other) const {
+            return data != other.data;
+        }
+    };
+
+
+    auto rhs_vtable = py::any_vtable::make<rhs_element>();
+    ASSERT_FALSE(rhs_vtable.is_trivially_copy_constructible());
+
+    auto lhs_vtable = py::any_vtable::make<lhs_element>();
+    ASSERT_FALSE(lhs_vtable.is_trivially_destructible());
+
+    std::unordered_set<int> copy_constructions;
+    std::unordered_set<int> destroyed;
+    py::any_vector rhs(rhs_vtable);
+
+    rhs.push_back(rhs_element{copy_constructions, 0});
+    rhs.push_back(rhs_element{copy_constructions, 1});
+    rhs.push_back(rhs_element{copy_constructions, 2});
+
+    ASSERT_EQ(copy_constructions.size(), 0ul);
+
+    // Create a new any_vector with a non-rhs_element vtable. The assignment should use
+    // that of the rhs regardless.
+    py::any_vector lhs(lhs_vtable);
+    lhs.push_back(lhs_element{destroyed, 0});
+    lhs.push_back(lhs_element{destroyed, 1});
+    lhs.push_back(lhs_element{destroyed, 2});
+
+    ASSERT_EQ(destroyed.size(), 0ul);
+
+    lhs = rhs;
+
+    ASSERT_EQ(destroyed.size(), 3ul);
+    EXPECT_EQ(destroyed.count(0), 1ul);
+    EXPECT_EQ(destroyed.count(1), 1ul);
+    EXPECT_EQ(destroyed.count(2), 1ul);
+
+    ASSERT_EQ(lhs.vtable(), rhs.vtable());
+    ASSERT_EQ(lhs.size(), rhs.size());
+    EXPECT_GE(lhs.capacity(), rhs.size());
+    for (std::size_t ix = 0; ix < lhs.size(); ++ix) {
+        EXPECT_EQ(lhs[ix], rhs[ix]);
+    }
+
+    EXPECT_EQ(copy_constructions.size(), 3ul);
+    EXPECT_EQ(copy_constructions.count(0), 1ul);
+    EXPECT_EQ(copy_constructions.count(1), 1ul);
+    EXPECT_EQ(copy_constructions.count(2), 1ul);
+}
+
+template<typename S>
+void push_back_test_body() {
+    auto vtable = py::any_vtable::make<S>();
     py::any_vector vec(vtable);
 
     ASSERT_EQ(vec.size(), 0ul);
@@ -196,6 +354,24 @@ TEST(any_vector, trivial_copy_push_back) {
     EXPECT_EQ(vec.back(), S{3});
 }
 
+TEST(any_vector, trivial_copy_push_back) {
+    struct S {
+        int data = 0;
+
+        bool operator==(S other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(S other) const {
+            return data != other.data;
+        }
+    };
+    auto vtable = py::any_vtable::make<S>();
+    ASSERT_TRUE(vtable.is_trivially_copyable());
+
+    push_back_test_body<S>();
+}
+
 TEST(any_vector, move_is_noexcept_and_trivially_destructible_push_back) {
     struct S {
         int data = 0;
@@ -223,47 +399,8 @@ TEST(any_vector, move_is_noexcept_and_trivially_destructible_push_back) {
     ASSERT_FALSE(vtable.is_trivially_copyable());
     ASSERT_TRUE(vtable.move_is_noexcept());
     ASSERT_TRUE(vtable.is_trivially_destructible());
-    py::any_vector vec(vtable);
 
-    ASSERT_EQ(vec.size(), 0ul);
-
-    vec.push_back(S{0});
-    ASSERT_EQ(vec.size(), 1ul);
-    ASSERT_GE(vec.capacity(), 1ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec.back(), S{0});
-
-    vec.push_back(S{1});
-    ASSERT_EQ(vec.size(), 2ul);
-    ASSERT_GE(vec.capacity(), 2ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec.back(), S{1});
-
-    vec.push_back(S{2});
-    ASSERT_EQ(vec.size(), 3ul);
-    ASSERT_GE(vec.capacity(), 3ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec.back(), S{2});
-
-    vec.push_back(S{3});
-    ASSERT_EQ(vec.size(), 4ul);
-    ASSERT_GE(vec.capacity(), 4ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec[3], S{3});
-    EXPECT_EQ(vec.back(), S{3});
+    push_back_test_body<S>();
 }
 
 TEST(any_vector, move_is_noexcept_push_back) {
@@ -297,47 +434,7 @@ TEST(any_vector, move_is_noexcept_push_back) {
     ASSERT_FALSE(vtable.is_trivially_copyable());
     ASSERT_TRUE(vtable.move_is_noexcept());
     ASSERT_FALSE(vtable.is_trivially_destructible());
-    py::any_vector vec(vtable);
-
-    ASSERT_EQ(vec.size(), 0ul);
-
-    vec.push_back(S{0});
-    ASSERT_EQ(vec.size(), 1ul);
-    ASSERT_GE(vec.capacity(), 1ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec.back(), S{0});
-
-    vec.push_back(S{1});
-    ASSERT_EQ(vec.size(), 2ul);
-    ASSERT_GE(vec.capacity(), 2ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec.back(), S{1});
-
-    vec.push_back(S{2});
-    ASSERT_EQ(vec.size(), 3ul);
-    ASSERT_GE(vec.capacity(), 3ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec.back(), S{2});
-
-    vec.push_back(S{3});
-    ASSERT_EQ(vec.size(), 4ul);
-    ASSERT_GE(vec.capacity(), 4ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec[3], S{3});
-    EXPECT_EQ(vec.back(), S{3});
+    push_back_test_body<S>();
 }
 
 TEST(any_vector, non_noexcept_move_push_back) {
@@ -366,47 +463,7 @@ TEST(any_vector, non_noexcept_move_push_back) {
     auto vtable = py::any_vtable::make<S>();
     ASSERT_FALSE(vtable.is_trivially_copyable());
     ASSERT_FALSE(vtable.move_is_noexcept());
-    py::any_vector vec(vtable);
-
-    ASSERT_EQ(vec.size(), 0ul);
-
-    vec.push_back(S{0});
-    ASSERT_EQ(vec.size(), 1ul);
-    ASSERT_GE(vec.capacity(), 1ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec.back(), S{0});
-
-    vec.push_back(S{1});
-    ASSERT_EQ(vec.size(), 2ul);
-    ASSERT_GE(vec.capacity(), 2ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec.back(), S{1});
-
-    vec.push_back(S{2});
-    ASSERT_EQ(vec.size(), 3ul);
-    ASSERT_GE(vec.capacity(), 3ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec.back(), S{2});
-
-    vec.push_back(S{3});
-    ASSERT_EQ(vec.size(), 4ul);
-    ASSERT_GE(vec.capacity(), 4ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec[3], S{3});
-    EXPECT_EQ(vec.back(), S{3});
+    push_back_test_body<S>();
 }
 
 TEST(any_vector, over_aligned_push_back) {
@@ -425,48 +482,8 @@ TEST(any_vector, over_aligned_push_back) {
             return data != other.data;
         }
     };
-    auto vtable = py::any_vtable::make<S>();
-    py::any_vector vec(vtable);
 
-    ASSERT_EQ(vec.size(), 0ul);
-
-    vec.push_back(S{0});
-    ASSERT_EQ(vec.size(), 1ul);
-    ASSERT_GE(vec.capacity(), 1ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec.back(), S{0});
-
-    vec.push_back(S{1});
-    ASSERT_EQ(vec.size(), 2ul);
-    ASSERT_GE(vec.capacity(), 2ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec.back(), S{1});
-
-    vec.push_back(S{2});
-    ASSERT_EQ(vec.size(), 3ul);
-    ASSERT_GE(vec.capacity(), 3ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec.back(), S{2});
-
-    vec.push_back(S{3});
-    ASSERT_EQ(vec.size(), 4ul);
-    ASSERT_GE(vec.capacity(), 4ul);
-
-    EXPECT_EQ(vec.front(), S{0});
-    EXPECT_EQ(vec[0], S{0});
-    EXPECT_EQ(vec[1], S{1});
-    EXPECT_EQ(vec[2], S{2});
-    EXPECT_EQ(vec[3], S{3});
-    EXPECT_EQ(vec.back(), S{3});
+    push_back_test_body<S>();
 }
 
 TEST(any_vector, iterator) {

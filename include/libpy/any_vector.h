@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
@@ -174,8 +173,7 @@ private:
                 // this doesn't respect any explicit over-alignment so it is only safe for
                 // types whose `align()` is less than or equal to that of the
                 // `max_align_t`.
-                new_data = static_cast<char*>(
-                    std::aligned_alloc(m_vtable.align(), m_vtable.size() * count));
+                new_data = static_cast<char*>(m_vtable.alloc(count));
                 if (!new_data) {
                     throw std::bad_alloc{};
                 }
@@ -184,8 +182,7 @@ private:
             }
         }
         else {
-            new_data = static_cast<char*>(
-                std::aligned_alloc(m_vtable.align(), m_vtable.size() * count));
+            new_data = static_cast<char*>(m_vtable.alloc(count));
             if (!new_data) {
                 throw std::bad_alloc{};
             }
@@ -276,7 +273,6 @@ private:
         }
 
         ++m_size;
-
     }
 
 public:
@@ -284,8 +280,7 @@ public:
 
     inline any_vector(const any_vtable& vtable, std::size_t count = 0)
         : m_vtable(vtable),
-          m_storage(static_cast<char*>(
-              std::aligned_alloc(vtable.align(), vtable.size() * count))),
+          m_storage(static_cast<char*>(vtable.default_construct_alloc(count))),
           m_size(count),
           m_capacity(count) {
 
@@ -317,8 +312,7 @@ public:
     template<typename T>
     inline any_vector(const any_vtable& vtable, std::size_t count, const T& value)
         : m_vtable(vtable),
-          m_storage(static_cast<char*>(
-              std::aligned_alloc(vtable.align(), vtable.size() * count))),
+          m_storage(static_cast<char*>(vtable.alloc(count))),
           m_size(count),
           m_capacity(count) {
 
@@ -333,8 +327,8 @@ public:
         try {
             for (std::size_t ix = 0; ix < count; ++ix) {
                 if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-                        m_vtable.copy_construct(data, value.addr());
-                    }
+                    m_vtable.copy_construct(data, value.addr());
+                }
                 else {
                     m_vtable.copy_construct(data, std::addressof(value));
                 }
@@ -354,9 +348,7 @@ public:
 
     inline any_vector(const any_vector& cpfrom)
         : m_vtable(cpfrom.m_vtable),
-          m_storage(static_cast<char*>(
-              std::aligned_alloc(cpfrom.m_vtable.align(),
-                                 cpfrom.m_vtable.size() * cpfrom.size()))),
+          m_storage(static_cast<char*>(cpfrom.vtable().alloc(cpfrom.size()))),
           m_size(cpfrom.size()),
           m_capacity(cpfrom.size()) {
 
@@ -364,7 +356,7 @@ public:
             throw std::bad_alloc{};
         }
 
-        if (!m_vtable.is_trivially_copy_constructible()) {
+        if (m_vtable.is_trivially_copy_constructible()) {
             std::memcpy(m_storage, cpfrom.m_storage, m_vtable.size() * size());
         }
         else {
@@ -387,6 +379,12 @@ public:
         mvfrom.m_storage = nullptr;
         mvfrom.m_size = 0;
         mvfrom.m_capacity = 0;
+    }
+
+    inline any_vector& operator=(const any_vector& cpfrom) {
+        any_vector cp(cpfrom);
+        swap(cp);
+        return *this;
     }
 
     inline any_vector& operator=(any_vector&& mvfrom) noexcept {
