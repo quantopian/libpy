@@ -527,42 +527,50 @@ TEST(any_vector, iterator) {
     }
 }
 
+/** Class that copies its data into a set when destroyed.
+
+    Used below to test that any_vector calls element destructors appropriately.
+ */
+struct track_destructs {
+public:
+    std::unordered_set<int>* destroyed = nullptr;
+    int data = 0;
+
+    track_destructs() = default;
+    track_destructs(std::unordered_set<int>& destroyed, int data)
+        : destroyed(&destroyed), data(data) {}
+    track_destructs(const track_destructs&) = default;
+    track_destructs& operator=(const track_destructs&) = default;
+
+    track_destructs(track_destructs&& mvfrom) noexcept
+        : destroyed(mvfrom.destroyed), data(mvfrom.data) {
+        mvfrom.data = -1;
+    }
+
+    track_destructs& operator=(track_destructs&& mvfrom) noexcept {
+        destroyed = mvfrom.destroyed;
+        data = mvfrom.data;
+        mvfrom.data = -1;
+        return *this;
+    }
+
+    ~track_destructs() {
+        if (data >= 0) {
+            destroyed->emplace(data);
+        }
+    }
+
+    bool operator==(const track_destructs& other) const {
+        return data == other.data;
+    }
+
+    bool operator!=(const track_destructs& other) const {
+        return data != other.data;
+    }
+};
+
 TEST(any_vector, clear) {
-    struct S {
-        std::unordered_set<int>* destroyed = nullptr;
-        int data = 0;
-
-        S() = default;
-        S(std::unordered_set<int>& destroyed, int data)
-            : destroyed(&destroyed), data(data) {}
-        S(const S&) = default;
-        S& operator=(const S&) = default;
-
-        S(S&& mvfrom) noexcept : destroyed(mvfrom.destroyed), data(mvfrom.data) {
-            mvfrom.data = -1;
-        }
-
-        S& operator=(S&& mvfrom) noexcept {
-            destroyed = mvfrom.destroyed;
-            data = mvfrom.data;
-            mvfrom.data = -1;
-            return *this;
-        }
-
-        ~S() {
-            if (data >= 0) {
-                destroyed->emplace(data);
-            }
-        }
-
-        bool operator==(const S& other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(const S& other) const {
-            return data != other.data;
-        }
-    };
+    using S = track_destructs;
 
     py::any_vector vec(py::any_vtable::make<S>());
     std::unordered_set<int> destroyed;
@@ -580,41 +588,7 @@ TEST(any_vector, clear) {
 }
 
 TEST(any_vector, destruct) {
-    struct S {
-        std::unordered_set<int>* destroyed = nullptr;
-        int data = 0;
-
-        S() = default;
-        S(std::unordered_set<int>& destroyed, int data)
-            : destroyed(&destroyed), data(data) {}
-        S(const S&) = default;
-        S& operator=(const S&) = default;
-
-        S(S&& mvfrom) noexcept : destroyed(mvfrom.destroyed), data(mvfrom.data) {
-            mvfrom.data = -1;
-        }
-
-        S& operator=(S&& mvfrom) noexcept {
-            destroyed = mvfrom.destroyed;
-            data = mvfrom.data;
-            mvfrom.data = -1;
-            return *this;
-        }
-
-        ~S() {
-            if (data >= 0) {
-                destroyed->emplace(data);
-            }
-        }
-
-        bool operator==(const S& other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(const S& other) const {
-            return data != other.data;
-        }
-    };
+    using S = track_destructs;
 
     std::unordered_set<int> destroyed;
 
@@ -635,41 +609,7 @@ TEST(any_vector, destruct) {
 }
 
 TEST(any_vector, pop_back) {
-    struct S {
-        std::unordered_set<int>* destroyed = nullptr;
-        int data = 0;
-
-        S() = default;
-        S(std::unordered_set<int>& destroyed, int data)
-            : destroyed(&destroyed), data(data) {}
-        S(const S&) = default;
-        S& operator=(const S&) = default;
-
-        S(S&& mvfrom) noexcept : destroyed(mvfrom.destroyed), data(mvfrom.data) {
-            mvfrom.data = -1;
-        }
-
-        S& operator=(S&& mvfrom) noexcept {
-            destroyed = mvfrom.destroyed;
-            data = mvfrom.data;
-            mvfrom.data = -1;
-            return *this;
-        }
-
-        ~S() {
-            if (data >= 0) {
-                destroyed->emplace(data);
-            }
-        }
-
-        bool operator==(const S& other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(const S& other) const {
-            return data != other.data;
-        }
-    };
+    using S = track_destructs;
 
     std::unordered_set<int> destroyed;
     py::any_vector vec(py::any_vtable::make<S>());
