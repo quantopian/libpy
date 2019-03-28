@@ -176,10 +176,11 @@ TEST(any_vector, copy_constructor_not_trivially_copyable) {
     std::unordered_set<int> copy_constructions;
     py::any_vector vec1(vtable);
 
+    // NOTE: These don't trigger copy construction because they should hit the rvalue
+    // reference dispatch on push_back.
     vec1.push_back(S{copy_constructions, 0});
     vec1.push_back(S{copy_constructions, 1});
     vec1.push_back(S{copy_constructions, 2});
-
     ASSERT_EQ(copy_constructions.size(), 0ul);
 
     py::any_vector vec2(vec1);
@@ -262,6 +263,7 @@ TEST(any_vector, copy_assign_not_trivially_copyable) {
         }
     };
 
+    ASSERT_FALSE((std::is_assignable_v<lhs_element, rhs_element>) );
 
     auto rhs_vtable = py::any_vtable::make<rhs_element>();
     ASSERT_FALSE(rhs_vtable.is_trivially_copy_constructible());
@@ -273,35 +275,43 @@ TEST(any_vector, copy_assign_not_trivially_copyable) {
     std::unordered_set<int> destroyed;
     py::any_vector rhs(rhs_vtable);
 
+    // NOTE: These don't trigger copy construction because they should hit the rvalue
+    // reference dispatch on push_back.
     rhs.push_back(rhs_element{copy_constructions, 0});
     rhs.push_back(rhs_element{copy_constructions, 1});
     rhs.push_back(rhs_element{copy_constructions, 2});
 
     ASSERT_EQ(copy_constructions.size(), 0ul);
 
-    // Create a new any_vector with a non-rhs_element vtable. The assignment should use
-    // that of the rhs regardless.
+    // Create a new any_vector with a non-rhs_element vtable.
     py::any_vector lhs(lhs_vtable);
-    lhs.push_back(lhs_element{destroyed, 0});
-    lhs.push_back(lhs_element{destroyed, 1});
-    lhs.push_back(lhs_element{destroyed, 2});
+    lhs.push_back(lhs_element{destroyed, 4});
+    lhs.push_back(lhs_element{destroyed, 5});
+    lhs.push_back(lhs_element{destroyed, 6});
 
     ASSERT_EQ(destroyed.size(), 0ul);
 
+    // Assigning rhs to lhs should use rhs_elements's copy constructor, and should set the
+    // vtable of ``lhs`` to the vtable for ``rhs_element``.
     lhs = rhs;
 
+    // All the lhs elements should have been destroyed.
     ASSERT_EQ(destroyed.size(), 3ul);
-    EXPECT_EQ(destroyed.count(0), 1ul);
-    EXPECT_EQ(destroyed.count(1), 1ul);
-    EXPECT_EQ(destroyed.count(2), 1ul);
+    EXPECT_EQ(destroyed.count(4), 1ul);
+    EXPECT_EQ(destroyed.count(5), 1ul);
+    EXPECT_EQ(destroyed.count(6), 1ul);
 
+    // Vector attributes should have been copied.
     ASSERT_EQ(lhs.vtable(), rhs.vtable());
     ASSERT_EQ(lhs.size(), rhs.size());
     EXPECT_GE(lhs.capacity(), rhs.size());
+
+    // rhs values should have been copied into lhs.
     for (std::size_t ix = 0; ix < lhs.size(); ++ix) {
         EXPECT_EQ(lhs[ix], rhs[ix]);
     }
 
+    // We should have copy constructed all the rhs elements.
     EXPECT_EQ(copy_constructions.size(), 3ul);
     EXPECT_EQ(copy_constructions.count(0), 1ul);
     EXPECT_EQ(copy_constructions.count(1), 1ul);
