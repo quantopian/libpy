@@ -257,7 +257,7 @@ private:
     }
 
     template<typename F, typename T>
-    void push_back(F&& construct, T&& value) {
+    void push_back_impl(F&& construct, T&& value) {
         typecheck(value);
 
         if (size() == capacity()) {
@@ -493,15 +493,15 @@ public:
 
     template<typename T>
     void push_back(const T& value) {
-        push_back([&](void* new_,
-                      const void* old) { m_vtable.copy_construct(new_, old); },
-                  value);
+        push_back_impl([&](void* new_,
+                           const void* old) { m_vtable.copy_construct(new_, old); },
+                       value);
     }
 
     template<typename T>
     void push_back(T&& value) {
-        push_back([&](void* new_, void* old) { m_vtable.move_construct(new_, old); },
-                  std::move(value));
+        push_back_impl([&](void* new_, void* old) { m_vtable.move_construct(new_, old); },
+                       std::move(value));
     }
 
     inline void pop_back() {
