@@ -56,6 +56,13 @@ public:
     /** The smallest representable datetime64.
      */
     constexpr static datetime64 min() {
+        if (std::is_same_v<Unit, chrono::ns>) {
+            // The same value as pandas.Timestamp.min.asm8.view('i8'). Currently numpy
+            // will overflow an integer in the repr of very negative datetime64s so this
+            // is a safe value
+            return datetime64(-9223285636854775000LL);
+        }
+
         // min is `nat`, so the smallest valid value is int min + 1
         return datetime64(std::numeric_limits<std::int64_t>::min() + 1);
     }
