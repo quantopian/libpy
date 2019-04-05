@@ -337,8 +337,9 @@ inline any_vtable dtype_to_vtable(PyArray_Descr* dtype) {
     case NPY_FLOAT64:
         return any_vtable::make<double>();
     case NPY_DATETIME:
-        switch (reinterpret_cast<PyArray_DatetimeDTypeMetaData*>(dtype->c_metadata)
-                    ->meta.base) {
+        switch (auto unit = reinterpret_cast<PyArray_DatetimeDTypeMetaData*>(
+                                dtype->c_metadata)
+                                ->meta.base) {
         case py_chrono_unit_to_numpy_unit<py::chrono::ns>:
             return any_vtable::make<py::datetime64<py::chrono::ns>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::us>:
@@ -353,8 +354,10 @@ inline any_vtable dtype_to_vtable(PyArray_Descr* dtype) {
             return any_vtable::make<py::datetime64<py::chrono::h>>();
         case py_chrono_unit_to_numpy_unit<py::chrono::D>:
             return any_vtable::make<py::datetime64<py::chrono::D>>();
+        case NPY_FR_GENERIC:
+            throw exception(PyExc_TypeError, "cannot adapt unitless datetime");
         default:
-            throw exception(PyExc_TypeError, "unknown datetime unit: ", dtype);
+            throw exception(PyExc_TypeError, "unknown datetime unit: ", unit);
         }
     case NPY_OBJECT:
         return any_vtable::make<scoped_ref<>>();
