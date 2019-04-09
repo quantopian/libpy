@@ -556,7 +556,9 @@ struct to_object<py::any_ref> {
         ref.vtable().copy_construct(PyArray_DATA(
                                         reinterpret_cast<PyArrayObject*>(arr.get())),
                                     ref.addr());
-        return std::move(arr).escape();
+        PyObject* unconverted_out = std::move(arr).escape();
+        // convert array scalar into the proper type, for example: `np.datetime64`.
+        return PyArray_Return(reinterpret_cast<PyArrayObject*>(unconverted_out));
     }
 };
 }  // namespace dispatch
