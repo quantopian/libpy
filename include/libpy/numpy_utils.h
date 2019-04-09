@@ -550,6 +550,8 @@ struct to_object<py::any_ref> {
         if (!arr) {
             return nullptr;
         }
+        // `PyArray_NewFromDescr` steals a reference to `descr` on success
+        std::move(descr).escape();
 
         ref.vtable().copy_construct(PyArray_DATA(
                                         reinterpret_cast<PyArrayObject*>(arr.get())),
