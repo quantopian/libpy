@@ -527,7 +527,7 @@ struct to_object<datetime64<D>> {
             return nullptr;
         }
         std::int64_t as_int = static_cast<std::int64_t>(dt);
-        return PyArray_Scalar(&as_int, descr.get(), NULL);
+        return PyArray_Scalar(&as_int, descr.get(), nullptr);
     }
 };
 
@@ -541,33 +541,8 @@ struct to_object<py::any_ref> {
             return nullptr;
         }
 
-        // Construct a dimension-0 array from the numpy dtype.
-        // This is equivalent to np.ndarray((), dtype).
-        scoped_ref arr(PyArray_NewFromDescr(&PyArray_Type,
-                                            descr.get(),
-                                            0,
-                                            nullptr,
-                                            nullptr,
-                                            nullptr,
-                                            NPY_ARRAY_CARRAY,
-                                            nullptr));
-        if (!arr) {
-            return nullptr;
-        }
-        // `PyArray_NewFromDescr` steals a reference to `descr` on success, and we're done
-        // with it, so release it to avoid double decrefing.
-        std::move(descr).escape();
-
-        // Copy data from the any_ref into numpy array.
-        ref.vtable().copy_construct(PyArray_DATA(
-                                        reinterpret_cast<PyArrayObject*>(arr.get())),
-                                    ref.addr());
-
-        PyObject* unconverted_out = std::move(arr).escape();
-
-        // Convert 0-dimensional array into an array scalar with the proper type,
-        // (e.g. `np.datetime64`).
-        return PyArray_Return(reinterpret_cast<PyArrayObject*>(unconverted_out));
+        // `PyArray_Scalar` copies the input, but incorrectly takes a non-const void*
+        return PyArray_Scalar(const_cast<void*>(ref.addr()), descr.get(), nullptr);
     }
 };
 }  // namespace dispatch
