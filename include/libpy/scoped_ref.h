@@ -118,4 +118,8 @@ public:
         return m_ref != other.get();
     }
 };
+static_assert(std::is_standard_layout<scoped_ref<>>::value,
+              "scoped_ref<> should be standard layout");
+static_assert(sizeof(scoped_ref<>) == sizeof(PyObject*),
+              "alias type should be the same size as aliased type");
 }  // namespace py
