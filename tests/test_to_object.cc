@@ -4,9 +4,11 @@
 
 #include "gtest/gtest.h"
 
+#include "libpy/any.h"
 #include "libpy/dense_hash_map.h"
 #include "libpy/itertools.h"
 #include "libpy/meta.h"
+#include "libpy/numpy_utils.h"
 #include "libpy/to_object.h"
 #include "test_utils.h"
 
@@ -171,4 +173,31 @@ TEST_F(to_object, test_vector_to_object) {
     std::apply([&](auto... vec) { (test_vector_to_object_impl(vec), ...); }, vectors);
 }
 
+TEST_F(to_object, any_ref) {
+    PyObject* ob = Py_None;
+    Py_ssize_t baseline_refcnt = Py_REFCNT(ob);
+    {
+        Py_INCREF(ob);
+        py::scoped_ref sr(ob);
+        ASSERT_EQ(Py_REFCNT(ob), baseline_refcnt + 1);
+
+        py::any_ref ref(&sr, py::any_vtable::make<decltype(sr)>());
+        // `any_ref` is *non-owning* so the reference count doesn't change
+        ASSERT_EQ(Py_REFCNT(ob), baseline_refcnt + 1);
+        {
+            auto to_object_result = py::to_object(ref);
+            ASSERT_TRUE(to_object_result);
+            // `to_object` returns a new owning reference
+            ASSERT_EQ(Py_REFCNT(ob), baseline_refcnt + 2);
+
+            EXPECT_EQ(to_object_result.get(), ob);
+        }
+
+        // `to_object_result` goes out of scope, releasing its reference
+        ASSERT_EQ(Py_REFCNT(ob), baseline_refcnt + 1);
+    }
+
+    // `sr` goes out of scope, releasing its reference
+    ASSERT_EQ(Py_REFCNT(ob), baseline_refcnt);
+}
 }  // namespace test_to_object

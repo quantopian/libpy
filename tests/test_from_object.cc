@@ -98,8 +98,6 @@ TEST_F(from_object, test_overflow) {
 }
 
 TEST_F(from_object, ndarray_view) {
-    py::ensure_import_array _;
-
     {
         auto ndarray = py::move_to_numpy_array(std::vector<std::int32_t>{0, 1, 2, 3});
         auto view = py::from_object<py::array_view<std::int32_t>>(ndarray);
@@ -142,8 +140,6 @@ TEST_F(from_object, ndarray_view) {
 }
 
 TEST_F(from_object, ndarray_view_any_ref) {
-    py::ensure_import_array _;
-
     {
         auto ndarray = py::move_to_numpy_array(std::vector<std::int32_t>{0, 1, 2, 3});
         auto view = py::from_object<py::array_view<py::any_ref>>(ndarray);

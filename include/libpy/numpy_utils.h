@@ -7,6 +7,33 @@
 #include <vector>
 
 #include <Python.h>
+
+// numpy expects code is being used in a way that has a 1:1 correspondence from source
+// file to Python extension (as a shared object). For unclear reasons, numpy uses it's own
+// linking system where the `numpy/arrayobject.h` will put a `static void** PyArray_API =
+// nullptr` name into *each* TU that includes it. Many if not all of the API functions in
+// numpy are actually macros that resolve to something like: `((PyArrayAPIObject*)
+// PyArray_API)->function`. The `import_array()` macro will import (through Python) the
+// needed numpy extension modules to get the `PyArray_API` out of a capsule-like object.
+//
+// This whole system works fine for when a single TU turns into a single object; however,
+// the test suite for libpy links all the test files together along with `main.cc` into a
+// single program. This has made it very hard to figure out when and how to initialize the
+// `PyArray_API` value. Instead, we now set a macro when compiling for the tests
+// (`LIBPY_COMPILING_FOR_TESTS`) which will control the `NO_IMPORT_ARRAY` flag. This flag
+// tells numpy to declare the `PyArray_API` flag as an `extern "C" void** PyArray_API`,
+// meaning we expect to have this symbol defined by another object we are to be linked
+// with. In `main.cc` we also set `LIBPY_MAIN` to disable this feature, but instead define
+// `PY_ARRAY_UNIQUE_SYMBOL` which causes changes the declaration of `PyArray_API` to
+// change to: `#define PyArray_API PY_ARRAY_UNIQUE_SYMBOL` and then `void**
+// PyArray_API`. Importantly, this removes the `static` causing the symbol to have
+// external linkage. Then, because the tests are declaring the same symbol as extern, they
+// will all resolve to the same `PyArray_API` instance and we only need to call
+// `import_array` once in `main.cc`.
+#if defined(LIBPY_COMPILING_FOR_TESTS) && !defined(LIBPY_MAIN)
+#define NO_IMPORT_ARRAY
+#define PY_ARRAY_UNIQUE_SYMBOL PyArray_API_libpy
+#endif
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
@@ -20,21 +47,31 @@
 #include "libpy/to_object.h"
 
 namespace py {
-class ensure_import_array {
-public:
-    ensure_import_array() {
-#if PY_MAJOR_VERSION == 2
-        import_array();
-#else
-        // this macro returns NULL in Python 3 so we need to put it in a
-        // function to call it to ignore the return statement
-        []() -> std::nullptr_t {
-            import_array();
-            return nullptr;
-        }();
-#endif
+inline void ensure_import_array() {
+    // If `NO_IMPORT_ARRAY` is defined, this is a nop.
+#ifndef NO_IMPORT_ARRAY
+    if (PyArray_API) {
+        // already imported
+        return;
     }
-};
+
+#if PY_MAJOR_VERSION == 2
+    []() -> void {
+        import_array();
+    }();
+#else
+    // this macro returns NULL in Python 3 so we need to put it in a
+    // function to call it to ignore the return statement
+    []() -> std::nullptr_t {
+        import_array();
+        return nullptr;
+    }();
+#endif
+    if (PyErr_Occurred()) {
+        throw py::exception{};
+    }
+#endif
+}
 
 /** A strong typedef of npy_bool to not be ambiguous with `unsigned char` but may
     still be used in a vector without the dreaded `std::vector<bool>`.

@@ -139,7 +139,8 @@ gdbtest: $(TESTRUNNER)
 	@LD_LIBRARY_PATH=. GTEST_BREAK_ON_FAILURE=$(GTEST_BREAK) gdb -ex run $<
 
 tests/%.o: tests/%.cc .compiler_flags
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) -MD -fPIC -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) -DLIBPY_COMPILING_FOR_TESTS \
+		-MD -fPIC -c $< -o $@
 
 $(TESTRUNNER): gtest.a $(TEST_OBJECTS) $(SONAME)
 	$(CXX) -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
