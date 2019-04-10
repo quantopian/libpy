@@ -6,9 +6,8 @@
 #include <tuple>
 
 #include <Python.h>
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#include <numpy/arrayobject.h>
 
+#include "libpy/numpy_utils.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
 

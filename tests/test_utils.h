@@ -42,9 +42,6 @@ inline std::string format_current_python_exception() {
 class with_python_interpreter : public testing::Test {
 public:
     inline static void SetUpTestCase() {
-        // initialize the Python interpreter state
-        Py_Initialize();
-
         py::scoped_ref sys(PyImport_ImportModule("sys"));
         if (!sys) {
             throw py::exception();
@@ -61,11 +58,6 @@ public:
         if (PyObject_SetAttrString(sys.get(), "stderr", buf.get())) {
             throw py::exception();
         }
-    }
-
-    inline static void TearDownTestCase() {
-        // tear down the Python interpreter state
-        Py_Finalize();
     }
 
     virtual void TearDown() {
