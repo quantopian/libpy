@@ -44,6 +44,8 @@ ifneq ($(SANITIZE_ADDRESS),0)
 	OPTLEVEL := 0
 	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
 	LDFLAGS += -fsanitize=address -static-libasan
+	ASAN_OPTIONS=malloc_context_size=50
+	LSAN_OPTIONS=report_objects=1
 endif
 
 SANITIZE_UNDEFINED ?= 0
@@ -130,6 +132,8 @@ example-%: examples/%
 .PHONY: test
 test: $(TESTRUNNER)
 	@GTEST_OUTPUT=$(GTEST_OUTPUT) \
+		ASAN_OPTIONS=$(ASAN_OPTIONS) \
+		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		LD_LIBRARY_PATH=. \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		$< --gtest_filter=$(GTEST_FILTER)
