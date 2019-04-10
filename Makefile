@@ -45,7 +45,6 @@ ifneq ($(SANITIZE_ADDRESS),0)
 	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
 	LDFLAGS += -fsanitize=address -static-libasan
 	ASAN_OPTIONS=malloc_context_size=50
-	LSAN_OPTIONS=report_objects=1
 endif
 
 SANITIZE_UNDEFINED ?= 0
