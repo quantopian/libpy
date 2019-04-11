@@ -82,9 +82,7 @@ inline void ensure_import_array() {
     }
 
 #if PY_MAJOR_VERSION == 2
-    []() -> void {
-        import_array();
-    }();
+    []() -> void { import_array(); }();
 #else
     // this macro returns NULL in Python 3 so we need to put it in a
     // function to call it to ignore the return statement
