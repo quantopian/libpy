@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include <Python.h>
 
-#define LIBPY_MAIN
+#define LIBPY_TEST_MAIN
 #define PY_ARRAY_UNIQUE_SYMBOL PyArray_API_libpy
 #include "libpy/numpy_utils.h"
 
