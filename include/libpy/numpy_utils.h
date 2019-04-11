@@ -149,152 +149,53 @@ namespace dispatch {
 template<typename T>
 struct new_dtype;
 
-template<>
-struct new_dtype<std::int8_t> {
+template<auto typecode>
+struct new_dtype_from_typecode {
     static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_INT8);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
+        PyArray_Descr* out = PyArray_DescrFromType(typecode);
+        Py_XINCREF(out);
+        return out;
     }
 };
 
 template<>
-struct new_dtype<std::int16_t> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_INT16);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::int8_t> : new_dtype_from_typecode<NPY_INT8> {};
 
 template<>
-struct new_dtype<std::int32_t> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_INT32);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::int16_t> : new_dtype_from_typecode<NPY_INT16> {};
 
 template<>
-struct new_dtype<std::int64_t> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_INT64);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::int32_t> : new_dtype_from_typecode<NPY_INT32> {};
 
 template<>
-struct new_dtype<std::uint8_t> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_UINT8);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::int64_t> : new_dtype_from_typecode<NPY_INT64> {};
 
 template<>
-struct new_dtype<std::uint16_t> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_UINT16);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::uint8_t> : new_dtype_from_typecode<NPY_UINT8> {};
 
 template<>
-struct new_dtype<std::uint32_t> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_UINT32);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::uint16_t> : new_dtype_from_typecode<NPY_UINT16> {};
 
 template<>
-struct new_dtype<std::uint64_t> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_UINT64);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::uint32_t> : new_dtype_from_typecode<NPY_UINT32> {};
 
 template<>
-struct new_dtype<float> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_FLOAT32);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<std::uint64_t> : new_dtype_from_typecode<NPY_UINT64> {};
 
 template<>
-struct new_dtype<double> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_FLOAT64);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<float> : new_dtype_from_typecode<NPY_FLOAT32> {};
 
 template<>
-struct new_dtype<PyObject*> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_OBJECT);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<double> : new_dtype_from_typecode<NPY_FLOAT64> {};
+
+template<>
+struct new_dtype<PyObject*> : new_dtype_from_typecode<NPY_OBJECT> {};
 
 template<typename T>
 struct new_dtype<scoped_ref<T>> : new_dtype<PyObject*> {};
 
 template<>
-struct new_dtype<bool> {
-    static PyArray_Descr* get() {
-        auto ob = PyArray_DescrFromType(NPY_BOOL);
-        if (!ob) {
-            return nullptr;
-        }
-        Py_INCREF(ob);
-        return ob;
-    }
-};
+struct new_dtype<bool> : new_dtype_from_typecode<NPY_BOOL> {};
 
 template<>
 struct new_dtype<py_bool> : public new_dtype<bool> {};
@@ -554,6 +455,13 @@ struct from_object<py_bool> {
     }
 };
 
+template<>
+struct to_object<py_bool> {
+    static PyObject* f(py_bool v) {
+        return PyBool_FromLong(v.value);
+    }
+};
+
 /** Convert a datetime64 in to a numpy array scalar.
  */
 template<typename D>
@@ -565,21 +473,6 @@ struct to_object<datetime64<D>> {
         }
         std::int64_t as_int = static_cast<std::int64_t>(dt);
         return PyArray_Scalar(&as_int, descr.get(), nullptr);
-    }
-};
-
-/** Convert an any_ref into a numpy array scalar.
- */
-template<>
-struct to_object<py::any_ref> {
-    static PyObject* f(const py::any_ref& ref) {
-        auto descr = py::dispatch::vtable_to_dtype(ref.vtable());
-        if (!descr) {
-            return nullptr;
-        }
-
-        // `PyArray_Scalar` copies the input, but incorrectly takes a non-const void*
-        return PyArray_Scalar(const_cast<void*>(ref.addr()), descr.get(), nullptr);
     }
 };
 }  // namespace dispatch
@@ -707,7 +600,7 @@ scoped_ref<> move_to_numpy_array(std::vector<T>&& values) {
         return nullptr;
     }
     return move_to_numpy_array<std::vector<T>, 1>(std::move(values),
-                                                  descr,
+                                                  std::move(descr),
                                                   {values.size()},
                                                   {sizeof(T)});
 }
@@ -719,7 +612,7 @@ inline scoped_ref<> move_to_numpy_array(py::any_vector&& values) {
         return nullptr;
     }
     return move_to_numpy_array<py::any_vector, 1>(std::move(values),
-                                                  descr,
+                                                  std::move(descr),
                                                   {values.size()},
                                                   {static_cast<std::int64_t>(
                                                       values.vtable().size())});

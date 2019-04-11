@@ -173,7 +173,7 @@ TEST_F(to_object, test_vector_to_object) {
     std::apply([&](auto... vec) { (test_vector_to_object_impl(vec), ...); }, vectors);
 }
 
-TEST_F(to_object, any_ref) {
+TEST_F(to_object, any_ref_of_object_refcnt) {
     PyObject* ob = Py_None;
     Py_ssize_t baseline_refcnt = Py_REFCNT(ob);
     {
@@ -199,5 +199,25 @@ TEST_F(to_object, any_ref) {
 
     // `sr` goes out of scope, releasing its reference
     ASSERT_EQ(Py_REFCNT(ob), baseline_refcnt);
+}
+
+TEST_F(to_object, any_ref_non_convertible_object) {
+    // The most simple type which can be put into an `any_ref`. There is no `to_object`
+    // dispatch, so we expect `to_object(S{})` would throw a runtime exception.
+    struct S {
+        bool operator==(const S&) const {
+            return true;
+        }
+
+        bool operator!=(const S&) const {
+            return false;
+        }
+    };
+
+    S value;
+    py::any_ref ref(&value, py::any_vtable::make<decltype(value)>());
+
+    EXPECT_THROW(py::to_object(ref), py::exception);
+    PyErr_Clear();
 }
 }  // namespace test_to_object

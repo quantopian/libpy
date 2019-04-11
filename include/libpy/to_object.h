@@ -26,6 +26,29 @@ template<typename T>
 struct to_object;
 }  // namespace dispatch
 
+namespace detail {
+template<typename T>
+struct has_to_object {
+private:
+    template<typename U>
+    static decltype(py::dispatch::to_object<U>::f(std::declval<U>()), std::true_type{})
+    test(int);
+
+    template<typename>
+    static std::false_type test(long);
+
+public:
+    static constexpr bool value = std::is_same_v<decltype(test<T>(0)), std::true_type>;
+};
+}  // namespace detail
+
+/** Compile time boolean to detect if `to_object` works for a given type. This exists to
+    make it easier to use `if constexpr` to test this condition instead of using more
+    complicated SFINAE.
+ */
+template<typename T>
+constexpr bool has_to_object = detail::has_to_object<T>::value;
+
 /** Convert a C++ object into a Python object recursively.
 
     @param ob The object to convert
@@ -129,6 +152,13 @@ struct to_object<unsigned short> : public detail::int_to_object<unsigned short> 
 
 template<>
 struct to_object<unsigned char> : public detail::int_to_object<unsigned char> {};
+
+template<>
+struct to_object<float> {
+    static PyObject* f(float value) {
+        return PyFloat_FromDouble(value);
+    }
+};
 
 template<>
 struct to_object<double> {
