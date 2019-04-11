@@ -8,6 +8,8 @@
 #include <typeinfo>
 
 #include "libpy/demangle.h"
+#include "libpy/exception.h"
+#include "libpy/to_object.h"
 
 namespace py {
 namespace detail {
@@ -29,6 +31,7 @@ struct any_vtable_impl {
     void (*destruct)(void* addr);
     bool (*ne)(const void* lhs, const void* rhs);
     bool (*eq)(const void* lhs, const void* rhs);
+    py::scoped_ref<> (*to_object)(const void* addr);
     py::util::demangled_cstring (*type_name)();
 };
 
@@ -63,6 +66,18 @@ constexpr any_vtable_impl any_vtable_instance = {
     },
     [](const void* lhs, const void* rhs) -> bool {
         return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+    },
+    [](const void* addr) -> scoped_ref<> {
+        if constexpr (py::has_to_object<T>) {
+            return to_object(*static_cast<const T*>(addr));
+        }
+        else {
+            static_cast<void>(addr);
+            throw py::exception(PyExc_TypeError,
+                                "cannot convert values of type ",
+                                py::util::type_name<T>().get(),
+                                " into Python object");
+        }
     },
     []() { return py::util::type_name<T>(); },
 };
@@ -165,8 +180,12 @@ public:
         return m_impl->ne(lhs, rhs);
     }
 
-    inline bool eq(const void* lhs, const void* rhs) {
+    inline bool eq(const void* lhs, const void* rhs) const {
         return m_impl->eq(lhs, rhs);
+    }
+
+    inline scoped_ref<> to_object(const void* addr) const {
+        return m_impl->to_object(addr);
     }
 
     inline py::util::demangled_cstring type_name() const {
@@ -422,4 +441,15 @@ template<typename T>
 any_cref make_any_cref(T& ob) {
     return {&ob, any_vtable::make<T>()};
 }
+
+namespace dispatch {
+/** Convert an any_ref into a Python object.
+ */
+template<>
+struct to_object<py::any_ref> {
+    static PyObject* f(const py::any_ref& ref) {
+        return ref.vtable().to_object(ref.addr()).escape();
+    }
+};
+}  // namespace dispatch
 }  // namespace py
