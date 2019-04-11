@@ -10,7 +10,7 @@
 
 // numpy expects code is being used in a way that has a 1:1 correspondence from source
 // file to Python extension (as a shared object). Numpy wants to be able to use the Python
-// import system to find the numpy shared object(s), therefore numpy uses it's own linking
+// import system to find the numpy shared object(s), so numpy uses its own linking
 // system where the `numpy/arrayobject.h` will put a `static void** PyArray_API = nullptr`
 // name into *each* TU that includes it. Many if not all of the API functions in numpy are
 // actually macros that resolve to something like: `((PyArrayAPIObject*)
