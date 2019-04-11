@@ -23,14 +23,14 @@
 // (`LIBPY_COMPILING_FOR_TESTS`) which will control the `NO_IMPORT_ARRAY` flag. This flag
 // tells numpy to declare the `PyArray_API` flag as an `extern "C" void** PyArray_API`,
 // meaning we expect to have this symbol defined by another object we are to be linked
-// with. In `main.cc` we also set `LIBPY_MAIN` to disable this feature, but instead define
-// `PY_ARRAY_UNIQUE_SYMBOL` which causes changes the declaration of `PyArray_API` to
-// change to: `#define PyArray_API PY_ARRAY_UNIQUE_SYMBOL` and then `void**
+// with. In `main.cc` we also set `LIBPY_TEST_MAIN` to disable this feature, but instead
+// define `PY_ARRAY_UNIQUE_SYMBOL` which causes changes the declaration of `PyArray_API`
+// to change to: `#define PyArray_API PY_ARRAY_UNIQUE_SYMBOL` and then `void**
 // PyArray_API`. Importantly, this removes the `static` causing the symbol to have
 // external linkage. Then, because the tests are declaring the same symbol as extern, they
 // will all resolve to the same `PyArray_API` instance and we only need to call
 // `import_array` once in `main.cc`.
-#if defined(LIBPY_COMPILING_FOR_TESTS) && !defined(LIBPY_MAIN)
+#if defined(LIBPY_COMPILING_FOR_TESTS) && !defined(LIBPY_TEST_MAIN)
 #define NO_IMPORT_ARRAY
 #define PY_ARRAY_UNIQUE_SYMBOL PyArray_API_libpy
 #endif
