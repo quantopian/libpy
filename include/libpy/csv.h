@@ -906,7 +906,7 @@ void parse_from_header(const std::string_view& data,
     }
 
     std::size_t group_size;
-    if (num_threads <= 1 || (group_size = lines.size() / num_threads) < min_group_size) {
+    if (num_threads <= 1 || (group_size = lines.size() / num_threads + 1) < min_group_size) {
         parse_lines(lines.begin(), lines.end(), 0, parsers);
     }
     else {
@@ -922,7 +922,7 @@ void parse_from_header(const std::string_view& data,
                             &exception_mutex,
                             &exceptions,
                             lines.begin() + start,
-                            lines.begin() + std::max(start + group_size, lines.size()),
+                            lines.begin() + std::min(start + group_size, lines.size()),
                             start,
                             &parsers));
         }
