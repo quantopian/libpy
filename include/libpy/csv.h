@@ -485,7 +485,6 @@ T regular_strtod(const char* ptr, const char** last) {
         *last = ptr;
         return {};
     }
-
     if constexpr (std::is_same_v<T, double>) {
         return std::strtod(ptr, const_cast<char**>(last));
     }
