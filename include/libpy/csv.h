@@ -825,12 +825,16 @@ void parse_row(std::size_t row,
 }
 
 template<template<typename...> typename ptr_type>
-void parse_lines(std::vector<std::string_view>::iterator begin,
+void parse_lines(std::vector<std::string_view>::iterator it,
                  std::vector<std::string_view>::iterator end,
                  std::size_t offset,
                  parser_types<ptr_type>& parsers) {
-    for (std::size_t ix = offset; begin != end; ++begin, ++ix) {
-        parse_row(ix, *begin, parsers);
+    for (std::size_t ix = offset; it != end; ++it, ++ix) {
+        const std::string_view& row = *it;
+        for (int line = 0; line < 12; ++line) {
+            __builtin_prefetch(row.begin() + line * 64, 0);
+        }
+        parse_row(ix, row, parsers);
     }
 }
 
@@ -871,10 +875,13 @@ std::vector<std::string_view> split_into_lines(const std::string_view& data,
     }
 
     while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
-        lines.emplace_back(data.substr(pos, end - pos));
+        auto size = end - pos;
+        lines.emplace_back(data.substr(pos, size));
 
         // advance past line ending
         pos = end + line_ending.size();
+        __builtin_prefetch(data.data() + end + size, 0);
+        __builtin_prefetch(data.data() + end + size + size, 0);
     }
 
     if (pos != data.size()) {
@@ -906,7 +913,8 @@ void parse_from_header(const std::string_view& data,
     }
 
     std::size_t group_size;
-    if (num_threads <= 1 || (group_size = lines.size() / num_threads + 1) < min_group_size) {
+    if (num_threads <= 1 ||
+        (group_size = lines.size() / num_threads + 1) < min_group_size) {
         parse_lines(lines.begin(), lines.end(), 0, parsers);
     }
     else {
