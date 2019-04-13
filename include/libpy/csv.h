@@ -7,6 +7,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -23,6 +24,7 @@
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
 #include "libpy/valgrind.h"
+
 
 namespace py::csv {
 /** Tag type for marking that CSV parsing should use use `fast_strtod` which is much
@@ -48,6 +50,7 @@ struct new_dtype<py::csv::fast_float64> : public new_dtype<double> {};
 
 namespace py::csv {
 constexpr std::size_t min_group_size = 4096;
+constexpr std::size_t min_split_lines_bytes_size = 16384;
 
 namespace detail {
 template<typename... Ts>
@@ -825,28 +828,35 @@ void parse_row(std::size_t row,
 }
 
 template<template<typename...> typename ptr_type>
-void parse_lines(std::vector<std::string_view>::iterator it,
-                 std::vector<std::string_view>::iterator end,
+void parse_lines(const std::string_view data,
+                 std::size_t data_offset,
+                 const std::vector<std::size_t>& line_sizes,
+                 std::size_t line_end_size,
                  std::size_t offset,
                  parser_types<ptr_type>& parsers) {
-    for (std::size_t ix = offset; it != end; ++it, ++ix) {
-        const std::string_view& row = *it;
+    std::size_t ix = offset;
+    for (const auto& size : line_sizes) {
+        auto row = data.substr(data_offset, size);
         for (int line = 0; line < 12; ++line) {
             __builtin_prefetch(row.begin() + line * 64, 0);
         }
         parse_row(ix, row, parsers);
+        data_offset += size + line_end_size;
+        ++ix;
     }
 }
 
 template<template<typename...> typename ptr_type>
 void parse_lines_worker(std::mutex* exception_mutex,
                         std::vector<std::exception_ptr>* exceptions,
-                        std::vector<std::string_view>::iterator begin,
-                        std::vector<std::string_view>::iterator end,
+                        const std::string_view* data,
+                        const std::size_t data_offset,
+                        const std::vector<std::size_t>* line_sizes,
+                        std::size_t line_end_size,
                         std::size_t offset,
                         parser_types<ptr_type>* parsers) {
     try {
-        parse_lines(begin, end, offset, *parsers);
+        parse_lines(*data, data_offset, *line_sizes, line_end_size, offset, *parsers);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -854,18 +864,80 @@ void parse_lines_worker(std::mutex* exception_mutex,
     }
 }
 
-std::vector<std::string_view> split_into_lines(const std::string_view& data,
-                                               const std::string_view& line_ending,
-                                               std::size_t skip_rows) {
+void split_into_lines_loop(std::vector<std::size_t>& lines,
+                           const std::string_view& data,
+                           std::string_view::size_type* pos_ptr,
+                           std::string_view::size_type end_ix,
+                           const std::string_view& line_ending,
+                           bool handle_tail) {
+    auto pos = *pos_ptr;
+    std::string_view::size_type end = data.find(line_ending, pos);
+    if (pos != end) {
+        *pos_ptr = pos = end + line_ending.size();
+    }
+
+    while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
+        auto size = end - pos;
+        lines.emplace_back(size);
+
+        // advance past line ending
+        pos = end + line_ending.size();
+        __builtin_prefetch(data.data() + end + size, 0);
+        __builtin_prefetch(data.data() + end + size + 64, 0);
+
+        if (end > end_ix) {
+            return;
+        }
+    }
+
+    if (handle_tail and pos != end_ix) {
+        // add any data after the last newline if there is anything to add
+        lines.emplace_back(end_ix - pos);
+    }
+}
+
+void split_into_lines_worker(std::mutex* exception_mutex,
+                             std::vector<std::exception_ptr>* exceptions,
+                             std::vector<std::size_t>* lines,
+                             const std::string_view* data,
+                             std::string_view::size_type* pos,
+                             std::string_view::size_type end_ix,
+                             const std::string_view* line_ending,
+                             bool handle_tail) {
+    try {
+        split_into_lines_loop(*lines, *data, pos, end_ix, *line_ending, handle_tail);
+    }
+    catch (const std::exception&) {
+        std::lock_guard<std::mutex> guard(*exception_mutex);
+        exceptions->emplace_back(std::current_exception());
+    }
+}
+
+std::tuple<std::vector<std::size_t>, std::vector<std::vector<std::size_t>>>
+split_into_lines(const std::string_view& data,
+                 const std::string_view& line_ending,
+                 std::size_t num_columns,
+                 std::size_t skip_rows,
+                 std::size_t num_threads) {
+    std::size_t group_size = data.size() / num_threads + 1;
+    if (group_size < min_split_lines_bytes_size) {
+        // not really worth breaking this file up
+        num_threads = 1;
+    }
+
+    std::vector<std::vector<std::size_t>> lines_per_thread(num_threads);
+    std::vector<std::size_t> thread_starts(num_threads);
+    for (auto& lines : lines_per_thread) {
+        // assume that each column will take about 5 bytes of data on average
+        lines.reserve(std::ceil(group_size / (4.0 * num_columns)));
+    }
+
     // The current position into the input.
     std::string_view::size_type pos = 0;
     // The index of the next newline.
     std::string_view::size_type end;
 
-    std::vector<std::string_view> lines;
-    lines.reserve(min_group_size);
-
-    // optionally skip some rows
+        // optionally skip some rows
     for (std::size_t n = 0; n < skip_rows; ++n) {
         if ((end = data.find(line_ending, pos)) == std::string_view::npos) {
             break;
@@ -874,22 +946,44 @@ std::vector<std::string_view> split_into_lines(const std::string_view& data,
         pos = end + line_ending.size();
     }
 
-    while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
-        auto size = end - pos;
-        lines.emplace_back(data.substr(pos, size));
+    if (num_threads == 1) {
+        split_into_lines_loop(lines_per_thread[0],
+                              data,
+                              &pos,
+                              data.size(),
+                              line_ending,
+                              /* handle_tail */ true);
+        thread_starts[0] = pos;
+    }
+    else {
+        std::mutex exception_mutex;
+        std::vector<std::exception_ptr> exceptions;
 
-        // advance past line ending
-        pos = end + line_ending.size();
-        __builtin_prefetch(data.data() + end + size, 0);
-        __builtin_prefetch(data.data() + end + size + size, 0);
+        std::vector<std::thread> threads;
+        for (std::size_t n = 0; n < num_threads; ++n) {
+            thread_starts[n] = pos + n * group_size;
+            threads.emplace_back(
+                std::thread(split_into_lines_worker,
+                            &exception_mutex,
+                            &exceptions,
+                            &lines_per_thread[n],
+                            &data,
+                            &thread_starts[n],
+                            std::min(thread_starts[n] + group_size, data.size()),
+                            &line_ending,
+                            /* handle_thread */ n == num_threads - 1));
+        }
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        for (auto& e : exceptions) {
+            std::rethrow_exception(e);
+        }
     }
 
-    if (pos != data.size()) {
-        // add any data after the last newline if there is anything to add
-        lines.emplace_back(data.substr(pos));
-    }
-
-    return lines;
+    return {std::move(thread_starts), std::move(lines_per_thread)};
 }
 
 /** Parse a full CSV given the header and the types of the columns.
@@ -905,34 +999,47 @@ void parse_from_header(const std::string_view& data,
                        const std::string_view& line_ending,
                        std::size_t num_threads,
                        std::size_t skip_rows = 0) {
-    std::vector<std::string_view> lines = split_into_lines(data, line_ending, skip_rows);
+    auto [thread_starts, line_sizes_per_thread] =
+        split_into_lines(data, line_ending, parsers.size(), skip_rows, num_threads);
+
+    std::size_t lines = std::accumulate(line_sizes_per_thread.begin(),
+                                        line_sizes_per_thread.end(),
+                                        0,
+                                        [](auto sum, const auto& vec) {
+                                            return sum + vec.size();
+                                        });
 
     for (auto& parser : parsers) {
-        parser->set_num_lines(lines.size());
+        parser->set_num_lines(lines);
         parser->set_delim(delimiter);
     }
 
-    std::size_t group_size;
-    if (num_threads <= 1 ||
-        (group_size = lines.size() / num_threads + 1) < min_group_size) {
-        parse_lines(lines.begin(), lines.end(), 0, parsers);
+    if (line_sizes_per_thread.size() == 1) {
+        parse_lines(data,
+                    thread_starts[0],
+                    line_sizes_per_thread[0],
+                    line_ending.size(),
+                    0,
+                    parsers);
     }
     else {
         std::mutex exception_mutex;
         std::vector<std::exception_ptr> exceptions;
 
         std::vector<std::thread> threads;
-        std::size_t n;
-        for (n = 0; n < num_threads; ++n) {
-            std::size_t start = n * group_size;
+        std::size_t start = 0;
+        for (std::size_t n = 0; n < num_threads; ++n) {
             threads.emplace_back(
                 std::thread(parse_lines_worker<ptr_type>,
                             &exception_mutex,
                             &exceptions,
-                            lines.begin() + start,
-                            lines.begin() + std::min(start + group_size, lines.size()),
+                            &data,
+                            thread_starts[n],
+                            &line_sizes_per_thread[n],
+                            line_ending.size(),
                             start,
                             &parsers));
+            start += line_sizes_per_thread.size();
         }
 
         for (auto& thread : threads) {
