@@ -360,9 +360,9 @@ public:
 template<typename T>
 T fast_unsigned_strtod(const char* ptr, const char** last) {
     T result;
-    T whole_part = 0;
-    T fractional_part = 0;
-    T fractional_denom = 1;
+    std::int64_t whole_part = 0;
+    std::int64_t fractional_part = 0;
+    std::int64_t fractional_denom = 1;
 
     while (true) {
         char c = *ptr;
@@ -399,7 +399,7 @@ after_decimal:
         if (value < 0 || value > 9) {
             *last = ptr;
 
-            result = whole_part + fractional_part / fractional_denom;
+            result = whole_part + static_cast<double>(fractional_part) / fractional_denom;
             return result;
         }
 
@@ -410,7 +410,7 @@ after_decimal:
     }
 
 begin_exponent:
-    result = whole_part + fractional_part / fractional_denom;
+    result = whole_part + static_cast<double>(fractional_part) / fractional_denom;
 
     long exponent = 0;
     bool exponent_negate = *ptr == '-';
