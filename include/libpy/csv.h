@@ -25,7 +25,6 @@
 #include "libpy/to_object.h"
 #include "libpy/valgrind.h"
 
-
 namespace py::csv {
 /** Tag type for marking that CSV parsing should use use `fast_strtod` which is much
  * faster but loses precision. This is primarily used to speed up development cycles, and
@@ -116,6 +115,21 @@ isolate_unquoted_cell(const std::string_view& row, std::size_t offset, char deli
     return {subrow.substr(0, size), consumed, more};
 }
 
+template<typename T>
+struct destruct_but_not_free {
+    void operator()(T* value) {
+        if (value) {
+            value->~T();
+        }
+    }
+};
+
+/** A unique pointer which only destructs, but doesn't free the storage. It is designed to
+    be used to provide unique ownership and lifetime management of a dynamic value
+    allocated in a `std::aligned_storage_t` or `std::aligned_union_t` on the stack.
+*/
+template<typename T>
+using stack_allocated_unique_ptr = std::unique_ptr<T, destruct_but_not_free<T>>;
 }  // namespace detail
 
 /** A cell parser is an object that represents a row in a CSV.
@@ -123,33 +137,27 @@ isolate_unquoted_cell(const std::string_view& row, std::size_t offset, char deli
     Subclasses are required to implement `chomp``.
  */
 class cell_parser {
-protected:
-    char m_delim = '\0';
-
 public:
     /** Set the line count. This should pre-allocate space for `num_lines` values to be
         parsed.
      */
     virtual void set_num_lines(std::size_t) {}
 
-    /** Set the delimiter.
-     */
-    void set_delim(char delim) {
-        m_delim = delim;
-    }
-
     virtual ~cell_parser() = default;
 
     /** "chomp" text from a row and parse the given cell.
 
+        @param delim The delimiter.
         @param row_ix The row number (0-indexed) being parsed.
         @param row The entire row being parsed.
         @param offset The offset into `row` where the cell starts.
         @return A tuple of the number of characters consumed from the row and a boolean
                 which is true if we expect there to be more columns to parse in this row.
      */
-    virtual std::tuple<std::size_t, bool>
-    chomp(std::size_t row_ix, const std::string_view& row, std::size_t offset) = 0;
+    virtual std::tuple<std::size_t, bool> chomp(char delim,
+                                                std::size_t row_ix,
+                                                const std::string_view& row,
+                                                std::size_t offset) = 0;
 
     /** Move the state of this column to a Python tuple of numpy arrays.
 
@@ -273,7 +281,7 @@ class typed_cell_parser<std::array<char, n>>
     : public typed_cell_parser_base<std::array<char, n>> {
 public:
     virtual std::tuple<std::size_t, bool>
-    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
+    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
         auto& cell = this->m_parsed[ix];
         std::size_t cell_ix = 0;
         auto ret = detail::chomp_quoted_string(
@@ -282,7 +290,7 @@ public:
                     cell[cell_ix++] = c;
                 }
             },
-            this->m_delim,
+            delim,
             row,
             offset);
         this->m_mask[ix] = cell_ix > 0;
@@ -305,16 +313,16 @@ public:
     using type = typename typed_cell_parser_base<parse_result<scalar_parse>>::type;
 
     virtual std::tuple<std::size_t, bool>
-    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
+    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
         const char* first = &row.data()[offset];
         const char* last;
         type parsed = scalar_parse(first, &last);
 
         std::size_t size = last - first;
-        if (*last != this->m_delim && size != row.size() - offset) {
+        if (*last != delim && size != row.size() - offset) {
             // error if we are not at the end of a cell nor at the end of a row
             std::string_view cell;
-            auto end = std::memchr(first, this->m_delim, row.size() - offset);
+            auto end = std::memchr(first, delim, row.size() - offset);
             if (end) {
                 // This branch happens when we have input like `1.5garbage|` where `|` is
                 // the delimiter. `last` doesn't point to the delimiter nor the end end of
@@ -341,7 +349,7 @@ public:
             this->m_parsed[ix] = parsed;
         }
 
-        bool more = *last == this->m_delim;
+        bool more = *last == delim;
         return {size + more, more};
     }
 };
@@ -692,9 +700,9 @@ private:
 
 public:
     virtual std::tuple<std::size_t, bool>
-    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
+    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
         auto [raw, consumed, more] =
-            detail::isolate_unquoted_cell(row, offset, this->m_delim);
+            detail::isolate_unquoted_cell(row, offset, delim);
         if (!raw.size()) {
             return {consumed, more};
         }
@@ -718,9 +726,9 @@ template<>
 class typed_cell_parser<py::py_bool> : public typed_cell_parser_base<py::py_bool> {
 public:
     virtual std::tuple<std::size_t, bool>
-    chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
+    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
         auto [raw, consumed, more] =
-            detail::isolate_unquoted_cell(row, offset, this->m_delim);
+            detail::isolate_unquoted_cell(row, offset, delim);
         if (raw.size() == 0) {
             return {consumed, more};
         }
@@ -751,11 +759,11 @@ protected:
 
 public:
     virtual std::tuple<std::size_t, bool>
-    chomp(std::size_t, const std::string_view& row, std::size_t offset) {
+    chomp(char delim, std::size_t, const std::string_view& row, std::size_t offset) {
         this->m_parsed.emplace_back();
         auto& cell = this->m_parsed.back();
         return detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
-                                           this->m_delim,
+                                           delim,
                                            row,
                                            offset);
     }
@@ -768,19 +776,19 @@ public:
 class skip_parser : public cell_parser {
 public:
     virtual std::tuple<std::size_t, bool>
-    chomp(std::size_t, const std::string_view& row, std::size_t offset) {
-        return detail::chomp_quoted_string([](char) {}, this->m_delim, row, offset);
+    chomp(char delim, std::size_t, const std::string_view& row, std::size_t offset) {
+        return detail::chomp_quoted_string([](char) {}, delim, row, offset);
     }
 };
 
 namespace detail {
 /** An alias for creating a vector of cell parsers which uses a "template template
     parameter" to be parametric over the type of smart pointer used. The two standard
-    options for `ptr_type` are `std::shared_ptr` and `std::unique_ptr`.
+    options for `ptr_type` are `std::shared_ptr` and `stack_allocated_unique_ptr`.
 
     @tparam ptr_type The type of smart pointer to `cell_parser` to use.
  */
-template<template<typename...> typename ptr_type>
+template<template<typename> typename ptr_type>
 using parser_types = std::vector<ptr_type<cell_parser>>;
 
 /** Parse a single row and store the values in the vectors.
@@ -789,8 +797,9 @@ using parser_types = std::vector<ptr_type<cell_parser>>;
     @param data The view over the row to parse.
     @param parsers The cell parsers.
  */
-template<template<typename...> typename ptr_type>
+template<template<typename> typename ptr_type>
 void parse_row(std::size_t row,
+               char delim,
                const std::string_view& data,
                parser_types<ptr_type>& parsers) {
 
@@ -808,7 +817,7 @@ void parse_row(std::size_t row,
                                   parsers.size());
         }
         try {
-            auto [new_consumed, new_more] = parser->chomp(row, data, consumed);
+            auto [new_consumed, new_more] = parser->chomp(delim, row, data, consumed);
             consumed += new_consumed;
             more = new_more;
         }
@@ -827,8 +836,9 @@ void parse_row(std::size_t row,
     }
 }
 
-template<template<typename...> typename ptr_type>
+template<template<typename> typename ptr_type>
 void parse_lines(const std::string_view data,
+                 char delim,
                  std::size_t data_offset,
                  const std::vector<std::size_t>& line_sizes,
                  std::size_t line_end_size,
@@ -840,23 +850,30 @@ void parse_lines(const std::string_view data,
         for (int line = 0; line < 12; ++line) {
             __builtin_prefetch(row.begin() + line * 64, 0);
         }
-        parse_row(ix, row, parsers);
+        parse_row<ptr_type>(ix, delim, row, parsers);
         data_offset += size + line_end_size;
         ++ix;
     }
 }
 
-template<template<typename...> typename ptr_type>
+template<template<typename> typename ptr_type>
 void parse_lines_worker(std::mutex* exception_mutex,
                         std::vector<std::exception_ptr>* exceptions,
                         const std::string_view* data,
+                        char delim,
                         const std::size_t data_offset,
                         const std::vector<std::size_t>* line_sizes,
                         std::size_t line_end_size,
                         std::size_t offset,
                         parser_types<ptr_type>* parsers) {
     try {
-        parse_lines(*data, data_offset, *line_sizes, line_end_size, offset, *parsers);
+        parse_lines<ptr_type>(*data,
+                              delim,
+                              data_offset,
+                              *line_sizes,
+                              line_end_size,
+                              offset,
+                              *parsers);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -872,7 +889,7 @@ void split_into_lines_loop(std::vector<std::size_t>& lines,
                            bool handle_tail) {
     auto pos = *pos_ptr;
     std::string_view::size_type end = data.find(line_ending, pos);
-    if (pos != end) {
+    if (pos != 0 && pos != end) {
         *pos_ptr = pos = end + line_ending.size();
     }
 
@@ -885,12 +902,12 @@ void split_into_lines_loop(std::vector<std::size_t>& lines,
         __builtin_prefetch(data.data() + end + size, 0);
         __builtin_prefetch(data.data() + end + size + 64, 0);
 
-        if (end > end_ix) {
-            return;
+        if (pos >= end_ix) {
+            break;
         }
     }
 
-    if (handle_tail and pos != end_ix) {
+    if (handle_tail and pos < end_ix) {
         // add any data after the last newline if there is anything to add
         lines.emplace_back(end_ix - pos);
     }
@@ -919,6 +936,10 @@ split_into_lines(const std::string_view& data,
                  std::size_t num_columns,
                  std::size_t skip_rows,
                  std::size_t num_threads) {
+    if (num_threads == 0) {
+        num_threads = 1;
+    }
+
     std::size_t group_size = data.size() / num_threads + 1;
     if (group_size < min_split_lines_bytes_size) {
         // not really worth breaking this file up
@@ -937,7 +958,7 @@ split_into_lines(const std::string_view& data,
     // The index of the next newline.
     std::string_view::size_type end;
 
-        // optionally skip some rows
+    // optionally skip some rows
     for (std::size_t n = 0; n < skip_rows; ++n) {
         if ((end = data.find(line_ending, pos)) == std::string_view::npos) {
             break;
@@ -992,7 +1013,7 @@ split_into_lines(const std::string_view& data,
     @param parsers The cell parsers.
     @param line_ending The string to split lines on.
  */
-template<template<typename...> typename ptr_type>
+template<template<typename> typename ptr_type>
 void parse_from_header(const std::string_view& data,
                        parser_types<ptr_type>& parsers,
                        char delimiter,
@@ -1011,16 +1032,16 @@ void parse_from_header(const std::string_view& data,
 
     for (auto& parser : parsers) {
         parser->set_num_lines(lines);
-        parser->set_delim(delimiter);
     }
 
     if (line_sizes_per_thread.size() == 1) {
-        parse_lines(data,
-                    thread_starts[0],
-                    line_sizes_per_thread[0],
-                    line_ending.size(),
-                    0,
-                    parsers);
+        parse_lines<ptr_type>(data,
+                              delimiter,
+                              thread_starts[0],
+                              line_sizes_per_thread[0],
+                              line_ending.size(),
+                              0,
+                              parsers);
     }
     else {
         std::mutex exception_mutex;
@@ -1029,17 +1050,17 @@ void parse_from_header(const std::string_view& data,
         std::vector<std::thread> threads;
         std::size_t start = 0;
         for (std::size_t n = 0; n < num_threads; ++n) {
-            threads.emplace_back(
-                std::thread(parse_lines_worker<ptr_type>,
-                            &exception_mutex,
-                            &exceptions,
-                            &data,
-                            thread_starts[n],
-                            &line_sizes_per_thread[n],
-                            line_ending.size(),
-                            start,
-                            &parsers));
-            start += line_sizes_per_thread.size();
+            threads.emplace_back(std::thread(parse_lines_worker<ptr_type>,
+                                             &exception_mutex,
+                                             &exceptions,
+                                             &data,
+                                             delimiter,
+                                             thread_starts[n],
+                                             &line_sizes_per_thread[n],
+                                             line_ending.size(),
+                                             start,
+                                             &parsers));
+            start += line_sizes_per_thread[n].size();
         }
 
         for (auto& thread : threads) {
@@ -1070,8 +1091,10 @@ struct dtype_option {
         return result;
     }
 
-    static std::unique_ptr<cell_parser> create_parser() {
-        return std::make_unique<typed_cell_parser<T>>();
+    static stack_allocated_unique_ptr<cell_parser> create_parser(void* addr) {
+        // placement new the `typed_cell_parser` into our storage and then create a
+        // `unique_ptr` to manage the lifetime of that object.
+        return stack_allocated_unique_ptr<cell_parser>(new (addr) typed_cell_parser<T>{});
     }
 };
 
@@ -1080,65 +1103,59 @@ struct create_parser;
 
 template<typename T, typename... Ts>
 struct create_parser<T, Ts...> {
-    static std::unique_ptr<cell_parser> f(PyObject* dtype) {
+    static stack_allocated_unique_ptr<cell_parser> f(PyObject* dtype, void* addr) {
         using option = dtype_option<T>;
         if (!option::matches(dtype)) {
-            return create_parser<Ts...>::f(dtype);
+            return create_parser<Ts...>::f(dtype, addr);
         }
 
-        return option::create_parser();
+        return option::create_parser(addr);
     }
 };
 
 template<>
 struct create_parser<> {
-    [[noreturn]] static std::unique_ptr<cell_parser> f(PyObject* dtype) {
+    [[noreturn]] static stack_allocated_unique_ptr<cell_parser> f(PyObject* dtype,
+                                                                  void*) {
         throw py::exception(PyExc_TypeError, "unknown dtype: ", dtype);
     }
 };
 
-template<template<typename...> typename ptr_type, typename GetParser>
+template<template<typename> typename ptr_type, typename GetParser, typename Init>
 std::tuple<std::string_view, parser_types<ptr_type>>
 parse_header(const std::string_view& data,
              char delimiter,
              const std::string_view& line_ending,
+             Init&& init,
              GetParser&& get_parser) {
     constexpr bool is_shared = std::is_same_v<ptr_type<void>, std::shared_ptr<void>>;
-    constexpr bool is_unique = std::is_same_v<ptr_type<void>, std::unique_ptr<void>>;
+    constexpr bool is_unique =
+        std::is_same_v<ptr_type<void>, stack_allocated_unique_ptr<void>>;
     static_assert(is_shared || is_unique,
-                  "ptr_type must be std::shared_ptr or std::unique_ptr");
+                  "ptr_type must be std::shared_ptr or stack_allocated_unique_ptr");
 
     auto line_end = data.find(line_ending, 0);
     auto line = data.substr(0, line_end);
 
     header_parser header_parser;
-    header_parser.set_delim(delimiter);
     for (auto [consumed, more] = std::make_tuple(0, true); more;) {
-        auto [new_consumed, new_more] = header_parser.chomp(0, line, consumed);
+        auto [new_consumed, new_more] = header_parser.chomp(delimiter, 0, line, consumed);
         consumed += new_consumed;
         more = new_more;
     }
 
+    init(header_parser.parsed().size());
+
     std::unordered_set<std::string> column_names;
-    parser_types<ptr_type> parsers;
+    parser_types<ptr_type> parsers(header_parser.parsed().size());
+    std::size_t ix = 0;
     for (const auto& cell : header_parser.parsed()) {
         if (column_names.count(cell)) {
             throw detail::formatted_error("column name duplicated: ", cell);
         }
         column_names.emplace(cell);
-
-        auto search = get_parser(cell);
-        if (!search) {
-            if constexpr (is_shared) {
-                parsers.emplace_back(std::make_shared<skip_parser>());
-            }
-            else {
-                parsers.emplace_back(std::make_unique<skip_parser>());
-            }
-        }
-        else {
-            parsers.emplace_back(std::move(*search));
-        }
+        parsers[ix] = get_parser(ix, cell);
+        ++ix;
     };
 
     auto start = std::min(line.size() + line_ending.size(), data.size());
@@ -1199,16 +1216,16 @@ void parse(const std::string_view& data,
            const std::string_view& line_ending,
            std::size_t num_threads) {
 
-    auto get_parser =
-        [&](const auto& cell) -> std::optional<std::shared_ptr<cell_parser>> {
+    auto get_parser = [&](std::size_t, const auto& cell) -> std::shared_ptr<cell_parser> {
         auto search = types.find(cell);
         if (search == types.end()) {
-            return {};
+            return std::make_shared<skip_parser>();
         }
+
         return search->second;
     };
-    auto [to_parse, parsers] =
-        detail::parse_header<std::shared_ptr>(data, delimiter, line_ending, get_parser);
+    auto [to_parse, parsers] = detail::parse_header<std::shared_ptr>(
+        data, delimiter, line_ending, [](std::size_t) {}, get_parser);
 
     detail::parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
 }
@@ -1230,30 +1247,57 @@ PyObject* py_parse(PyObject*,
                    char delimiter,
                    const std::string_view& line_ending,
                    std::size_t num_threads) {
-    if (PyDict_Size(dtypes) < 0) {
+    Py_ssize_t num_dtypes = PyDict_Size(dtypes);
+    if (num_dtypes < 0) {
         // use `PyDict_Size` to ensure this is a dict with a reasonable error message
         return nullptr;
     }
 
+    if (num_dtypes == 0) {
+        // empty dict, data doesn't matter
+        return PyDict_New();
+    }
+
+    // allocate all of the parser objects on the stack in a contiguous buffer to reduce
+    // the cache pressure in the `parse_lines` loop
+    using cell_parser_storage =
+        std::aligned_union_t<0, skip_parser, typed_cell_parser<possible_types>...>;
+    std::vector<cell_parser_storage> parser_storage;
+
     std::vector<py::scoped_ref<>> header;
 
-    auto get_parser =
-        [&](const auto& cell) -> std::optional<std::unique_ptr<cell_parser>> {
-        header.emplace_back(py::to_object(cell));
-
-        PyObject* dtype = PyDict_GetItem(dtypes, header.back().get());
-        if (!dtype) {
-            return {};
-        }
-
-        return detail::create_parser<possible_types...>::f(dtype);
+    auto init = [&](std::size_t num_cols) {
+        parser_storage.resize(num_cols);
+        header.resize(num_cols);
     };
 
-    auto [to_parse, parsers] =
-        detail::parse_header<std::unique_ptr>(data, delimiter, line_ending, get_parser);
+    auto get_parser =
+        [&](std::size_t ix, const auto& cell) {
+            auto& cell_ob = header[ix] = py::to_object(cell);
+
+            cell_parser_storage* addr = &parser_storage[ix];
+
+            PyObject* dtype = PyDict_GetItem(dtypes, cell_ob.get());
+            if (dtype) {
+                return detail::create_parser<possible_types...>::f(dtype, addr);
+            }
+            else {
+                // placement new the `skip_parser` into our storage and then create
+                // a `unique_ptr` to manage the lifetime of that object.
+                return detail::stack_allocated_unique_ptr<cell_parser>(new (addr)
+                                                                           skip_parser{});
+            }
+        };
+
+    auto [to_parse, parsers] = detail::parse_header<detail::stack_allocated_unique_ptr>(
+        data, delimiter, line_ending, init, get_parser);
 
     detail::verify_dtypes_dict(dtypes, header);
-    detail::parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
+    detail::parse_from_header<detail::stack_allocated_unique_ptr>(to_parse,
+                                                                  parsers,
+                                                                  delimiter,
+                                                                  line_ending,
+                                                                  num_threads);
 
     py::scoped_ref out(PyDict_New());
     if (!out) {
