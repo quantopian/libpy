@@ -57,7 +57,6 @@ struct new_dtype<py::csv::fast_float64> : public new_dtype<double> {};
 }  // namespace py::dispatch
 
 namespace py::csv {
-constexpr std::size_t min_group_size = 4096;
 constexpr std::size_t min_split_lines_bytes_size = 16384;
 
 namespace detail {
