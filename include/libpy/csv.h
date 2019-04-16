@@ -713,8 +713,7 @@ private:
 public:
     virtual std::tuple<std::size_t, bool>
     chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
-        auto [raw, consumed, more] =
-            detail::isolate_unquoted_cell(row, offset, delim);
+        auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
         if (!raw.size()) {
             return {consumed, more};
         }
@@ -739,8 +738,7 @@ class typed_cell_parser<py::py_bool> : public typed_cell_parser_base<py::py_bool
 public:
     virtual std::tuple<std::size_t, bool>
     chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
-        auto [raw, consumed, more] =
-            detail::isolate_unquoted_cell(row, offset, delim);
+        auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
         if (raw.size() == 0) {
             return {consumed, more};
         }
@@ -879,13 +877,8 @@ void parse_lines_worker(std::mutex* exception_mutex,
                         std::size_t offset,
                         parser_types<ptr_type>* parsers) {
     try {
-        parse_lines<ptr_type>(*data,
-                              delim,
-                              data_offset,
-                              *line_sizes,
-                              line_end_size,
-                              offset,
-                              *parsers);
+        parse_lines<ptr_type>(
+            *data, delim, data_offset, *line_sizes, line_end_size, offset, *parsers);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -1292,23 +1285,22 @@ PyObject* py_parse(PyObject*,
         header.resize(num_cols);
     };
 
-    auto get_parser =
-        [&](std::size_t ix, const auto& cell) {
-            auto& cell_ob = header[ix] = py::to_object(cell);
+    auto get_parser = [&](std::size_t ix, const auto& cell) {
+        auto& cell_ob = header[ix] = py::to_object(cell);
 
-            cell_parser_storage* addr = &parser_storage[ix];
+        cell_parser_storage* addr = &parser_storage[ix];
 
-            PyObject* dtype = PyDict_GetItem(dtypes, cell_ob.get());
-            if (dtype) {
-                return detail::create_parser<possible_types...>::f(dtype, addr);
-            }
-            else {
-                // placement new the `skip_parser` into our storage and then create
-                // a `unique_ptr` to manage the lifetime of that object.
-                return detail::stack_allocated_unique_ptr<cell_parser>(new (addr)
-                                                                           skip_parser{});
-            }
-        };
+        PyObject* dtype = PyDict_GetItem(dtypes, cell_ob.get());
+        if (dtype) {
+            return detail::create_parser<possible_types...>::f(dtype, addr);
+        }
+        else {
+            // placement new the `skip_parser` into our storage and then create
+            // a `unique_ptr` to manage the lifetime of that object.
+            return detail::stack_allocated_unique_ptr<cell_parser>(new (addr)
+                                                                       skip_parser{});
+        }
+    };
 
     auto [to_parse, parsers] = detail::parse_header<detail::stack_allocated_unique_ptr>(
         data, delimiter, line_ending, init, get_parser);
