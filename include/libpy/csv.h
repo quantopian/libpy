@@ -900,23 +900,32 @@ void split_into_lines_loop(std::vector<std::size_t>& lines,
                            const std::string_view& line_ending,
                            bool handle_tail) {
     auto pos = *pos_ptr;
-    std::string_view::size_type end = data.find(line_ending, pos);
-    if (pos != 0 && pos != end) {
-        *pos_ptr = pos = end + line_ending.size();
+    std::string_view::size_type end;
+
+    if (pos >= line_ending.size() &&
+        data.substr(pos - line_ending.size(), line_ending.size()) != line_ending) {
+        end = data.find(line_ending, pos);
+        if (end == std::string_view::npos) {
+            *pos_ptr = pos = end_ix;
+            return;
+        }
+        else {
+            *pos_ptr = pos = end + line_ending.size();
+        }
     }
 
     while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
         auto size = end - pos;
         lines.emplace_back(size);
 
+        if (end >= end_ix) {
+            return;
+        }
+
         // advance past line ending
         pos = end + line_ending.size();
         __builtin_prefetch(data.data() + end + size, 0, 0);
         __builtin_prefetch(data.data() + end + size + l1dcache_line_size, 0, 0);
-
-        if (pos >= end_ix) {
-            break;
-        }
     }
 
     if (handle_tail and pos < end_ix) {
