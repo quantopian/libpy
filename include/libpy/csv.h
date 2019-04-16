@@ -25,6 +25,10 @@
 #include "libpy/to_object.h"
 #include "libpy/valgrind.h"
 
+#if LIBPY_NO_CSV_PREFETCH
+#define __builtin_prefetch(...)
+#endif
+
 namespace py::csv {
 namespace detail {
 // Allow us to configure the parser for a different l1dcache line size at compile time.
