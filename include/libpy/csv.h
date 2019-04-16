@@ -855,8 +855,9 @@ void parse_lines(const std::string_view data,
     std::size_t ix = offset;
     for (const auto& size : line_sizes) {
         auto row = data.substr(data_offset, size);
-        __builtin_prefetch(row.begin() + size + l1dcache_line_size, 0);
-        __builtin_prefetch(row.begin() + size + 2 * l1dcache_line_size, 0);
+        __builtin_prefetch(row.data() + size, 0);
+        __builtin_prefetch(row.data() + size + l1dcache_line_size, 0);
+        __builtin_prefetch(row.data() + size + 2 * l1dcache_line_size, 0);
         parse_row<ptr_type>(ix, delim, row, parsers);
         data_offset += size + line_end_size;
         ++ix;
