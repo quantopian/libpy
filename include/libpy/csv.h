@@ -26,6 +26,15 @@
 #include "libpy/valgrind.h"
 
 namespace py::csv {
+namespace detail {
+// Allow us to configure the parser for a different l1dcache line size at compile time.
+#ifndef LIBPY_L1DCACHE_LINE_SIZE
+#define LIBPY_L1DCACHE_LINE_SIZE 64
+#endif
+
+int l1dcache_line_size = LIBPY_L1DCACHE_LINE_SIZE;
+}  // namespace detail
+
 /** Tag type for marking that CSV parsing should use use `fast_strtod` which is much
  * faster but loses precision. This is primarily used to speed up development cycles, and
  * it should not be used in production unless you are absolutely certain it is okay.
@@ -847,8 +856,8 @@ void parse_lines(const std::string_view data,
     std::size_t ix = offset;
     for (const auto& size : line_sizes) {
         auto row = data.substr(data_offset, size);
-        __builtin_prefetch(row.begin() + size + 64, 0);
-        __builtin_prefetch(row.begin() + size + 64 + 64, 0);
+        __builtin_prefetch(row.begin() + size + l1dcache_line_size, 0);
+        __builtin_prefetch(row.begin() + size + 2 * l1dcache_line_size, 0);
         parse_row<ptr_type>(ix, delim, row, parsers);
         data_offset += size + line_end_size;
         ++ix;
@@ -899,7 +908,7 @@ void split_into_lines_loop(std::vector<std::size_t>& lines,
         // advance past line ending
         pos = end + line_ending.size();
         __builtin_prefetch(data.data() + end + size, 0);
-        __builtin_prefetch(data.data() + end + size + 64, 0);
+        __builtin_prefetch(data.data() + end + size + l1dcache_line_size, 0);
 
         if (pos >= end_ix) {
             break;
