@@ -450,6 +450,15 @@ template<typename T>
 T regular_strtod(const char* ptr, const char** last) {
     static_assert(std::is_same_v<T, double> || std::is_same_v<T, float>,
                   "regular_strtod<T>: T must be `double` or `float`");
+
+    // strtod and strtof skip leading whitespace before parsing, which causes problems
+    // when there's a missing value at the end of a line. Therefore, the first character
+    // of a cell is whitespace, treat it as a failed parse.
+    if (std::isspace(*ptr)) {
+        *last = ptr;
+        return {};
+    }
+
     if constexpr (std::is_same_v<T, double>) {
         return std::strtod(ptr, const_cast<char**>(last));
     }
