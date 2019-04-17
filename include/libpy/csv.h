@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <exception>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -173,7 +174,7 @@ public:
         return m_parsed;
     }
 
-    virtual void set_num_lines(std::size_t nrows) {
+    virtual void set_num_lines(std::size_t nrows) override {
         m_parsed.resize(nrows);
         m_mask.resize(nrows);
     }
@@ -287,15 +288,23 @@ public:
 };
 
 namespace detail {
+
+/**Get the result type of a function from char* -> char* -> T*/
 template<const auto& scalar_parse>
-class fundamental_parser : public typed_cell_parser_base<decltype(
-                               scalar_parse((const char*){}, (const char**){}))> {
+using parse_result = decltype(scalar_parse((const char*){}, (const char**){}));
+
+/**A typed_cell_parser implemented in terms of a scalar_parse function that takes a
+ * range of characters and returns a value of fundamental type.*/
+template<const auto& scalar_parse>
+class fundamental_parser : public typed_cell_parser_base<parse_result<scalar_parse>> {
 public:
+    using type = typename typed_cell_parser_base<parse_result<scalar_parse>>::type;
+
     virtual std::tuple<std::size_t, bool>
     chomp(std::size_t ix, const std::string_view& row, std::size_t offset) {
         const char* first = &row.data()[offset];
         const char* last;
-        this->m_parsed[ix] = scalar_parse(first, &last);
+        type parsed = scalar_parse(first, &last);
 
         std::size_t size = last - first;
         if (*last != this->m_delim && size != row.size() - offset) {
@@ -323,10 +332,27 @@ public:
                 cell);
         }
 
-        this->m_mask[ix] = size > 0;
+        if (size > 0) {
+            this->m_mask[ix] = true;
+            this->m_parsed[ix] = parsed;
+        }
 
         bool more = *last == this->m_delim;
         return {size + more, more};
+    }
+};
+
+/** Special case of fundamental_parser for parsing floats that initializes output buffers
+ *  with NaN.
+ */
+template<const auto& scalar_parse>
+class float_parser : public fundamental_parser<scalar_parse> {
+public:
+    using type = typename fundamental_parser<scalar_parse>::type;
+
+    virtual void set_num_lines(std::size_t nrows) override {
+        this->m_parsed.resize(nrows, std::numeric_limits<type>::quiet_NaN());
+        this->m_mask.resize(nrows);
     }
 };
 
@@ -489,20 +515,18 @@ template<typename T,
 auto fast_strtol = detail::signed_adapter<detail::fast_unsigned_strtol<T>>;
 
 template<>
-class typed_cell_parser<float>
-    : public detail::fundamental_parser<regular_strtod<float>> {};
+class typed_cell_parser<float> : public detail::float_parser<regular_strtod<float>> {};
 
 template<>
-class typed_cell_parser<double>
-    : public detail::fundamental_parser<regular_strtod<double>> {};
+class typed_cell_parser<double> : public detail::float_parser<regular_strtod<double>> {};
 
 template<>
-class typed_cell_parser<fast_float32>
-    : public detail::fundamental_parser<fast_strtod<float>> {};
+class typed_cell_parser<fast_float32> : public detail::float_parser<fast_strtod<float>> {
+};
 
 template<>
-class typed_cell_parser<fast_float64>
-    : public detail::fundamental_parser<fast_strtod<double>> {};
+class typed_cell_parser<fast_float64> : public detail::float_parser<fast_strtod<double>> {
+};
 
 template<>
 class typed_cell_parser<std::int8_t>
