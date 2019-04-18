@@ -47,7 +47,7 @@ struct raise_format<bool> {
 template<>
 struct raise_format<PyObject*> {
     static std::ostream& f(std::ostream& out, PyObject* value) {
-        py::scoped_ref as_str(py::utils::pystr(value));
+        py::scoped_ref as_str(PyObject_Str(value));
         if (!as_str) {
             out << "<error calling str on id=" << static_cast<void*>(value) << '>';
         }

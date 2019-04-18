@@ -26,12 +26,6 @@ inline const char* pystring_to_cstring(PyObject* ob) {
 #endif
 }
 
-/** Call `PyObject_Str` on an object, returning a scoped_ref.
- */
-inline py::scoped_ref<> pystr(PyObject* ob) {
-    return py::scoped_ref(PyObject_Str(ob));
-}
-
 /* Taken from google benchmark, this is useful for debugging.
 
    The DoNotOptimize(...) function can be used to prevent a value or
