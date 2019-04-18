@@ -289,7 +289,8 @@ public:
 
 namespace detail {
 
-/**Get the result type of a function from char* -> char* -> T*/
+/**Get the result type of a function suitable for passing as a template parameter for
+ * fundamental_parser.*/
 template<const auto& scalar_parse>
 using parse_result = decltype(scalar_parse((const char*){}, (const char**){}));
 
