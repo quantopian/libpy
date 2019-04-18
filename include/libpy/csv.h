@@ -216,7 +216,7 @@ public:
         return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
     }
 
-    virtual std::tuple<std::vector<T>, std::vector<py::py_bool>> move_to_tuple() && {
+    std::tuple<std::vector<T>, std::vector<py::py_bool>> move_to_tuple() && {
         return {std::move(m_parsed), std::move(m_mask)};
     }
 };
@@ -292,8 +292,10 @@ template<std::size_t n>
 class typed_cell_parser<std::array<char, n>>
     : public typed_cell_parser_base<std::array<char, n>> {
 public:
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        const std::string_view& row,
+                                        std::size_t offset) override {
         auto& cell = this->m_parsed[ix];
         std::size_t cell_ix = 0;
         auto ret = detail::chomp_quoted_string(
@@ -324,8 +326,10 @@ class fundamental_parser : public typed_cell_parser_base<parse_result<scalar_par
 public:
     using type = typename typed_cell_parser_base<parse_result<scalar_parse>>::type;
 
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        const std::string_view& row,
+                                        std::size_t offset) override {
         const char* first = &row.data()[offset];
         const char* last;
         type parsed = scalar_parse(first, &last);
@@ -711,8 +715,10 @@ private:
     }
 
 public:
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        const std::string_view& row,
+                                        std::size_t offset) override {
         auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
         if (!raw.size()) {
             return {consumed, more};
@@ -736,8 +742,10 @@ public:
 template<>
 class typed_cell_parser<py::py_bool> : public typed_cell_parser_base<py::py_bool> {
 public:
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, const std::string_view& row, std::size_t offset) {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        const std::string_view& row,
+                                        std::size_t offset) override {
         auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
         if (raw.size() == 0) {
             return {consumed, more};
@@ -768,8 +776,10 @@ protected:
     std::vector<std::string> m_parsed;
 
 public:
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t, const std::string_view& row, std::size_t offset) {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t,
+                                        const std::string_view& row,
+                                        std::size_t offset) override {
         this->m_parsed.emplace_back();
         auto& cell = this->m_parsed.back();
         return detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
@@ -785,8 +795,10 @@ public:
 
 class skip_parser : public cell_parser {
 public:
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t, const std::string_view& row, std::size_t offset) {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t,
+                                        const std::string_view& row,
+                                        std::size_t offset) override {
         return detail::chomp_quoted_string([](char) {}, delim, row, offset);
     }
 };
