@@ -26,16 +26,6 @@ inline const char* pystring_to_cstring(PyObject* ob) {
 #endif
 }
 
-/** Call `PyObject_ASCII` in Python 3, and `PyObject_Str` in Python 2.
- */
-inline py::scoped_ref<> pystr(PyObject* ob) {
-#if PY_MAJOR_VERSION == 2
-    return py::scoped_ref(PyObject_Str(ob));
-#else
-    return py::scoped_ref(PyObject_ASCII(ob));
-#endif
-}
-
 /* Taken from google benchmark, this is useful for debugging.
 
    The DoNotOptimize(...) function can be used to prevent a value or
