@@ -4,6 +4,50 @@
 #include "libpy/dense_hash_map.h"
 
 namespace test_any {
+TEST(any_vtable, void_vtable) {
+    py::any_vtable vtable = py::any_vtable::make<void>();
+
+    void* a = nullptr;
+
+    EXPECT_EQ(vtable.type_info(), typeid(void));
+    EXPECT_EQ(vtable.size(), 0ul);
+    EXPECT_EQ(vtable.align(), 0ul);
+    EXPECT_FALSE(vtable.is_trivially_default_constructible());
+    EXPECT_FALSE(vtable.is_trivially_destructible());
+    EXPECT_FALSE(vtable.is_trivially_move_constructible());
+    EXPECT_FALSE(vtable.is_trivially_copy_constructible());
+    EXPECT_FALSE(vtable.is_trivially_copyable());
+    EXPECT_FALSE(vtable.move_is_noexcept());
+
+    EXPECT_THROW(vtable.copy_assign(a, a), std::runtime_error);
+    EXPECT_THROW(vtable.move_assign(a, a), std::runtime_error);
+    EXPECT_THROW(vtable.default_construct(a), std::runtime_error);
+    EXPECT_THROW(vtable.copy_construct(a, a), std::runtime_error);
+    EXPECT_THROW(vtable.move_construct(a, a), std::runtime_error);
+    EXPECT_THROW(vtable.move_if_noexcept(a, a), std::runtime_error);
+    EXPECT_THROW(vtable.ne(a, a), std::runtime_error);
+    EXPECT_THROW(vtable.eq(a, a), std::runtime_error);
+    EXPECT_THROW(vtable.to_object(a), std::runtime_error);
+
+    EXPECT_STREQ(vtable.type_name().get(), py::util::type_name<void>().get());
+
+    EXPECT_EQ(vtable, py::any_vtable::make<void>());
+    EXPECT_EQ(vtable, py::any_vtable{});  // default construct makes void table
+    EXPECT_NE(vtable, py::any_vtable::make<int>());
+    EXPECT_NE(vtable, py::any_vtable::make<float>());
+}
+
+TEST(any_vtable, map_key) {
+    py::dense_hash_map<py::any_vtable, int> map(py::any_vtable{});
+
+    map[py::any_vtable::make<int>()] = 0;
+    map[py::any_vtable::make<float>()] = 1;
+    map[py::any_vtable::make<std::string>()] = 2;
+
+    EXPECT_EQ(map[py::any_vtable::make<int>()], 0);
+    EXPECT_EQ(map[py::any_vtable::make<float>()], 1);
+    EXPECT_EQ(map[py::any_vtable::make<std::string>()], 2);
+}
 TEST(any_ref, test_construction) {
     int underlying = 1;
     py::any_ref ref = py::make_any_ref(underlying);
@@ -140,17 +184,5 @@ TEST(any_cref, test_cast) {
         testing::StaticAssertTypeEq<decltype(const_reference_to_ref.cast<int>()),
                                     const int&>();
     }(ref);
-}
-
-TEST(any_vtable, map_key) {
-    py::dense_hash_map<py::any_vtable, int> map(py::any_vtable::make<void*>());
-
-    map[py::any_vtable::make<int>()] = 0;
-    map[py::any_vtable::make<float>()] = 1;
-    map[py::any_vtable::make<std::string>()] = 2;
-
-    EXPECT_EQ(map[py::any_vtable::make<int>()], 0);
-    EXPECT_EQ(map[py::any_vtable::make<float>()], 1);
-    EXPECT_EQ(map[py::any_vtable::make<std::string>()], 2);
 }
 }  // namespace test_any

@@ -81,6 +81,33 @@ constexpr any_vtable_impl any_vtable_instance = {
     },
     []() { return py::util::type_name<T>(); },
 };
+
+[[noreturn]] inline void void_vtable() {
+    throw std::runtime_error("cannot_use void vtable");
+}
+
+template<>
+const any_vtable_impl any_vtable_instance<void> = {
+    typeid(void),
+    0,
+    0,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    [](void*, const void*) { void_vtable(); },
+    [](void*, void*) { void_vtable(); },
+    [](void*) { void_vtable(); },
+    [](void*, const void*) { void_vtable(); },
+    [](void*, void*) { void_vtable(); },
+    [](void*) { void_vtable(); },
+    [](const void*, const void*) -> bool { void_vtable(); },
+    [](const void*, const void*) -> bool { void_vtable(); },
+    [](const void*) -> scoped_ref<> { void_vtable(); },
+    []() { return py::util::type_name<void>(); },
+};
 }  // namespace detail
 
 /** A collection of operations and metadata about a type to implement type-erased
@@ -96,7 +123,7 @@ private:
     inline constexpr any_vtable(const detail::any_vtable_impl* impl) : m_impl(impl) {}
 
 public:
-    any_vtable() : any_vtable(&detail::any_vtable_instance<void*>) {}
+    any_vtable() : any_vtable(&detail::any_vtable_instance<void>) {}
 
     template<typename T>
     static inline constexpr any_vtable make() {
@@ -463,4 +490,4 @@ struct hash<py::any_vtable> {
         return vtable.type_info().hash_code();
     }
 };
-}
+}  // namespace std
