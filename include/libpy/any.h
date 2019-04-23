@@ -96,6 +96,8 @@ private:
     inline constexpr any_vtable(const detail::any_vtable_impl* impl) : m_impl(impl) {}
 
 public:
+    any_vtable() : any_vtable(&detail::any_vtable_instance<void*>) {}
+
     template<typename T>
     static inline constexpr any_vtable make() {
         return &detail::any_vtable_instance<T>;
@@ -453,3 +455,12 @@ struct to_object<py::any_ref> {
 };
 }  // namespace dispatch
 }  // namespace py
+
+namespace std {
+template<>
+struct hash<py::any_vtable> {
+    std::size_t operator()(const py::any_vtable& vtable) const {
+        return vtable.type_info().hash_code();
+    }
+};
+}
