@@ -32,7 +32,24 @@ struct any_vtable_impl {
     bool (*ne)(const void* lhs, const void* rhs);
     bool (*eq)(const void* lhs, const void* rhs);
     py::scoped_ref<> (*to_object)(const void* addr);
+    std::ostream& (*ostream_format)(std::ostream& stream, const void* addr);
     py::util::demangled_cstring (*type_name)();
+};
+
+template<typename T>
+struct has_ostream_format {
+private:
+    template<typename U>
+    static decltype((std::declval<std::ostream&>() << std::declval<U>()),
+                    std::true_type{})
+    test(int);
+
+    template<typename>
+    static std::false_type test(long);
+
+public:
+    static constexpr bool value =
+        std::is_same_v<decltype(test<T>(0)), std::true_type>;
 };
 
 /** The actual structure that holds all the function pointers. This should be accessed
@@ -79,11 +96,24 @@ constexpr any_vtable_impl any_vtable_instance = {
                                 " into Python object");
         }
     },
+    [](std::ostream& stream, const void* addr) -> std::ostream& {
+        if constexpr (has_ostream_format<const T&>::value) {
+            return stream << *reinterpret_cast<const T*>(addr);
+        }
+        else {
+            static_cast<void>(stream);
+            static_cast<void>(addr);
+            throw py::exception(
+                PyExc_TypeError,
+                "cannot use operator<<(std::ostream&, const T&) for values of type ",
+                py::util::type_name<T>().get());
+        }
+    },
     []() { return py::util::type_name<T>(); },
 };
 
 [[noreturn]] inline void void_vtable() {
-    throw std::runtime_error("cannot_use void vtable");
+    throw std::runtime_error("cannot use void vtable");
 }
 
 template<>
@@ -106,6 +136,7 @@ const any_vtable_impl any_vtable_instance<void> = {
     [](const void*, const void*) -> bool { void_vtable(); },
     [](const void*, const void*) -> bool { void_vtable(); },
     [](const void*) -> scoped_ref<> { void_vtable(); },
+    [](std::ostream&, const void*) -> std::ostream& { void_vtable(); },
     []() { return py::util::type_name<void>(); },
 };
 }  // namespace detail
@@ -215,6 +246,10 @@ public:
 
     inline scoped_ref<> to_object(const void* addr) const {
         return m_impl->to_object(addr);
+    }
+
+    inline std::ostream& ostream_format(std::ostream& stream, const void* addr) const {
+        return m_impl->ostream_format(stream, addr);
     }
 
     inline py::util::demangled_cstring type_name() const {
@@ -366,6 +401,10 @@ public:
     }
 };
 
+inline std::ostream& operator<<(std::ostream& stream, const any_ref& value) {
+    return value.vtable().ostream_format(stream, value.addr());
+}
+
 /** Convert a statically typed reference into a dynamically typed reference.
 
     @param The reference to convert.
@@ -460,6 +499,10 @@ public:
         return m_addr;
     }
 };
+
+inline std::ostream& operator<<(std::ostream& stream, const any_cref& value) {
+    return value.vtable().ostream_format(stream, value.addr());
+}
 
 /** Convert a statically typed reference into a dynamically typed reference.
 

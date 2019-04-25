@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <exception>
+#include <fstream>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -22,6 +23,7 @@
 #include "libpy/itertools.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/scoped_ref.h"
+#include "libpy/stream.h"
 #include "libpy/to_object.h"
 #include "libpy/valgrind.h"
 
@@ -1347,5 +1349,74 @@ PyObject* py_parse(PyObject*,
     }
 
     return std::move(out).escape();
+}
+
+inline std::ostream& format_cell(std::ostream& stream, const py::any_ref& value) {
+    if (value.vtable() == py::any_vtable::make<py::scoped_ref<>>()) {
+        const py::scoped_ref<>& as_ob = value.cast<py::scoped_ref<>>();
+        const char* text = py::utils::pystring_to_cstring(as_ob.get());
+        if (!text) {
+            throw py::exception{};
+        }
+        stream << '"';
+        while (*text) {
+            if (*text == '"') {
+                stream << '/';
+            }
+            stream << *text;
+            ++text;
+        }
+        stream << '"';
+    }
+    else {
+        stream << value;
+    }
+
+    return stream;
+}
+
+inline void to_csv(std::ostream& stream,
+                   std::vector<std::string> column_names,
+                   std::vector<py::array_view<py::any_ref>>& columns) {
+    if (columns.size() != column_names.size()) {
+        throw std::runtime_error("mismatched column_names and columns");
+    }
+
+    if (!columns.size()) {
+        return;
+    }
+
+    auto names_it = column_names.begin();
+    stream << *names_it;
+    for (++names_it; names_it != column_names.end(); ++names_it) {
+        stream << ',' << *names_it;
+    }
+    stream << '\n';
+
+    for (std::size_t ix = 0; ix < columns[0].size(); ++ix) {
+        auto it = columns.begin();
+        format_cell(stream, (*it)[ix]);
+        for (++it; it != columns.end(); ++it) {
+            format_cell(stream << ',', (*it)[ix]);
+        }
+        stream << '\n';
+    }
+}
+
+inline void py_to_csv(PyObject*,
+                      PyObject* file,
+                      std::vector<std::string> column_names,
+                      std::vector<py::array_view<py::any_ref>>& columns) {
+    const char* text = py::utils::pystring_to_cstring(file);
+    if (!text) {
+        PyErr_Clear();
+
+        py::ostream stream(file);
+        to_csv(stream, column_names, columns);
+    }
+    else {
+        std::ofstream stream(text);
+        to_csv(stream, column_names, columns);
+    }
 }
 }  // namespace py::csv
