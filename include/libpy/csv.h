@@ -613,7 +613,7 @@ private:
         build_days_before_month();
 
     static constexpr bool is_leapyear(int year) {
-        return !(year % 4) && (!(year % 100) || year % 400);
+        return (year % 4) == 0 && ((year % 100) != 0 || (year % 400) == 0);
     }
 
     static constexpr int leap_years_before(int year) {
