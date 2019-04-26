@@ -8,8 +8,9 @@ CLANG_FORMAT ?= clang-format
 GTEST_BREAK ?= 1
 
 OPTLEVEL ?= 3
+MAX_ERRORS ?= 15
 # This uses = instead of := so that you we can conditionally change OPTLEVEL below.
-CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL) -Wno-register
+CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL) -Wno-register -fmax-errors=$(MAX_ERRORS)
 LDFLAGS := $(shell $(PYTHON)-config --ldflags)
 
 # Set this to 1 if you want to build with gcov support
