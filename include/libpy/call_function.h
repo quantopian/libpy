@@ -49,7 +49,7 @@ scoped_ref<> call_function(PyObject* function, Args&&... args) {
  */
 template<typename... Args>
 scoped_ref<PyObject> call_function(const scoped_ref<>& function, Args&&... args) {
-    return scoped_ref(function.get(), std::forward<Args>(args)...);
+    return call_function(function.get(), std::forward<Args>(args)...);
 }
 
 /** Call a python method on C++ data.
