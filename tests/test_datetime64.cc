@@ -149,4 +149,4 @@ using units = testing::Types<py::chrono::ns,
                              py::chrono::h,
                              py::chrono::D>;
 INSTANTIATE_TYPED_TEST_CASE_P(typed_, datetime64_all_units, units);
-}
+}  // namespace test_datetime64

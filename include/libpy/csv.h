@@ -1351,39 +1351,110 @@ PyObject* py_parse(PyObject*,
     return std::move(out).escape();
 }
 
-inline std::ostream& format_cell(std::ostream& stream, const py::any_ref& value) {
-    if (value.vtable() == py::any_vtable::make<py::scoped_ref<>>()) {
-        const py::scoped_ref<>& as_ob = value.cast<py::scoped_ref<>>();
-        const char* text = py::utils::pystring_to_cstring(as_ob.get());
-        if (!text) {
-            throw py::exception{};
-        }
-        stream << '"';
-        while (*text) {
-            if (*text == '"') {
-                stream << '/';
-            }
-            stream << *text;
-            ++text;
-        }
-        stream << '"';
-    }
-    else {
-        stream << value;
-    }
-
-    return stream;
+inline void format_any(std::ostream& stream, const py::any_ref& value) {
+    stream << value;
 }
 
-inline void to_csv(std::ostream& stream,
-                   std::vector<std::string> column_names,
-                   std::vector<py::array_view<py::any_ref>>& columns) {
+inline void format_pyobject(std::ostream& stream, const py::any_ref& any_value) {
+    const auto& as_ob = *reinterpret_cast<const py::scoped_ref<>*>(any_value.addr());
+    if (as_ob.get() == Py_None) {
+        return;
+    }
+
+    const char* text = py::utils::pystring_to_cstring(as_ob.get());
+    if (!text) {
+        throw py::exception{};
+    }
+    stream << '"';
+    while (*text) {
+        if (*text == '"') {
+            stream << '/';
+        }
+        stream << *text;
+        ++text;
+    }
+    stream << '"';
+}
+
+template<typename T>
+void format_float(std::ostream& stream, const py::any_ref& any_value) {
+    const auto& as_f8 = *reinterpret_cast<const T*>(any_value.addr());
+    if (as_f8 != as_f8) {
+        return;
+    }
+    stream << as_f8;
+}
+
+template<typename unit>
+void format_datetime64(std::ostream& stream, const py::any_ref& any_value) {
+    const auto& as_M8 = *reinterpret_cast<const py::datetime64<unit>*>(any_value.addr());
+    if (as_M8.isnat()) {
+        return;
+    }
+    stream << as_M8;
+}
+
+/** Format a CSV from an array of columns.
+
+    @param stream The ostream to write into.
+    @param column_names The names to write into the column header.
+    @param columns The arrays of values for each column. Columns are written in the order
+                   they appear here, and  must be aligned with `column_names`.
+*/
+inline void write(std::ostream& stream,
+                  std::vector<std::string> column_names,
+                  std::vector<py::array_view<py::any_ref>>& columns) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
 
     if (!columns.size()) {
         return;
+    }
+
+    std::size_t num_rows = columns[0].size();
+
+    using format_function = void (*)(std::ostream&, const py::any_ref&);
+    std::vector<format_function> formatters;
+    for (const auto& column : columns) {
+        if (column.size() != num_rows) {
+            throw std::runtime_error("mismatched column lengths");
+        }
+
+        const auto& vtable = column.vtable();
+        if (vtable == py::any_vtable::make<double>()) {
+            formatters.emplace_back(format_float<double>);
+        }
+        else if (vtable == py::any_vtable::make<float>()) {
+            formatters.emplace_back(format_float<float>);
+        }
+        else if (vtable == py::any_vtable::make<py::scoped_ref<>>()) {
+            formatters.emplace_back(format_pyobject);
+        }
+        else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::ns>>()) {
+            formatters.emplace_back(format_datetime64<py::chrono::ns>);
+        }
+        else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::us>>()) {
+            formatters.emplace_back(format_datetime64<py::chrono::us>);
+        }
+        else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::ms>>()) {
+            formatters.emplace_back(format_datetime64<py::chrono::ms>);
+        }
+        else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::s>>()) {
+            formatters.emplace_back(format_datetime64<py::chrono::s>);
+        }
+        else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::m>>()) {
+            formatters.emplace_back(format_datetime64<py::chrono::m>);
+        }
+        else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::h>>()) {
+            formatters.emplace_back(format_datetime64<py::chrono::h>);
+        }
+        else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::D>>()) {
+            formatters.emplace_back(format_datetime64<py::chrono::D>);
+        }
+        else {
+            formatters.emplace_back(format_any);
+        }
     }
 
     auto names_it = column_names.begin();
@@ -1393,30 +1464,41 @@ inline void to_csv(std::ostream& stream,
     }
     stream << '\n';
 
-    for (std::size_t ix = 0; ix < columns[0].size(); ++ix) {
-        auto it = columns.begin();
-        format_cell(stream, (*it)[ix]);
-        for (++it; it != columns.end(); ++it) {
-            format_cell(stream << ',', (*it)[ix]);
+    for (std::int64_t ix = 0; ix < static_cast<std::int64_t>(num_rows); ++ix) {
+        auto columns_it = columns.begin();
+        auto format_it = formatters.begin();
+        (*format_it)(stream, (*columns_it)[ix]);
+        for (++columns_it, ++format_it; columns_it != columns.end();
+             ++columns_it, ++format_it) {
+            (*format_it)(stream << ',', (*columns_it)[ix]);
         }
         stream << '\n';
     }
 }
 
-inline void py_to_csv(PyObject*,
-                      PyObject* file,
-                      std::vector<std::string> column_names,
-                      std::vector<py::array_view<py::any_ref>>& columns) {
+/** Format a CSV from an array of columns. This is meant to be exposed to Python with
+    `py::automethod`.
+
+    @param file A python object which is either a string to be interpreted as a file name,
+                or a file-like object to be written to.
+    @param column_names The names to write into the column header.
+    @param columns The arrays of values for each column. Columns are written in the order
+                   they appear here, and  must be aligned with `column_names`.
+*/
+inline void py_write(PyObject*,
+                     const py::scoped_ref<>& file,
+                     std::vector<std::string> column_names,
+                     std::vector<py::array_view<py::any_ref>>& columns) {
     const char* text = py::utils::pystring_to_cstring(file);
     if (!text) {
         PyErr_Clear();
 
         py::ostream stream(file);
-        to_csv(stream, column_names, columns);
+        write(stream, column_names, columns);
     }
     else {
         std::ofstream stream(text);
-        to_csv(stream, column_names, columns);
+        write(stream, column_names, columns);
     }
 }
 }  // namespace py::csv

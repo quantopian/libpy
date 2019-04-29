@@ -48,8 +48,7 @@ private:
     static std::false_type test(long);
 
 public:
-    static constexpr bool value =
-        std::is_same_v<decltype(test<T>(0)), std::true_type>;
+    static constexpr bool value = std::is_same_v<decltype(test<T>(0)), std::true_type>;
 };
 
 /** The actual structure that holds all the function pointers. This should be accessed
