@@ -6,7 +6,7 @@
 
 /** Miscellaneous utilities.
  */
-namespace py::utils {
+namespace py::util {
 /** Check if all parameters are equal.
  */
 template<typename T, typename... Ts>
@@ -50,4 +50,4 @@ inline __attribute__((always_inline)) void do_not_optimize(T& value) {
     asm volatile("" : "+m,r"(value) : : "memory");
 #endif
 }
-}  // namespace py::utils
+}  // namespace py::util

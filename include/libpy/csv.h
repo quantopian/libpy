@@ -5,6 +5,7 @@
 #include <chrono>
 #include <exception>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -22,6 +23,7 @@
 #include "libpy/exception.h"
 #include "libpy/itertools.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/scope_guard.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/stream.h"
 #include "libpy/to_object.h"
@@ -1361,7 +1363,7 @@ inline void format_pyobject(std::ostream& stream, const py::any_ref& any_value) 
         return;
     }
 
-    const char* text = py::utils::pystring_to_cstring(as_ob.get());
+    const char* text = py::util::pystring_to_cstring(as_ob.get());
     if (!text) {
         throw py::exception{};
     }
@@ -1400,10 +1402,12 @@ void format_datetime64(std::ostream& stream, const py::any_ref& any_value) {
     @param column_names The names to write into the column header.
     @param columns The arrays of values for each column. Columns are written in the order
                    they appear here, and  must be aligned with `column_names`.
+    @param float_precision The number of digits of precision to write floats as.
 */
 inline void write(std::ostream& stream,
                   std::vector<std::string> column_names,
-                  std::vector<py::array_view<py::any_ref>>& columns) {
+                  std::vector<py::array_view<py::any_ref>>& columns,
+                  int float_precision = 10) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -1457,6 +1461,11 @@ inline void write(std::ostream& stream,
         }
     }
 
+    int old_precision = stream.precision();
+    stream << std::setprecision(float_precision);
+    py::util::scope_guard reset_precision(
+        [&]() { stream << std::setprecision(old_precision); });
+
     auto names_it = column_names.begin();
     stream << *names_it;
     for (++names_it; names_it != column_names.end(); ++names_it) {
@@ -1488,17 +1497,18 @@ inline void write(std::ostream& stream,
 inline void py_write(PyObject*,
                      const py::scoped_ref<>& file,
                      std::vector<std::string> column_names,
-                     std::vector<py::array_view<py::any_ref>>& columns) {
-    const char* text = py::utils::pystring_to_cstring(file);
+                     std::vector<py::array_view<py::any_ref>>& columns,
+                     int float_precision) {
+    const char* text = py::util::pystring_to_cstring(file);
     if (!text) {
         PyErr_Clear();
 
         py::ostream stream(file);
-        write(stream, column_names, columns);
+        write(stream, column_names, columns, float_precision);
     }
     else {
         std::ofstream stream(text);
-        write(stream, column_names, columns);
+        write(stream, column_names, columns, float_precision);
     }
 }
 }  // namespace py::csv

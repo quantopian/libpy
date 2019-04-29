@@ -18,7 +18,7 @@
 #include "libpy/demangle.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
-#include "libpy/utils.h"
+#include "libpy/util.h"
 
 namespace py {
 namespace dispatch {
@@ -47,7 +47,7 @@ public:
         if (!repr) {
             throw py::exception("failed to call repr on ob");
         }
-        const char* data = utils::pystring_to_cstring(repr.get());
+        const char* data = py::util::pystring_to_cstring(repr.get());
         if (!data) {
             throw py::exception("failed to get utf8 string from repr result");
         }

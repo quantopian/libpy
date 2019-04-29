@@ -123,7 +123,7 @@ TYPED_TEST_P(datetime64_all_units, stream_format) {
         if (!repr) {
             throw py::exception{};
         }
-        auto repr_text = py::utils::pystring_to_cstring(repr.get());
+        auto repr_text = py::util::pystring_to_cstring(repr.get());
         if (!repr_text) {
             throw py::exception{};
         }

@@ -49,7 +49,7 @@
 #include "libpy/meta.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/table_details.h"
-#include "libpy/utils.h"
+#include "libpy/util.h"
 
 namespace py {
 
@@ -925,7 +925,7 @@ public:
      */
     template<typename... Columns>
     table_view(const Columns&... cs) : m_columns(cs...) {
-        if (!utils::all_equal(cs.size()...)) {
+        if (!py::util::all_equal(cs.size()...)) {
             throw std::invalid_argument("columns must be same length");
         }
     }
