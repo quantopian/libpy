@@ -10,7 +10,7 @@ namespace py {
 class any_vector {
 private:
     py::any_vtable m_vtable;
-    char* m_storage;
+    std::byte* m_storage;
     std::size_t m_size;
     std::size_t m_capacity;
 
@@ -139,7 +139,7 @@ private:
     };
 
     template<typename F>
-    void map_old_new(F&& f, char* new_data, char* old_data) {
+    void map_old_new(F&& f, std::byte* new_data, std::byte* old_data) {
         std::size_t itemsize = m_vtable.size();
         for (std::size_t ix = 0; ix < size(); ++ix) {
             f(new_data, old_data);
@@ -155,14 +155,14 @@ private:
             count = 1;
         }
 
-        char* new_data;
-        char* old_data = m_storage;
+        std::byte* new_data;
+        std::byte* old_data = m_storage;
 
         if (m_vtable.is_trivially_copyable()) {
             // the data is trivially copyable, so we will attempt to grow the current
             // allocation falling back to `std::memcpy`.
             if (m_vtable.align() <= alignof(std::max_align_t)) {
-                new_data = static_cast<char*>(
+                new_data = static_cast<std::byte*>(
                     std::realloc(m_storage, m_vtable.size() * count));
                 if (!new_data) {
                     throw std::bad_alloc{};
@@ -173,7 +173,7 @@ private:
                 // this doesn't respect any explicit over-alignment so it is only safe for
                 // types whose `align()` is less than or equal to that of the
                 // `max_align_t`.
-                new_data = static_cast<char*>(m_vtable.alloc(count));
+                new_data = static_cast<std::byte*>(m_vtable.alloc(count));
                 if (!new_data) {
                     throw std::bad_alloc{};
                 }
@@ -182,7 +182,7 @@ private:
             }
         }
         else {
-            new_data = static_cast<char*>(m_vtable.alloc(count));
+            new_data = static_cast<std::byte*>(m_vtable.alloc(count));
             if (!new_data) {
                 throw std::bad_alloc{};
             }
@@ -214,10 +214,10 @@ private:
                 // track one past the last successfully copied element, if an exception
                 // occurs, we need to destruct everything up to, but not including, this
                 // object
-                char* new_end;
+                std::byte* new_end;
                 try {
                     map_old_new(
-                        [&](char* new_, char* old) {
+                        [&](std::byte* new_, std::byte* old) {
                             new_end = new_;
                             m_vtable.copy_construct(new_, old);
                         },
@@ -227,7 +227,7 @@ private:
                 catch (...) {
                     // if the copying throws an exception, unwind the new vector but leave
                     // our original storage and capacity alone
-                    for (char* p = new_data; p != new_end; p += m_vtable.size()) {
+                    for (std::byte* p = new_data; p != new_end; p += m_vtable.size()) {
                         m_vtable.destruct(p);
                     }
 
@@ -239,7 +239,7 @@ private:
 
                 // now that we have successfully copied everything to the `new_data`, we
                 // can go through and destruct the elements of `old_data`
-                char* p = old_data;
+                std::byte* p = old_data;
                 std::size_t itemsize = m_vtable.size();
                 for (std::size_t ix = 0; ix < size(); ++ix) {
                     m_vtable.destruct(p);
@@ -264,7 +264,7 @@ private:
             grow(capacity() * 2);
         }
 
-        char* addr = m_storage + pos_to_index(size());
+        std::byte* addr = m_storage + pos_to_index(size());
         if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
             construct(addr, value.addr());
         }
@@ -280,7 +280,7 @@ public:
 
     inline any_vector(const any_vtable& vtable, std::size_t count = 0)
         : m_vtable(vtable),
-          m_storage(static_cast<char*>(vtable.default_construct_alloc(count))),
+          m_storage(static_cast<std::byte*>(vtable.default_construct_alloc(count))),
           m_size(count),
           m_capacity(count) {
 
@@ -289,7 +289,7 @@ public:
         }
 
         if (!m_vtable.is_trivially_default_constructible()) {
-            char* data = m_storage;
+            std::byte* data = m_storage;
             std::size_t itemsize = m_vtable.size();
             try {
                 for (std::size_t ix = 0; ix < count; ++ix) {
@@ -300,7 +300,7 @@ public:
             catch (...) {
                 // if an exception occurs default constructing the vector, be sure to
                 // unwind the partially initialized state
-                for (char* p = m_storage; p < data; p += itemsize) {
+                for (std::byte* p = m_storage; p < data; p += itemsize) {
                     vtable.destruct(p);
                 }
                 std::free(m_storage);
@@ -312,7 +312,7 @@ public:
     template<typename T>
     inline any_vector(const any_vtable& vtable, std::size_t count, const T& value)
         : m_vtable(vtable),
-          m_storage(static_cast<char*>(vtable.alloc(count))),
+          m_storage(static_cast<std::byte*>(vtable.alloc(count))),
           m_size(count),
           m_capacity(count) {
 
@@ -323,7 +323,7 @@ public:
         typecheck(value);
 
         std::size_t itemsize = m_vtable.size();
-        char* data = m_storage;
+        std::byte* data = m_storage;
         try {
             for (std::size_t ix = 0; ix < count; ++ix) {
                 if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
@@ -338,7 +338,7 @@ public:
         catch (...) {
             // if an exception occurs default constructing the vector, be sure to
             // unwind the partially initialized state
-            for (char* p = m_storage; p < data; p += itemsize) {
+            for (std::byte* p = m_storage; p < data; p += itemsize) {
                 vtable.destruct(p);
             }
             std::free(m_storage);
@@ -348,7 +348,7 @@ public:
 
     inline any_vector(const any_vector& cpfrom)
         : m_vtable(cpfrom.m_vtable),
-          m_storage(static_cast<char*>(cpfrom.vtable().alloc(cpfrom.size()))),
+          m_storage(static_cast<std::byte*>(cpfrom.vtable().alloc(cpfrom.size()))),
           m_size(cpfrom.size()),
           m_capacity(cpfrom.size()) {
 
@@ -361,8 +361,8 @@ public:
         }
         else {
             std::size_t itemsize = m_vtable.size();
-            char* new_data = m_storage;
-            char* old_data = cpfrom.m_storage;
+            std::byte* new_data = m_storage;
+            std::byte* old_data = cpfrom.m_storage;
             for (std::size_t ix = 0; ix < size(); ++ix) {
                 m_vtable.copy_construct(new_data, old_data);
                 new_data += itemsize;
@@ -406,9 +406,9 @@ public:
 
     using reference = any_ref;
     using const_reference = any_cref;
-    using iterator = generic_iterator<char*, any_ref, any_cref>;
+    using iterator = generic_iterator<std::byte*, any_ref, any_cref>;
     using reverse_iterator = iterator;
-    using const_iterator = generic_iterator<const char*, any_cref, any_cref>;
+    using const_iterator = generic_iterator<const std::byte*, any_cref, any_cref>;
     using const_reverse_iterator = const_iterator;
 
     inline iterator begin() {
@@ -482,7 +482,7 @@ public:
     inline void clear() {
         if (!m_vtable.is_trivially_destructible()) {
             std::size_t itemsize = m_vtable.size();
-            char* data = m_storage;
+            std::byte* data = m_storage;
             for (std::size_t ix = 0; ix < size(); ++ix) {
                 m_vtable.destruct(data);
                 data += itemsize;

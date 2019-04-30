@@ -22,10 +22,14 @@ namespace py {
  */
 template<typename T, std::size_t ndim, bool = ndim != 1>
 class ndarray_view {
+public:
+    using buffer_type =
+        std::conditional_t<std::is_const_v<T>, const std::byte*, std::byte*>;
+
 protected:
     std::array<std::size_t, ndim> m_shape;
     std::array<std::int64_t, ndim> m_strides;
-    char* m_buffer;
+    buffer_type m_buffer;
 
     std::ptrdiff_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
         std::ptrdiff_t ix = 0;
@@ -43,6 +47,11 @@ protected:
         return ix;
     }
 
+    ndarray_view(buffer_type buffer,
+                 const std::array<std::size_t, ndim> shape,
+                 const std::array<std::int64_t, ndim>& strides)
+        : m_shape(shape), m_strides(strides), m_buffer(buffer) {}
+
 public:
     // expose member types to look more like a `std::array`.
     using value_type = T;
@@ -53,6 +62,20 @@ public:
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
+    /** Implicitly allow conversions from `ndarray_view<T>` to `ndarray_view<const T>`
+     */
+    ndarray_view(const ndarray_view<const T, ndim, false>& cpfrom)
+        : m_shape(cpfrom.shape()),
+          m_strides(cpfrom.strides()),
+          m_buffer(cpfrom.buffer()) {}
+
+    ndarray_view& operator=(const ndarray_view<const T, ndim, false>& cpfrom) {
+        m_shape = cpfrom.shape();
+        m_strides = cpfrom.strides();
+        m_buffer = cpfrom.buffer();
+        return *this;
+    }
+
     /** Create a virtual array of length ``size`` holding the scalar ``value``.
 
         @param value The value to fill the array with.
@@ -61,12 +84,12 @@ public:
      */
     static ndarray_view virtual_array(T& value,
                                       const std::array<std::size_t, ndim>& shape) {
-        return {reinterpret_cast<char*>(std::addressof(value)), shape, {0}};
+        return {std::addressof(value), shape, {0}};
     }
 
     /** Default constructor creates an empty view over nothing.
      */
-    ndarray_view() : m_shape({0}), m_strides({0}), m_buffer(nullptr) {}
+    ndarray_view() noexcept : m_shape({0}), m_strides({0}), m_buffer(nullptr) {}
 
     /** Take a view over `buffer`.
 
@@ -74,13 +97,10 @@ public:
         @param shape The number of elements in the buffer along each axis.
         @param stride The number of bytes between elements along each axis.
      */
-    ndarray_view(char* buffer,
+    ndarray_view(T* buffer,
                  const std::array<std::size_t, ndim> shape,
                  const std::array<std::int64_t, ndim>& strides)
-        : m_shape(shape), m_strides(strides), m_buffer(buffer) {
-        // assert the pointer is aligned
-        assert(reinterpret_cast<std::size_t>(buffer) % alignof(T) == 0);
-    }
+        : ndarray_view(reinterpret_cast<buffer_type>(buffer), shape, strides) {}
 
     /** Access the element at the given index with bounds checking.
 
@@ -88,31 +108,16 @@ public:
         @return A view of the string at the given index.
      */
     template<typename... Ixs>
-    const T& at(Ixs... pos) const {
+    T& at(Ixs... pos) const {
         return at({pos...});
-    }
-
-    const T& at(const std::array<std::size_t, ndim>& ixs) const {
-        for (std::size_t n = 0; n < ndim; ++n) {
-            if (ixs[n] >= m_shape[n]) {
-                throw std::out_of_range("pos exceeds the length of the array");
-            }
-        }
-
-        return (*this)(ixs);
     }
 
     /** Access the element at the given index with bounds checking.
 
-        @param pos The index to lookup.
+        @param ixs The index to lookup.
         @return A view of the string at the given index.
      */
-    template<typename... Ixs>
-    T& at(Ixs... pos) {
-        return at({pos...});
-    }
-
-    T& at(const std::array<std::size_t, ndim>& ixs) {
+    T& at(const std::array<std::size_t, ndim>& ixs) const {
         for (std::size_t n = 0; n < ndim; ++n) {
             if (ixs[n] >= m_shape[n]) {
                 throw std::out_of_range("pos exceeds the length of the array");
@@ -123,20 +128,11 @@ public:
     }
 
     template<typename... Ixs>
-    const T& operator()(Ixs... ixs) const {
+    T& operator()(Ixs... ixs) const {
         return (*this)({ixs...});
     }
 
-    const T& operator()(const std::array<std::size_t, ndim>& ixs) const {
-        return *reinterpret_cast<T*>(&m_buffer[pos_to_index(ixs)]);
-    }
-
-    template<typename... Ixs>
-    T& operator()(Ixs... ixs) {
-        return (*this)({ixs...});
-    }
-
-    T& operator()(const std::array<std::size_t, ndim>& ixs) {
+    T& operator()(const std::array<std::size_t, ndim>& ixs) const {
         return *reinterpret_cast<T*>(&m_buffer[pos_to_index(ixs)]);
     }
 
@@ -162,15 +158,9 @@ public:
         return m_strides;
     }
 
-    /** The underlying buffer for this array view.
-     */
-    char* buffer() {
-        return m_buffer;
-    }
-
     /** The underlying buffer of characters for this string array.
      */
-    const char* buffer() const {
+    buffer_type buffer() const {
         return m_buffer;
     }
 
@@ -203,6 +193,10 @@ class ndarray_view<T, 1, false> : public ndarray_view<T, 1, true> {
 private:
     using generic_ndarray_impl = ndarray_view<T, 1, true>;
 
+public:
+    using buffer_type = typename generic_ndarray_impl::buffer_type;
+
+private:
     /** Iterator type to implement forward, const, reverse, and const reverse iterators.
 
         This type cannot be implemented with just a pointer and stride because stride may
@@ -211,14 +205,14 @@ private:
     template<typename V>
     struct generic_iterator {
     private:
-        char* m_ptr;
+        buffer_type m_ptr;
         std::size_t m_ix;
         std::int64_t m_stride;
 
     protected:
         friend ndarray_view;
 
-        generic_iterator(char* buffer, std::size_t ix, std::int64_t stride)
+        generic_iterator(buffer_type buffer, std::size_t ix, std::int64_t stride)
             : m_ptr(buffer), m_ix(ix), m_stride(stride) {}
 
     public:
@@ -230,27 +224,15 @@ private:
         using const_reference = const value_type&;
         using iterator_category = std::random_access_iterator_tag;
 
-        reference operator*() {
+        reference operator*() const {
             return *reinterpret_cast<V*>(m_ptr);
         }
 
-        const_reference operator*() const {
-            return *reinterpret_cast<V*>(m_ptr);
-        }
-
-        reference operator[](difference_type ix) {
+        reference operator[](difference_type ix) const {
             return *(*this + ix);
         }
 
-        const_reference operator[](difference_type ix) const {
-            return *(*this + ix);
-        }
-
-        pointer operator->() {
-            return reinterpret_cast<V*>(m_ptr);
-        }
-
-        const_pointer operator->() const {
+        pointer operator->() const {
             return reinterpret_cast<const V*>(m_ptr);
         }
 
@@ -341,11 +323,25 @@ public:
 
         @param contiguous_container The container to take a view of.
      */
-    template<typename C,
-             typename =
-                 std::enable_if_t<std::is_same_v<decltype(std::declval<C>().data()), T*>>>
+    template<
+        typename C,
+        typename = std::enable_if_t<
+            std::is_same_v<decltype(std::declval<C>().data()), std::remove_const_t<T>*>>>
     ndarray_view(C& contiguous_container)
-        : generic_ndarray_impl(reinterpret_cast<char*>(contiguous_container.data()),
+        : generic_ndarray_impl(contiguous_container.data(),
+                               {contiguous_container.size()},
+                               {sizeof(T)}) {}
+
+    /** Create a view over an arbitrary contiguous container of `T`s.
+
+        @param contiguous_container The container to take a view of.
+     */
+    template<typename C,
+             typename = std::enable_if_t<
+                 std::is_const_v<T> && std::is_same_v<decltype(std::declval<C>().data()),
+                                                      std::remove_const_t<T>*>>>
+    ndarray_view(const C& contiguous_container)
+        : generic_ndarray_impl(contiguous_container.data(),
                                {contiguous_container.size()},
                                {sizeof(T)}) {}
 
@@ -356,7 +352,7 @@ public:
         @return The new mutable array view.
      */
     static ndarray_view virtual_array(T& value, const std::array<std::size_t, 1>& shape) {
-        return {reinterpret_cast<char*>(std::addressof(value)), shape, {0}};
+        return {std::addressof(value), shape, {0}};
     }
 
     /** Create a virtual array of length ``size`` holding the scalar ``value``.
@@ -366,70 +362,48 @@ public:
         @return The new mutable array view.
      */
     static ndarray_view virtual_array(T& value, std::size_t size) {
-        return {reinterpret_cast<char*>(std::addressof(value)), {size}, {0}};
+        return {std::addressof(value), {size}, {0}};
     }
 
-    iterator begin() {
+    iterator begin() const {
         return iterator(this->m_buffer, 0, this->m_strides[0]);
     }
 
-    const_iterator cbegin() {
+    const_iterator cbegin() const {
         return const_iterator(this->m_buffer, 0, this->m_strides[0]);
     }
 
-    const_iterator begin() const {
-        return const_iterator(this->m_buffer, 0, this->m_strides[0]);
-    }
-
-    iterator end() {
+    iterator end() const {
         return iterator(this->m_buffer + this->pos_to_index(this->m_shape),
                         this->size(),
                         this->m_strides[0]);
     }
 
-    const_iterator end() const {
+    const_iterator cend() const {
         return const_iterator(this->m_buffer + this->pos_to_index(this->m_shape),
                               this->size(),
                               this->m_strides[0]);
     }
 
-    const_iterator cend() {
-        return const_iterator(this->m_buffer + this->pos_to_index(this->m_shape),
-                              this->size(),
-                              this->m_strides[0]);
-    }
-
-    reverse_iterator rbegin() {
+    reverse_iterator rbegin() const {
         return reverse_iterator(this->m_buffer + this->pos_to_index({this->size() - 1}),
                                 0,
                                 -this->m_strides[0]);
     }
 
-    const_reverse_iterator crbegin() {
+    const_reverse_iterator crbegin() const {
         return const_reverse_iterator(this->m_buffer +
                                           this->pos_to_index({this->size() - 1}),
                                       0,
                                       -this->m_strides[0]);
     }
 
-    const_reverse_iterator rbegin() const {
-        return const_reverse_iterator(this->m_buffer +
-                                          this->pos_to_index({this->size() - 1}),
-                                      0,
-                                      -this->m_strides[0]);
-    }
-
-    reverse_iterator rend() {
+    reverse_iterator rend() const {
         auto stride = -this->m_strides[0];
         return reverse_iterator(this->m_buffer + stride, this->size(), stride);
     }
 
-    const_reverse_iterator rend() const {
-        auto stride = -this->m_strides[0];
-        return const_reverse_iterator(this->m_buffer + stride, this->size(), stride);
-    }
-
-    const_reverse_iterator crend() {
+    const_reverse_iterator crend() const {
         auto stride = -this->m_strides[0];
         return const_reverse_iterator(this->m_buffer + stride, this->size(), stride);
     }
@@ -440,41 +414,19 @@ public:
          @return A view of the string at the given index. Undefined if `pos` is
                  out of bounds.
      */
-    const T& operator[](std::size_t pos) const {
-        return *reinterpret_cast<T*>(&this->m_buffer[this->pos_to_index({pos})]);
-    }
-
-    /**  Access the element at the given index without bounds checking.
-
-         @param pos The index to lookup.
-         @return A view of the string at the given index. Undefined if `pos` is
-                 out of bounds.
-     */
-    T& operator[](std::size_t pos) {
+    T& operator[](std::size_t pos) const {
         return *reinterpret_cast<T*>(&this->m_buffer[this->pos_to_index({pos})]);
     }
 
     /** Access the first element of this array. The array must be non-empty.
      */
-    const T& front() const {
-        return (*this)[0];
-    }
-
-    /** Access the first element of this array. The array must be non-empty.
-     */
-    T& front() {
+    T& front() const {
         return (*this)[0];
     }
 
     /** Access the last element of this array. The array must be non-empty.
      */
-    const T& back() const {
-        return (*this)[this->size() - 1];
-    }
-
-    /** Access the last element of this array. The array must be non-empty.
-     */
-    T& back() {
+    T& back() const {
         return (*this)[this->size() - 1];
     }
 
@@ -484,30 +436,14 @@ public:
         @param stop The stop index of the slice, exclusive.
         @param step The value to increment each index by.
         @return A view over a subset of the memory.
-    */
-    ndarray_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
+     */
+    ndarray_view<T, 1, false>
+    slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
         std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
         std::int64_t stride = this->m_strides[0] * step;
         return ndarray_view(this->m_buffer + this->pos_to_index({start}),
                             {size},
                             {stride});
-    }
-
-    /** Create a view over a subsection of the viewed memory.
-
-        @param start The start index of the slice.
-        @param stop The stop index of the slice, exclusive.
-        @param step The value to increment each index by.
-        @return A view over a subset of the memory.
-     */
-    ndarray_view<const T, 1, false>
-    slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
-        std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
-        std::int64_t stride = this->m_strides[0] * step;
-        return ndarray_view<const T, 1, false>(this->m_buffer +
-                                                   this->pos_to_index({start}),
-                                               {size},
-                                               {stride});
     }
 
     /** Create a new immutable view over the same memory.
@@ -530,10 +466,14 @@ namespace detail {
  */
 template<std::size_t ndim, typename T, bool higher_dimensional = ndim != 1>
 class any_ref_ndarray_view {
+public:
+    using buffer_type =
+        std::conditional_t<std::is_same_v<T, py::any_cref>, const std::byte*, std::byte*>;
+
 protected:
     std::array<std::size_t, ndim> m_shape;
     std::array<std::int64_t, ndim> m_strides;
-    char* m_buffer;
+    buffer_type m_buffer;
     any_vtable m_vtable;
 
     std::ptrdiff_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
@@ -571,20 +511,41 @@ public:
     template<typename U>
     static any_ref_ndarray_view
     virtual_array(U& value, const std::array<std::size_t, ndim>& shape) {
-        return {reinterpret_cast<char*>(std::addressof(value)),
+        return {reinterpret_cast<buffer_type>(std::addressof(value)),
                 shape,
                 {0},
                 &typeid(T),
                 sizeof(T)};
     }
 
+    /** Create a virtual array of length ``size`` holding the scalar ``value``.
+
+        @param value The value to fill the array with.
+        @param shape The shape of the array.
+        @return The new mutable array view.
+     */
+    template<typename U, typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
+    static any_ref_ndarray_view
+    virtual_array(const U& value, const std::array<std::size_t, ndim>& shape) {
+        return {reinterpret_cast<buffer_type>(std::addressof(value)),
+                shape,
+                {0},
+                &typeid(T),
+                sizeof(T)};
+    }
+
+    any_ref_ndarray_view(buffer_type buffer,
+                         const std::array<std::size_t, ndim> shape,
+                         const std::array<std::int64_t, ndim>& strides,
+                         const py::any_vtable& vtable)
+        : m_shape(shape), m_strides(strides), m_buffer(buffer), m_vtable(vtable) {}
+
     /** Default constructor creates an empty view over nothing.
      */
     any_ref_ndarray_view()
         : m_shape({0}),
           m_strides({0}),
-          m_buffer(nullptr),
-          m_vtable(py::any_vtable::make<char>()) {}
+          m_buffer(nullptr) {}
 
     /** Take a view over `buffer`.
 
@@ -592,11 +553,14 @@ public:
         @param shape The number of elements in the buffer along each axis.
         @param stride The number of bytes between elements along each axis.
      */
-    any_ref_ndarray_view(char* buffer,
+    template<typename U>
+    any_ref_ndarray_view(U* buffer,
                          const std::array<std::size_t, ndim> shape,
-                         const std::array<std::int64_t, ndim>& strides,
-                         const any_vtable& vtable)
-        : m_shape(shape), m_strides(strides), m_buffer(buffer), m_vtable(vtable) {}
+                         const std::array<std::int64_t, ndim>& strides)
+        : any_ref_ndarray_view(reinterpret_cast<buffer_type>(buffer),
+                               shape,
+                               strides,
+                               py::any_vtable::make<U>()) {}
 
     /** Access the element at the given index with bounds checking.
 
@@ -604,31 +568,16 @@ public:
         @return A view of the string at the given index.
      */
     template<typename... Ixs>
-    const_reference at(Ixs... pos) const {
+    reference at(Ixs... pos) const {
         return at({pos...});
-    }
-
-    const_reference at(const std::array<std::size_t, ndim>& ixs) const {
-        for (std::size_t n = 0; n < ndim; ++n) {
-            if (ixs[n] >= m_shape[n]) {
-                throw std::out_of_range("pos exceeds the length of the array");
-            }
-        }
-
-        return (*this)(ixs);
     }
 
     /** Access the element at the given index with bounds checking.
 
-        @param pos The index to lookup.
+        @param ixs The index to lookup.
         @return A view of the string at the given index.
      */
-    template<typename... Ixs>
-    reference at(Ixs... pos) {
-        return at({pos...});
-    }
-
-    reference at(const std::array<std::size_t, ndim>& ixs) {
+    reference at(const std::array<std::size_t, ndim>& ixs) const {
         for (std::size_t n = 0; n < ndim; ++n) {
             if (ixs[n] >= m_shape[n]) {
                 throw std::out_of_range("pos exceeds the length of the array");
@@ -639,20 +588,11 @@ public:
     }
 
     template<typename... Ixs>
-    const_reference operator()(Ixs... ixs) const {
+    reference operator()(Ixs... ixs) const {
         return (*this)({ixs...});
     }
 
-    const_reference operator()(const std::array<std::size_t, ndim>& ixs) const {
-        return {&m_buffer[pos_to_index(ixs)], m_vtable};
-    }
-
-    template<typename... Ixs>
-    reference operator()(Ixs... ixs) {
-        return (*this)({ixs...});
-    }
-
-    reference operator()(const std::array<std::size_t, ndim>& ixs) {
+    reference operator()(const std::array<std::size_t, ndim>& ixs) const {
         return {&m_buffer[pos_to_index(ixs)], m_vtable};
     }
 
@@ -681,34 +621,17 @@ public:
     /** Cast the array to a static type.
      */
     template<typename U>
-    ndarray_view<U, ndim, higher_dimensional> cast() {
+    ndarray_view<U, ndim, higher_dimensional> cast() const {
         if (any_vtable::make<U>() != m_vtable) {
             throw std::bad_any_cast{};
         }
 
         return {m_buffer, m_shape, m_strides};
-    }
-
-    /** Cast the array to a static type.
-     */
-    template<typename U>
-    ndarray_view<const U, ndim, higher_dimensional> cast() const {
-        if (any_vtable::make<U>() != m_vtable) {
-            throw std::bad_any_cast{};
-        }
-
-        return {m_buffer, m_shape, m_strides};
-    }
-
-    /** The underlying buffer for this array view.
-     */
-    char* buffer() {
-        return m_buffer;
     }
 
     /** The underlying buffer of characters for this string array.
      */
-    const char* buffer() const {
+    auto buffer() const {
         return m_buffer;
     }
 
@@ -722,7 +645,16 @@ public:
                m_strides == other.m_strides && m_vtable == other.m_vtable;
     }
 
-    any_vtable vtable() const {
+    /** Check if two views are not exactly identical.
+
+        @param other The view to compare to.
+        @return Are these views not identical?
+     */
+    bool operator!=(const any_ref_ndarray_view& other) const {
+        return !(*this == other);
+    }
+
+    const any_vtable& vtable() const {
         return m_vtable;
     }
 };
@@ -732,6 +664,10 @@ class any_ref_ndarray_view<1, T, false> : public any_ref_ndarray_view<1, T, true
 private:
     using generic_ndarray_impl = any_ref_ndarray_view<1, T, true>;
 
+public:
+    using buffer_type = typename generic_ndarray_impl::buffer_type;
+
+private:
     /** Iterator type to implement forward, const, reverse, and const reverse iterators.
 
         This type cannot be implemented with just a pointer and stride because stride may
@@ -740,7 +676,7 @@ private:
     template<typename R, typename C>
     struct generic_iterator {
     private:
-        char* m_ptr;
+        buffer_type m_ptr;
         std::size_t m_ix;
         std::int64_t m_stride;
         any_vtable m_vtable;
@@ -748,7 +684,7 @@ private:
     protected:
         friend any_ref_ndarray_view;
 
-        generic_iterator(char* buffer,
+        generic_iterator(buffer_type buffer,
                          std::size_t ix,
                          std::int64_t stride,
                          const any_vtable& vtable)
@@ -762,19 +698,11 @@ private:
         using const_reference = C;
         using iterator_category = std::random_access_iterator_tag;
 
-        reference operator*() {
+        reference operator*() const {
             return {m_ptr, m_vtable};
         }
 
-        const_reference operator*() const {
-            return {m_ptr, m_vtable};
-        }
-
-        reference operator[](difference_type ix) {
-            return *(*this + ix);
-        }
-
-        const_reference operator[](difference_type ix) const {
+        reference operator[](difference_type ix) const {
             return *(*this + ix);
         }
 
@@ -872,17 +800,37 @@ public:
      */
     template<typename C, typename U = typename C::value_type>
     any_ref_ndarray_view(C& contiguous_container)
-        : generic_ndarray_impl(reinterpret_cast<char*>(contiguous_container.data()),
+        : generic_ndarray_impl(contiguous_container.data(),
                                {contiguous_container.size()},
-                               {sizeof(U)},
-                               any_vtable::make<U>()) {}
+                               {sizeof(U)}) {}
+
+    /** Create a view over an arbitrary contiguous container of `T`s.
+
+        @param contiguous_container The container to take a view of.
+     */
+    template<typename C, typename U = typename C::value_type, typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
+    any_ref_ndarray_view(const C& contiguous_container)
+        : generic_ndarray_impl(contiguous_container.data(),
+                               {contiguous_container.size()},
+                               {sizeof(U)}) {}
 
     /** Create a view over an any_vector.
 
         @param any_vector The `any_vector` to view.
      */
     any_ref_ndarray_view(py::any_vector& any_vector)
-        : generic_ndarray_impl(reinterpret_cast<char*>(any_vector.data()),
+        : generic_ndarray_impl(any_vector.data(),
+                               {any_vector.size()},
+                               {static_cast<std::int64_t>(any_vector.vtable().size())},
+                               any_vector.vtable()) {}
+
+    /** Create a view over an any_vector.
+
+        @param any_vector The `any_vector` to view.
+     */
+    template<typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
+    any_ref_ndarray_view(const py::any_vector& any_vector)
+        : generic_ndarray_impl(any_vector.data(),
                                {any_vector.size()},
                                {static_cast<std::int64_t>(any_vector.vtable().size())},
                                any_vector.vtable()) {}
@@ -896,7 +844,7 @@ public:
     template<typename U>
     static any_ref_ndarray_view virtual_array(U& value,
                                               const std::array<std::size_t, 1>& shape) {
-        return {reinterpret_cast<char*>(std::addressof(value)),
+        return {reinterpret_cast<buffer_type>(std::addressof(value)),
                 shape,
                 {0},
                 any_vtable::make<U>()};
@@ -910,69 +858,46 @@ public:
      */
     template<typename U>
     static any_ref_ndarray_view virtual_array(U& value, std::size_t size) {
-        return {reinterpret_cast<char*>(std::addressof(value)),
+        return {reinterpret_cast<buffer_type>(std::addressof(value)),
                 {size},
                 {0},
                 any_vtable::make<U>()};
     }
 
-    iterator begin() {
+    iterator begin() const {
         return {this->m_buffer, 0, this->m_strides[0], this->m_vtable};
     }
 
-    const_iterator cbegin() {
+    const_iterator cbegin() const {
         return {this->m_buffer, 0, this->m_strides[0], this->m_vtable};
     }
 
-    const_iterator begin() const {
-        return {this->m_buffer, 0, this->m_strides[0], this->m_vtable};
-    }
-
-    iterator end() {
+    iterator end() const {
         return {this->m_buffer + this->pos_to_index(this->m_shape),
                 this->size(),
                 this->m_strides[0],
                 this->m_vtable};
     }
 
-    const_iterator end() const {
+    const_iterator cend() const {
         return {this->m_buffer + this->pos_to_index(this->m_shape),
                 this->size(),
                 this->m_strides[0],
                 this->m_vtable};
     }
 
-    const_iterator cend() {
-        return {this->m_buffer + this->pos_to_index(this->m_shape),
-                this->size(),
-                this->m_strides[0],
-                this->m_vtable};
-    }
-
-    reverse_iterator rbegin() {
+    reverse_iterator rbegin() const {
         return {this->m_buffer + this->pos_to_index({this->size() - 1}),
                 0,
                 -this->m_strides[0],
                 this->m_vtable};
     }
 
-    const_reverse_iterator crbegin() {
+    const_reverse_iterator crbegin() const {
         return {this->m_buffer + this->pos_to_index({this->size() - 1}),
                 0,
                 -this->m_strides[0],
                 this->m_vtable};
-    }
-
-    const_reverse_iterator rbegin() const {
-        return {this->m_buffer + this->pos_to_index({this->size() - 1}),
-                0,
-                -this->m_strides[0],
-                this->m_vtable};
-    }
-
-    reverse_iterator rend() {
-        auto stride = -this->m_strides[0];
-        return {this->m_buffer + stride, this->size(), stride, this->m_vtable};
     }
 
     const_reverse_iterator rend() const {
@@ -991,64 +916,31 @@ public:
          @return A view of the string at the given index. Undefined if `pos` is
                  out of bounds.
      */
-    const_reference operator[](std::size_t pos) const {
-        return {&this->m_buffer[this->pos_to_index({pos})], this->m_vtable};
-    }
-
-    /**  Access the element at the given index without bounds checking.
-
-         @param pos The index to lookup.
-         @return A view of the string at the given index. Undefined if `pos` is
-                 out of bounds.
-     */
-    reference operator[](std::size_t pos) {
+    reference operator[](std::size_t pos) const {
         return {&this->m_buffer[this->pos_to_index({pos})], this->m_vtable};
     }
 
     /** Access the first element of this array. The array must be non-empty.
      */
-    const_reference front() const {
-        return (*this)[0];
-    }
-
-    /** Access the first element of this array. The array must be non-empty.
-     */
-    reference front() {
+    reference front() const {
         return (*this)[0];
     }
 
     /** Access the last element of this array. The array must be non-empty.
      */
-    const_reference back() const {
-        return (*this)[this->size() - 1];
-    }
-
-    /** Access the last element of this array. The array must be non-empty.
-     */
-    reference back() {
+    reference back() const {
         return (*this)[this->size() - 1];
     }
 
     /** Cast the array to a static type.
      */
     template<typename U>
-    ndarray_view<U, 1, false> cast() {
+    ndarray_view<U, 1, false> cast() const {
         if (any_vtable::make<U>() != this->m_vtable) {
             throw std::bad_any_cast{};
         }
 
-        return {this->m_buffer, this->m_shape, this->m_strides};
-    }
-
-    /** Cast the array to a static type.
-     */
-    template<typename U>
-    ndarray_view<const U, 1, false> cast() const {
-        if (any_vtable::make<U>() != this->m_vtable) {
-            throw std::bad_any_cast{};
-        }
-
-        return {this->m_buffer, this->m_shape, this->m_strides};
+        return {reinterpret_cast<U*>(this->m_buffer), this->m_shape, this->m_strides};
     }
 };
 }  // namespace detail
@@ -1059,6 +951,9 @@ class ndarray_view<any_cref, 1, false>
 private:
     using generic_ndarray_impl = detail::any_ref_ndarray_view<1, any_cref, false>;
 
+protected:
+    friend class ndarray_view<any_ref, 1, false>;
+
 public:
     static constexpr std::size_t npos = generic_ndarray_impl::npos;
 
@@ -1067,28 +962,12 @@ public:
 
     /** Create a view over a subsection of the viewed memory.
 
-    @param start The start index of the slice.
-    @param stop The stop index of the slice, exclusive.
-    @param step The value to increment each index by.
-    @return A view over a subset of the memory.
- */
-    ndarray_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
-        std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
-        std::int64_t stride = this->m_strides[0] * step;
-        return {this->m_buffer + this->pos_to_index({start}),
-                {size},
-                {stride},
-                this->m_vtable};
-    }
-
-    /** Create a view over a subsection of the viewed memory.
-
         @param start The start index of the slice.
         @param stop The stop index of the slice, exclusive.
         @param step The value to increment each index by.
         @return A view over a subset of the memory.
-     */
-    ndarray_view<any_cref, 1, false>
+    */
+    ndarray_view
     slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
         std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
         std::int64_t stride = this->m_strides[0] * step;
@@ -1126,30 +1005,14 @@ public:
     @param step The value to increment each index by.
     @return A view over a subset of the memory.
  */
-    ndarray_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
-        std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
-        std::int64_t stride = this->m_strides[0] * step;
-        return {this->m_buffer + this->pos_to_index({start}),
-                {size},
-                {stride},
-                this->m_vtable};
-    }
-
-    /** Create a view over a subsection of the viewed memory.
-
-        @param start The start index of the slice.
-        @param stop The stop index of the slice, exclusive.
-        @param step The value to increment each index by.
-        @return A view over a subset of the memory.
-     */
-    ndarray_view<any_cref, 1, false>
+    ndarray_view
     slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
         std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
         std::int64_t stride = this->m_strides[0] * step;
-        return {this->m_buffer + this->pos_to_index({start}),
-                {size},
-                {stride},
-                this->m_vtable};
+        return ndarray_view{this->m_buffer + this->pos_to_index({start}),
+                            {size},
+                            {stride},
+                            this->m_vtable};
     }
 
     /** Create a new immutable view over the same memory.

@@ -42,11 +42,11 @@
 #include <utility>
 #include <vector>
 
-#include "libpy/array_view.h"
 #include "libpy/char_sequence.h"
 #include "libpy/from_object.h"
 #include "libpy/itertools.h"
 #include "libpy/meta.h"
+#include "libpy/ndarray_view.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/table_details.h"
 #include "libpy/util.h"
@@ -95,6 +95,16 @@ using column_names = std::tuple<column_name<ColumnSingletons>...>;
  */
 template<auto... ColumnSingletons>
 using column_types = std::tuple<column_type<ColumnSingletons>...>;
+
+/** Convert a column with ``T`` values to a one with ``const T`` values.
+ */
+template<auto p, typename C = typename detail::unwrap_column<p>::const_column>
+constexpr C* const_column = &detail::column_singleton<C>;
+
+/** Convert a column with ``const T`` values to a one with ``T`` values.
+ */
+template<auto p, typename C = typename detail::unwrap_column<p>::remove_const_column>
+constexpr C* remove_const_column = &detail::column_singleton<C>;
 
 namespace detail {
 
@@ -282,7 +292,7 @@ protected:
     friend struct std::tuple_size;
 
     template<std::size_t... ix, typename O>
-    void assign(std::index_sequence<ix...>, const O& values) {
+    void assign(std::index_sequence<ix...>, const O& values) const {
         static_assert(sizeof...(ix) == std::tuple_size_v<O>,
                       "cannot assign row from differently sized tuple-like object");
         ((*std::get<ix>(m_data) = detail::get_helper<ix, O, columns...>::f(values)), ...);
@@ -302,11 +312,6 @@ protected:
     }
 
     tuple_type m_data;
-
-    template<typename... Ts>
-    auto subset_tuple(std::tuple<Ts...>) {
-        return subset(Ts{}...);
-    }
 
     template<typename... Ts>
     auto subset_tuple(std::tuple<Ts...>) const {
@@ -339,17 +344,15 @@ public:
         return *this;
     }
 
-    operator std::tuple<column_type<detail::remove_const_column<columns>>...>() const {
+    operator std::tuple<column_type<remove_const_column<columns>>...>() const {
         return std::apply([](auto... data) { return std::make_tuple(*data...); }, m_data);
     }
 
     /** Copy a view into an owning row.
      */
-    row<detail::remove_const_column<columns>...> copy() const {
+    row<remove_const_column<columns>...> copy() const {
         return std::apply(
-            [](auto... data) {
-                return row<detail::remove_const_column<columns>...>(*data...);
-            },
+            [](auto... data) { return row<remove_const_column<columns>...>(*data...); },
             m_data);
     }
 
@@ -359,17 +362,7 @@ public:
         @return A reference to the value.
     */
     template<std::size_t ix>
-    constexpr const auto& get() const {
-        return *std::get<ix>(m_data);
-    }
-
-    /** Retrieve a value by index.
-
-        @tparam The index to look up.
-        @return A reference to the value.
-    */
-    template<std::size_t ix>
-    auto& get() {
+    constexpr auto& get() const {
         return *std::get<ix>(m_data);
     }
 
@@ -379,7 +372,7 @@ public:
         @return A reference to the view over the column.
      */
     template<typename ColumnName>
-    constexpr const auto& get(ColumnName) const {
+    constexpr auto& get(ColumnName) const {
         return *std::get<py::meta::search_tuple<ColumnName, keys_type>>(m_data);
     }
 
@@ -399,16 +392,9 @@ public:
         @return A view over a subset of the columns.
     */
     template<typename... ColumnNames>
-    row_view<C<const get_column_type<ColumnNames>>(ColumnNames{})...>
+    row_view<C<get_column_type<ColumnNames>>(ColumnNames{})...>
     subset(ColumnNames...) const {
         return {&get(ColumnNames{})...};
-    }
-
-    /** Remove some columns from the row view.
-     */
-    template<typename... ColumnNames>
-    auto drop(ColumnNames...) {
-        return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
     }
 
     /** Remove some columns from the row view.
@@ -425,39 +411,13 @@ public:
         @return The relabeled row viewing the same memory.
      */
     template<typename... From, typename... To>
-    auto relabel(std::pair<From, To>...) {
+    auto relabel(std::pair<From, To>...) const {
         using Mappings = std::tuple<std::pair<From, To>...>;
 
         using OutType = row_view<C<get_column_type<column_name<columns>>>(
             detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
 
         return OutType(m_data);
-    }
-
-    /** Relabel columns in a row view.
-
-        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
-               specified will be unchanged.
-        @return The relabeled row viewing the same memory.
-     */
-    template<typename... From, typename... To>
-    auto relabel(std::pair<From, To>...) const {
-        using Mappings = std::tuple<std::pair<From, To>...>;
-
-        using OutType = row_view<C<const get_column_type<column_name<columns>>>(
-            detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
-
-        return OutType(m_data);
-    }
-
-    /** Retrieve a column by name.
-
-        @param ColumnName `std::integer_sequence` of chars containing the column name.
-        @return A reference to the view over the column.
-     */
-    template<typename ColumnName>
-    constexpr auto& get(ColumnName) {
-        return *std::get<py::meta::search_tuple<ColumnName, keys_type>>(m_data);
     }
 
     template<typename O>
@@ -513,7 +473,7 @@ private:
     public:
         using difference_type = std::int64_t;
         using value_type = row_view<inner_columns...>;
-        using const_value_type = row_view<detail::const_column<inner_columns>...>;
+        using const_value_type = row_view<const_column<inner_columns>...>;
         using reference = const_value_type;
         using pointer = value_type*;
         using iterator_category = std::random_access_iterator_tag;
@@ -604,7 +564,6 @@ private:
 
 public:
     using iterator = generic_iterator<columns...>;
-    using const_iterator = generic_iterator<const_column<columns>...>;
 
     rows(const tuple_type& cs) : m_columns(cs) {}
 
@@ -613,24 +572,12 @@ public:
         return std::get<0>(m_columns).size();
     }
 
-    iterator begin() {
+    iterator begin() const {
         return iterator(m_columns, 0);
     }
 
-    iterator end() {
+    iterator end() const {
         return iterator(m_columns, size());
-    }
-
-    const_iterator begin() const {
-        return const_iterator(m_columns, 0);
-    }
-
-    const_iterator end() const {
-        return const_iterator(m_columns, size());
-    }
-
-    auto operator[](std::size_t ix) {
-        return begin()[ix];
     }
 
     auto operator[](std::size_t ix) const {
@@ -775,7 +722,7 @@ public:
         @return rows view
      */
     auto rows() const {
-        return detail::table_iter::rows<detail::const_column<columns>...>(std::apply(
+        return detail::table_iter::rows<const_column<columns>...>(std::apply(
             [](const auto&... cs) {
                 return std::make_tuple(
                     py::array_view<
@@ -951,33 +898,12 @@ public:
         return std::get<ix>(m_columns);
     }
 
-    /** Retrieve a column by name.
-
-        @param ColumnName `std::integer_sequence` of chars containing the column name.
-        @return A reference to the view over the column.
-     */
-    template<typename ColumnName>
-    auto& get(ColumnName) {
-        constexpr std::size_t ix = py::meta::search_tuple<ColumnName, keys_type>;
-        return std::get<ix>(m_columns);
-    }
-
-    /** Create a row-wise view over the table.
-
-        @return rows view
-     */
-    auto rows() {
-        return detail::table_iter::rows<columns...>(m_columns);
-    }
-
     /** Create a row-wise view over the table.
 
         @return rows view
      */
     auto rows() const {
-        return detail::table_iter::rows<detail::const_column<columns>...>(
-            std::apply([](const auto&... cs) { return std::make_tuple(cs.freeze()...); },
-                       m_columns));
+        return detail::table_iter::rows<columns...>(m_columns);
     }
 
     /** Create a slice of the table by slicing each column.
@@ -987,18 +913,7 @@ public:
         @param step The value to increment each index by.
         @return A view over a subset of the rows.
     */
-    table_view slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) {
-        return {get(column_name<columns>{}).slice(start, stop, step)...};
-    }
-
-    /** Create a slice of the table by slicing each column.
-
-        @param start The start index of the slice.
-        @param stop The stop index of the slice, exclusive.
-        @param step The value to increment each index by.
-        @return A view over a subset of the rows.
-     */
-    table_view<detail::const_column<columns>...>
+    table_view
     slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
         return {get(column_name<columns>{}).slice(start, stop, step)...};
     }
@@ -1009,26 +924,9 @@ public:
         @return A view over a subset of the columns.
     */
     template<typename... ColumnNames>
-    table_view<C<get_column_type<ColumnNames>>(ColumnNames{})...> subset(ColumnNames...) {
-        return {get(ColumnNames{})...};
-    }
-
-    /** Return a subset of the columns.
-
-        @parameters ColumnNames The names of the columns to take.
-        @return A view over a subset of the columns.
-    */
-    template<typename... ColumnNames>
-    table_view<C<const get_column_type<ColumnNames>>(ColumnNames{})...>
+    table_view<C<get_column_type<ColumnNames>>(ColumnNames{})...>
     subset(ColumnNames...) const {
         return {get(ColumnNames{})...};
-    }
-
-    /** Remove some columns from the table view.
-     */
-    template<typename... ColumnNames>
-    auto drop(ColumnNames...) {
-        return subset_tuple(py::meta::set_diff<keys_type, std::tuple<ColumnNames...>>{});
     }
 
     /** Remove some columns from the table view.
@@ -1045,26 +943,10 @@ public:
         @return The relabeled table viewing the same memory.
      */
     template<typename... From, typename... To>
-    auto relabel(std::pair<From, To>...) {
-        using Mappings = std::tuple<std::pair<From, To>...>;
-
-        using OutType = table_view<C<get_column_type<column_name<columns>>>(
-            detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
-
-        return OutType(m_columns);
-    }
-
-    /** Relabel columns in a table.
-
-        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
-               specified will be unchanged.
-        @return The relabeled table viewing the same memory.
-     */
-    template<typename... From, typename... To>
     auto relabel(std::pair<From, To>...) const {
         using Mappings = std::tuple<std::pair<From, To>...>;
 
-        using OutType = table_view<C<const get_column_type<column_name<columns>>>(
+        using OutType = table_view<C<get_column_type<column_name<columns>>>(
             detail::relabeled_column_name<column_name<columns>, Mappings>{})...>;
 
         return OutType(m_columns);
@@ -1074,7 +956,7 @@ public:
 
         @return The frozen view.
      */
-    table_view<detail::const_column<columns>...> freeze() const {
+    table_view<const_column<columns>...> freeze() const {
         return {get(column_name<columns>{}).freeze()...};
     }
 };

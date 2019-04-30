@@ -57,16 +57,6 @@ T column_singleton;
 template<auto p>
 using unwrap_column = typename std::remove_pointer_t<decltype(p)>;
 
-/** Convert a column with ``T`` values to a one with ``const T`` values.
- */
-template<auto p, typename C = typename unwrap_column<p>::const_column>
-constexpr C* const_column = &column_singleton<C>;
-
-/** Convert a column with ``const T`` values to a one with ``T`` values.
- */
-template<auto p, typename C = typename unwrap_column<p>::remove_const_column>
-constexpr C* remove_const_column = &column_singleton<C>;
-
 template<typename C, typename Mappings, typename = void>
 struct relabeled_column_name_impl {
     using type = C;

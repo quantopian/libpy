@@ -9,10 +9,10 @@
 
 #include <Python.h>
 
-#include "libpy/array_view.h"
 #include "libpy/char_sequence.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
+#include "libpy/ndarray_view.h"
 #include "libpy/to_object.h"
 
 namespace py {
