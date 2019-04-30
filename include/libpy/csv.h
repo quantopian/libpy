@@ -583,8 +583,9 @@ class typed_cell_parser<py::datetime64<Unit>>
     : public typed_cell_parser_base<py::datetime64ns> {
 private:
     static_assert(std::is_same_v<Unit, py::chrono::s> ||
-                      std::is_same_v<Unit, py::chrono::D>,
-                  "can only parse datetime64 at second or daily frequency");
+                      std::is_same_v<Unit, py::chrono::D> ||
+                      std::is_same_v<Unit, py::chrono::ns>,
+                  "can only parse datetime64 at second, daily, or nanosecond frequency");
 
     /** The number of days in each month for non-leap years.
      */
@@ -623,7 +624,7 @@ private:
         return (year / 4) - (year / 100) + (year / 400);
     }
 
-    static std::chrono::seconds time_since_epoch(int year, int month, int day) {
+    static std::chrono::nanoseconds time_since_epoch(int year, int month, int day) {
         using days = std::chrono::duration<std::int64_t, std::ratio<86400>>;
         // The number of seconds in 365 days. This doesn't account for leap years, we will
         // manually add those days.
@@ -704,11 +705,18 @@ private:
         return {year, month, day};
     }
 
-    static std::tuple<int, int, int>
-    parse_hours_minutes_seconds(const std::string_view& raw) {
-        if (raw.size() != 19) {
-            throw detail::formatted_error("date string is not exactly 19 characters: ",
-                                          raw);
+    static std::tuple<int, int, int, int>
+    parse_hours_minutes_seconds_nanoseconds(const std::string_view& raw) {
+        constexpr std::size_t no_fractional_second_size = 19;
+        if (std::is_same_v<Unit, py::chrono::s>) {
+            if (raw.size() != no_fractional_second_size) {
+                throw detail::formatted_error(
+                    "datetime string is not exactly 19 characters: ", raw);
+            }
+        }
+        else if (raw.size() < no_fractional_second_size) {
+            throw detail::formatted_error(
+                "datetime string is not at least 19 characters: ", raw);
         }
 
         expect_char(raw, 10, ' ', 'T');
@@ -723,7 +731,22 @@ private:
         expect_char(raw, 16, ':');
         int seconds = parse_int<2>(raw.substr(17));
 
-        return {hours, minutes, seconds};
+        int nanoseconds = 0;
+        if (std::is_same_v<Unit, py::chrono::ns> &&
+            raw.size() > no_fractional_second_size) {
+            expect_char(raw, 19, '.');
+            const char* end;
+            const char* begin = raw.begin() + 20;
+            nanoseconds = detail::fast_unsigned_strtol<int>(begin, &end);
+            if (end != raw.end()) {
+                throw detail::formatted_error(
+                    "couldn't parse fractional seconds component: ", raw);
+            }
+            std::ptrdiff_t digits = end - begin;
+            nanoseconds *= std::pow(10, 9 - digits);
+        }
+
+        return {hours, minutes, seconds, nanoseconds};
     }
 
 public:
@@ -736,13 +759,15 @@ public:
             return {consumed, more};
         }
 
-        bool expect_time = std::is_same_v<Unit, py::chrono::s>;
+        bool expect_time = !std::is_same_v<Unit, py::chrono::D>;
         auto value = std::apply(time_since_epoch, parse_year_month_day(raw, expect_time));
         if (expect_time) {
-            auto [hours, minutes, seconds] = parse_hours_minutes_seconds(raw);
+            auto [hours, minutes, seconds, nanoseconds] =
+                parse_hours_minutes_seconds_nanoseconds(raw);
             value += std::chrono::hours(hours);
             value += std::chrono::minutes(minutes);
             value += std::chrono::seconds(seconds);
+            value += std::chrono::nanoseconds(nanoseconds);
         }
 
         this->m_parsed[ix] = py::datetime64ns(value);
