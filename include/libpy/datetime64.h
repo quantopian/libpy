@@ -257,7 +257,7 @@ static constexpr std::array<std::array<std::int8_t, 12>, 2> days_in_months = {
 namespace {
 using namespace py::cs::literals;
 // Constant time access to zero padded numbers suitable for use in the months, days,
-// hours, minutes, and seconds field of an ISO 8601 string.
+// hours, minutes, and seconds field of a datetime.
 static constexpr std::array<std::array<char, 2>, 60> datetime_strings =
     {"00"_arr, "01"_arr, "02"_arr, "03"_arr, "04"_arr, "05"_arr, "06"_arr, "07"_arr,
      "08"_arr, "09"_arr, "10"_arr, "11"_arr, "12"_arr, "13"_arr, "14"_arr, "15"_arr,
@@ -340,7 +340,7 @@ month_day_for_year_days(std::int64_t year, std::int16_t days_into_year) {
 }
 
 // The maximum number of zeros we will need to pad out a non-zero nanoseconds value in the
-// fractional seconds part of an ISO 8601 string.
+// fractional seconds part of an datetime
 static constexpr auto zeros_string = "00000000"_arr;
 
 inline void
