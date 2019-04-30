@@ -269,6 +269,39 @@ struct raise_format<PyArray_Descr*> {
     }
 };
 
+
+template<>
+struct from_object<py_bool> {
+    static py_bool f(PyObject* ob) {
+        if (!PyBool_Check(ob)) {
+            throw invalid_conversion::make<py_bool>(ob);
+        }
+
+        return ob == Py_True;
+    }
+};
+
+template<>
+struct to_object<py_bool> {
+    static PyObject* f(py_bool v) {
+        return PyBool_FromLong(v.value);
+    }
+};
+
+/** Convert a datetime64 in to a numpy array scalar.
+ */
+template<typename unit>
+struct to_object<datetime64<unit>> {
+    static PyObject* f(const datetime64<unit>& dt) {
+        auto descr = py::new_dtype<datetime64<unit>>();
+        if (!descr) {
+            return nullptr;
+        }
+        std::int64_t as_int = static_cast<std::int64_t>(dt);
+        return PyArray_Scalar(&as_int, descr.get(), nullptr);
+    }
+};
+
 /** Lookup the proper any_vtable for the given numpy dtype.
 
     @param dtype The runtime numpy dtype.
@@ -465,38 +498,6 @@ struct from_object<datetime64<D>> {
         datetime64<D> out;
         PyArray_ScalarAsCtype(ob, &out);
         return out;
-    }
-};
-
-template<>
-struct from_object<py_bool> {
-    static py_bool f(PyObject* ob) {
-        if (!PyBool_Check(ob)) {
-            throw invalid_conversion::make<py_bool>(ob);
-        }
-
-        return ob == Py_True;
-    }
-};
-
-template<>
-struct to_object<py_bool> {
-    static PyObject* f(py_bool v) {
-        return PyBool_FromLong(v.value);
-    }
-};
-
-/** Convert a datetime64 in to a numpy array scalar.
- */
-template<typename D>
-struct to_object<datetime64<D>> {
-    static PyObject* f(datetime64<D> dt) {
-        auto descr = py::new_dtype<datetime64<D>>();
-        if (!descr) {
-            return nullptr;
-        }
-        std::int64_t as_int = static_cast<std::int64_t>(dt);
-        return PyArray_Scalar(&as_int, descr.get(), nullptr);
     }
 };
 }  // namespace dispatch
