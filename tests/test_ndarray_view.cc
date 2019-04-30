@@ -5,7 +5,7 @@
 
 #include "gtest/gtest.h"
 
-#include "libpy/array_view.h"
+#include "libpy/ndarray_view.h"
 #include "libpy/itertools.h"
 
 namespace test_array_view {
@@ -47,11 +47,11 @@ void from_container() {
 };
 
 TYPED_TEST_P(array_view, from_std_array) {
-    from_container<std::array<TypeParam, 5>>();
+    from_container<std::array<std::remove_const_t<TypeParam>, 5>>();
 }
 
 TYPED_TEST_P(array_view, from_std_vector) {
-    from_container<std::vector<TypeParam>>();
+    from_container<std::vector<std::remove_const_t<TypeParam>>>();
 }
 
 template<typename It1, typename It2>
@@ -64,7 +64,7 @@ void test_iterator(It1 arr_begin, It1 arr_end, It2 view_begin, It2 view_end) {
 }
 
 TYPED_TEST_P(array_view, iterator) {
-    std::array<TypeParam, 5> arr = {1, 2, 3, 4, 5};
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {1, 2, 3, 4, 5};
     py::array_view<TypeParam> view(arr);
     ASSERT_EQ(view.size(), arr.size());
 
@@ -73,7 +73,7 @@ TYPED_TEST_P(array_view, iterator) {
 }
 
 TYPED_TEST_P(array_view, reverse_iterator) {
-    std::array<TypeParam, 5> arr = {1, 2, 3, 4, 5};
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {1, 2, 3, 4, 5};
     py::array_view<TypeParam> view(arr);
     ASSERT_EQ(view.size(), arr.size());
 
@@ -82,14 +82,14 @@ TYPED_TEST_P(array_view, reverse_iterator) {
 }
 
 TYPED_TEST_P(array_view, _2d_indexing) {
-    std::array<std::array<TypeParam, 3>, 4> arr;
+    std::array<std::array<std::remove_const_t<TypeParam>, 3>, 4> arr;
     std::size_t value = 1;
     for (std::size_t row = 0; row < 4; ++row) {
         for (std::size_t col = 0; col < 3; ++col) {
             arr[row][col] = value++;
         }
     }
-    py::ndarray_view<TypeParam, 2> view(reinterpret_cast<char*>(arr.data()),
+    py::ndarray_view<TypeParam, 2> view(reinterpret_cast<TypeParam*>(arr.data()),
                                         {4, 3},
                                         {sizeof(TypeParam) * 3, sizeof(TypeParam)});
 
@@ -103,21 +103,23 @@ TYPED_TEST_P(array_view, _2d_indexing) {
 }
 
 TYPED_TEST_P(array_view, front_back) {
-    std::array<TypeParam, 5> arr = {1, 2, 3, 4, 5};
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {1, 2, 3, 4, 5};
     py::array_view<TypeParam> view(arr);
 
     EXPECT_EQ(view.front(), arr.front());
     EXPECT_EQ(view.back(), arr.back());
 
-    view.front() = 6;
-    EXPECT_EQ(view.front(), 6);
-    EXPECT_EQ(view[0], 6);
-    EXPECT_EQ(arr.front(), 6);
+    if constexpr (!std::is_const_v<TypeParam>) {
+        view.front() = 6;
+        EXPECT_EQ(view.front(), 6);
+        EXPECT_EQ(view[0], 6);
+        EXPECT_EQ(arr.front(), 6);
 
-    view.back() = 7;
-    EXPECT_EQ(view.back(), 7);
-    EXPECT_EQ(view[4], 7);
-    EXPECT_EQ(arr.back(), 7);
+        view.back() = 7;
+        EXPECT_EQ(view.back(), 7);
+        EXPECT_EQ(view[4], 7);
+        EXPECT_EQ(arr.back(), 7);
+    }
 }
 
 TYPED_TEST_P(array_view, virtual_array) {
@@ -141,8 +143,8 @@ TYPED_TEST_P(array_view, virtual_array) {
 }
 
 TYPED_TEST_P(array_view, negative_strides) {
-    std::array<TypeParam, 5> arr = {1, 2, 3, 4, 5};
-    py::array_view<TypeParam> reverse_view(reinterpret_cast<char*>(&arr.back()),
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {1, 2, 3, 4, 5};
+    py::array_view<TypeParam> reverse_view(&arr.back(),
                                            {5},
                                            {-static_cast<std::int64_t>(
                                                sizeof(TypeParam))});
@@ -170,9 +172,35 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
                            virtual_array,
                            negative_strides);
 
-using array_view_types =
-    testing::Types<char, unsigned char, int, float, double, custom_object>;
-INSTANTIATE_TYPED_TEST_CASE_P(typed_, array_view, array_view_types);
+
+template<typename T>
+struct tuple_to_types;
+
+template<typename... Ts>
+struct tuple_to_types<std::tuple<Ts...>> {
+    using type = testing::Types<Ts...>;
+};
+
+template<typename... Ts>
+struct add_const;
+
+template<>
+struct add_const<> {
+    using type = std::tuple<>;
+};
+
+template<typename T, typename... Ts>
+struct add_const<T, Ts...> {
+    using type =
+        py::meta::type_cat<std::tuple<T, const T>, typename add_const<Ts...>::type>;
+};
+
+using array_view_test_types =
+    typename add_const<char, unsigned char, int, float, double, custom_object>::type;
+
+INSTANTIATE_TYPED_TEST_CASE_P(typed_,
+                              array_view,
+                              typename tuple_to_types<array_view_test_types>::type);
 
 TEST(any_ref_array_view, test_read) {
     std::array<int, 5> underlying = {0, 1, 2, 3, 4};
@@ -260,10 +288,9 @@ TEST(any_ref_array_view, test_cast) {
 
 TEST(any_ref_array_view, negative_strides) {
     std::array<int, 5> arr = {1, 2, 3, 4, 5};
-    py::array_view<py::any_ref> reverse_view(reinterpret_cast<char*>(&arr.back()),
+    py::array_view<py::any_ref> reverse_view(&arr.back(),
                                              {5},
-                                             {-static_cast<std::int64_t>(sizeof(int))},
-                                             py::any_vtable::make<int>());
+                                             {-static_cast<std::int64_t>(sizeof(int))});
 
     EXPECT_EQ(reverse_view[0], arr[arr.size() - 1]);
     EXPECT_EQ(reverse_view[1], arr[arr.size() - 2]);

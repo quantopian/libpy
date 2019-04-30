@@ -9,6 +9,7 @@
 
 #include "libpy/demangle.h"
 #include "libpy/exception.h"
+#include "libpy/meta.h"
 #include "libpy/to_object.h"
 
 namespace py {
@@ -155,7 +156,7 @@ public:
 
     template<typename T>
     static inline constexpr any_vtable make() {
-        return &detail::any_vtable_instance<T>;
+        return &detail::any_vtable_instance<py::meta::remove_cvref<T>>;
     }
 
     /** Get access to the underlying collection of function pointers.

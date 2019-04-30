@@ -64,11 +64,11 @@
 #include <numpy/arrayobject.h>
 
 #include "libpy/any.h"
-#include "libpy/array_view.h"
 #include "libpy/automethod.h"
 #include "libpy/char_sequence.h"
 #include "libpy/datetime64.h"
 #include "libpy/exception.h"
+#include "libpy/ndarray_view.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
 
@@ -440,7 +440,12 @@ struct from_object<ndarray_view<T, ndim>> {
 
         if constexpr (std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) {
             any_vtable vtable = dtype_to_vtable(given_dtype);
-            return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides, vtable);
+            using view_type = ndarray_view<T, ndim>;
+            return view_type(reinterpret_cast<typename view_type::buffer_type>(
+                                 PyArray_BYTES(array)),
+                             shape,
+                             strides,
+                             vtable);
         }
         else {
             // note: This is a "constexpr else", removing and unindenting this
@@ -448,7 +453,7 @@ struct from_object<ndarray_view<T, ndim>> {
             // branch is only expanded when the above test is false; if the
             // "else" is removed, it will always be expanded.
 
-            auto expected_dtype = py::new_dtype<T>();
+            auto expected_dtype = py::new_dtype<std::remove_cv_t<T>>();
             if (!given_dtype) {
                 throw exception{};
             }
@@ -464,7 +469,9 @@ struct from_object<ndarray_view<T, ndim>> {
                                 given_dtype);
             }
 
-            return ndarray_view<T, ndim>(PyArray_BYTES(array), shape, strides);
+            return ndarray_view<T, ndim>(reinterpret_cast<T*>(PyArray_BYTES(array)),
+                                         shape,
+                                         strides);
         }
     }
 };
