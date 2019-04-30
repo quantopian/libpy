@@ -191,13 +191,27 @@ public:
     static T f(PyObject* value) {
         wide_type wide;
 
-        // convert the object to the widest type for the given signedness
-        if constexpr (std::is_signed_v<T>) {
-            wide = PyLong_AsLongLong(value);
+#if PY_MAJOR_VERSION == 2
+        if (PyInt_Check(value)) {
+            if constexpr (std::is_signed_v<T>) {
+                wide = PyInt_AS_LONG(value);
+            }
+            else {
+                wide = static_cast<wide_type>(PyInt_AS_LONG(value));
+            }
         }
         else {
-            wide = PyLong_AsUnsignedLongLong(value);
+#endif
+            // convert the object to the widest type for the given signedness
+            if constexpr (std::is_signed_v<T>) {
+                wide = PyLong_AsLongLong(value);
+            }
+            else {
+                wide = PyLong_AsUnsignedLongLong(value);
+            }
+#if PY_MAJOR_VERSION == 2
         }
+#endif
 
         // check if `value` would overflow `wide_type`
         if (PyErr_Occurred()) {
