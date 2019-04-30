@@ -657,9 +657,17 @@ private:
         return result;
     }
 
-    static void expect_char(const std::string_view& raw, std::size_t ix, char c) {
-        if (raw[ix] != c) {
-            throw detail::formatted_error("expected '", c, "' at index ", ix, ": ", raw);
+    template<typename... Cs>
+    static void expect_char(const std::string_view& raw, std::size_t ix, Cs... cs) {
+        if (((raw[ix] != cs) && ...)) {
+            std::string options;
+            (options.push_back(cs), ...);
+            throw detail::formatted_error("expected one of: \"",
+                                          options,
+                                          "\" at index ",
+                                          ix,
+                                          ": ",
+                                          raw);
         }
     }
 
@@ -703,7 +711,7 @@ private:
                                           raw);
         }
 
-        expect_char(raw, 10, ' ');
+        expect_char(raw, 10, ' ', 'T');
         int hours = parse_int<2>(raw.substr(11));
         if (hours < 0 || hours > 23) {
             throw detail::formatted_error("hour not in range [0, 24): ", raw);
