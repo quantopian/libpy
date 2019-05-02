@@ -11,8 +11,8 @@ RUN add-apt-repository ppa:deadsnakes/ppa
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update && apt-get install -y \
     doxygen \
-    g++-7 \
-    gcc-7 \
+    g++-8 \
+    gcc-8 \
     clang-tools-6.0 \
     gfortran \
     git \
