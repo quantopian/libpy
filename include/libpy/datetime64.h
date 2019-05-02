@@ -424,10 +424,7 @@ std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
         }
     };
 
-    auto finalize = [&]() -> std::ostream& {
-        stream.write(data.data(), ix);
-        return stream;
-    };
+    auto finalize = [&]() -> std::ostream& { return stream.write(data.data(), ix); };
 
     datetime64<chrono::D>
         as_days(dt);
