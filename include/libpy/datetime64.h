@@ -1,8 +1,10 @@
 #pragma once
 
+#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <ostream>
 #include <ratio>
@@ -267,6 +269,40 @@ static constexpr std::array<std::array<char, 2>, 60> datetime_strings =
      "40"_arr, "41"_arr, "42"_arr, "43"_arr, "44"_arr, "45"_arr, "46"_arr, "47"_arr,
      "48"_arr, "49"_arr, "50"_arr, "51"_arr, "52"_arr, "53"_arr, "54"_arr, "55"_arr,
      "56"_arr, "57"_arr, "58"_arr, "59"_arr};
+
+// The maximum number of zeros we will need to pad out a non-zero nanoseconds value in the
+// fractional seconds part of an datetime
+static constexpr auto zeros_string = "00000000"_arr;
+
+constexpr auto nat_string = "NaT"_arr;
+
+// The maximum size for a datetime string of the given units.
+template<typename unit>
+constexpr std::size_t max_size = 0;
+
+template<>
+constexpr std::size_t
+    max_size<py::chrono::ns> = "-2262-04-11T23:47:16.854775807"_arr.size();
+
+template<>
+constexpr std::size_t
+    max_size<py::chrono::us> = "-294247-01-10T04:00:54.775807"_arr.size();
+
+template<>
+constexpr std::size_t
+    max_size<py::chrono::ms> = "-292278994-08-17T07:12:55.807"_arr.size();
+
+template<>
+constexpr std::size_t max_size<py::chrono::s> = "-292277026596-12-04T15:30:07"_arr.size();
+
+template<>
+constexpr std::size_t max_size<py::chrono::m> = "-17536621479585-08-30T18:07"_arr.size();
+
+template<>
+constexpr std::size_t max_size<py::chrono::h> = "-1052197288658909-10-10T07"_arr.size();
+
+template<>
+constexpr std::size_t max_size<py::chrono::D> = "-25252734927768524-07-27"_arr.size();
 }  // namespace
 
 /** convert a count of days from 1970 to a year and the number of days into the year
@@ -339,29 +375,31 @@ month_day_for_year_days(std::int64_t year, std::int16_t days_into_year) {
     __builtin_unreachable();
 }
 
-// The maximum number of zeros we will need to pad out a non-zero nanoseconds value in the
-// fractional seconds part of an datetime
-static constexpr auto zeros_string = "00000000"_arr;
-
-inline void
-zero_pad_stream(std::ostream& stream, int expected_digits, std::int64_t value) {
-    std::int64_t digits = std::floor(std::log10(value));
-    digits += 1;
-    if (expected_digits - digits > 0) {
-        stream.write(zeros_string.data(), expected_digits - digits);
-    }
+template<typename T>
+void write(T& data, int& ix, char v) {
+    data[ix++] = v;
 }
 
-inline void format_year(std::ostream& stream, std::int64_t year) {
-    if (year < 0 && year > -100) {
-        stream << '-';
-        year = std::abs(year);
-        zero_pad_stream(stream, 3, year);
+template<typename T>
+void write(T& data, int& ix, std::int64_t v) {
+    auto begin = data.begin() + ix;
+    auto [p, ec] = std::to_chars(data.begin() + ix, data.end(), v);
+    if (ec != std::errc()) {
+        throw std::runtime_error("failed to format integer");
     }
-    else if (year > 0) {
-        zero_pad_stream(stream, 4, year);
-    }
-    stream << year;
+    ix += p - begin;
+}
+
+template<typename T, std::size_t size>
+void write(T& data, int& ix, const std::array<char, size>& v) {
+    std::memcpy(data.begin() + ix, v.data(), size);
+    ix += size;
+}
+
+template<typename T>
+void write(T& data, int& ix, const std::string_view& v) {
+    std::memcpy(data.begin() + ix, v.data(), v.size());
+    ix += v.size();
 }
 }  // namespace detail
 
@@ -369,58 +407,81 @@ template<typename unit>
 std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
     if (dt.isnat()) {
         // format all `NaT` values in a uniform way, regardless of the unit
-        return stream << "NaT";
+        return stream.write(detail::nat_string.data(), detail::nat_string.size());
     }
 
-    datetime64<chrono::D> as_days(dt);
+    std::array<char, detail::max_size<unit>> data;
+    int ix = 0;
+
+    auto write = [&](auto value) { detail::write(data, ix, value); };
+
+    auto zero_pad_skip = [&](int expected_digits, std::int64_t value) {
+        std::int64_t digits = std::floor(std::log10(value));
+        digits += 1;
+        if (expected_digits > digits) {
+            write(
+                std::string_view(detail::zeros_string.data(), expected_digits - digits));
+        }
+    };
+
+    auto finalize = [&]() -> std::ostream& {
+        stream.write(data.data(), ix);
+        return stream;
+    };
+
+    datetime64<chrono::D>
+        as_days(dt);
     auto [year, days_into_year] = detail::days_to_year_and_days(
         static_cast<std::int64_t>(as_days));
     auto [month, day] = detail::month_day_for_year_days(year, days_into_year);
 
-    detail::format_year(stream, year);
-    stream << '-';
-    const std::array<char, 2>& month_string = detail::datetime_strings[month];
-    stream << month_string[0] << month_string[1] << '-';
-
-    const std::array<char, 2>& day_string = detail::datetime_strings[day];
-    stream << day_string[0] << day_string[1];
+    if (year < 0 && year > -100) {
+        write('-');
+        year = std::abs(year);
+        zero_pad_skip(3, year);
+    }
+    else if (year > 0) {
+        zero_pad_skip(4, year);
+    }
+    write(year);
+    write('-');
+    write(detail::datetime_strings[month]);
+    write('-');
+    write(detail::datetime_strings[day]);
     if (std::is_same_v<unit, py::chrono::D>) {
-        return stream;
+        return finalize();
     }
 
-    stream << 'T';
+    write('T');
     datetime64<chrono::h> as_hours(dt);
-    const std::array<char, 2>& hour_string =
-        detail::datetime_strings[std::abs(static_cast<std::int64_t>(as_hours - as_days))];
-    stream << hour_string[0] << hour_string[1];
+    write(detail::datetime_strings[std::abs(
+        static_cast<std::int64_t>(as_hours - as_days))]);
     if (std::is_same_v<unit, py::chrono::h>) {
-        return stream;
+        return finalize();
     }
 
+    write(':');
     datetime64<chrono::m> as_minutes(dt);
-    const std::array<char, 2>& minute_string =
-        detail::datetime_strings[static_cast<std::int64_t>(as_minutes - as_hours)];
-    stream << ':' << minute_string[0] << minute_string[1];
+    write(detail::datetime_strings[static_cast<std::int64_t>(as_minutes - as_hours)]);
     if (std::is_same_v<unit, py::chrono::m>) {
-        return stream;
+        return finalize();
     }
 
+    write(':');
     datetime64<chrono::s> as_seconds(dt);
-    const std::array<char, 2>& seconds_string =
-        detail::datetime_strings[static_cast<std::int64_t>(as_seconds - as_minutes)];
-    stream << ':' << seconds_string[0] << seconds_string[1];
+    write(detail::datetime_strings[static_cast<std::int64_t>(as_seconds - as_minutes)]);
     if (std::is_same_v<unit, py::chrono::s>) {
-        return stream;
+        return finalize();
     }
 
     auto fractional_seconds = static_cast<std::int64_t>(dt - as_seconds);
     if (fractional_seconds) {
-        stream << '.';
+        write('.');
         std::int64_t expected_digits = std::log10(unit::period::den);
-        detail::zero_pad_stream(stream, expected_digits, fractional_seconds);
-        stream << fractional_seconds;
+        zero_pad_skip(expected_digits, fractional_seconds);
+        write(fractional_seconds);
     }
-    return stream;
+    return finalize();
 }
 }  // namespace py
 
