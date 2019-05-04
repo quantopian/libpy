@@ -1387,6 +1387,54 @@ PyObject* py_parse(PyObject*,
 }
 
 namespace detail {
+class rope_adapater {
+private:
+    std::vector<std::string> m_buffers;
+    std::size_t m_size = 0;
+
+public:
+    inline void write(std::string&& data, std::size_t size) {
+        data.erase(data.begin() + size, data.end());
+        m_buffers.emplace_back(std::move(data));
+        m_size += size;
+    }
+
+    inline void write(std::string& data, std::size_t size) {
+        std::string entry(data.size(), '\0');
+        std::swap(data, entry);
+        write(std::move(entry), size);
+    }
+
+    inline void read(char* out_buffer, std::size_t size) {
+        std::size_t buffer_ix = 0;
+        char* end = out_buffer + size;
+        while (out_buffer < end) {
+            const std::string& buffer = m_buffers[buffer_ix++];
+            std::size_t to_read_from_buffer = std::min(size, buffer.size());
+            std::memcpy(out_buffer, buffer.data(), to_read_from_buffer);
+            size -= to_read_from_buffer;
+            out_buffer += to_read_from_buffer;
+        }
+    }
+
+    inline std::size_t size() const {
+        return m_size;
+    }
+};
+
+template<typename T>
+class ostream_adapter {
+private:
+    T& m_stream;
+
+public:
+    ostream_adapter(T& stream) : m_stream(stream) {}
+
+    void write(const std::string& data, std::size_t size) {
+        m_stream.write(data.data(), size);
+    }
+};
+
 template<typename T>
 class iobuffer {
 private:
@@ -1395,7 +1443,7 @@ private:
     static constexpr std::size_t min_buffer_size = 1 << 8;
 
     T& m_stream;
-    std::vector<char> m_buffer;
+    std::string m_buffer;
     std::size_t m_ix;
     std::int64_t m_float_coef;
     std::int64_t m_expected_frac_digits;
@@ -1403,7 +1451,7 @@ private:
 public:
     iobuffer(T& stream, std::size_t buffer_size, std::uint8_t float_precision)
         : m_stream(stream),
-          m_buffer(buffer_size),
+          m_buffer(buffer_size, '\0'),
           m_ix(0),
           m_float_coef(std::pow(10, float_precision)),
           m_expected_frac_digits(float_precision) {
@@ -1421,7 +1469,7 @@ public:
 
     void flush() {
         if (m_ix) {
-            m_stream.write(m_buffer.data(), m_ix);
+            m_stream.write(m_buffer, m_ix);
             m_ix = 0;
         }
     }
@@ -1438,16 +1486,21 @@ public:
         return m_buffer.size() - m_ix;
     }
 
-    void write(const std::string_view& data) {
+    void write(std::string&& data) {
         if (space_left() < data.size()) {
             flush();
             if (space_left() < data.size()) {
-                m_stream.write(data.data(), data.size());
+                m_stream.write(std::move(data), data.size());
                 return;
             }
         }
         std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
         m_ix += data.size();
+    }
+
+    void write(const std::string& data) {
+        std::string copy = data;
+        write(std::move(copy));
     }
 
     void write(char c) {
@@ -1686,12 +1739,12 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
     }
 
     std::size_t num_rows = columns[0].size();
-    auto formatters = get_format_functions<std::stringstream>(columns);
+    auto formatters = get_format_functions<rope_adapater>(columns);
 
 
-    std::vector<std::stringstream> streams(num_threads);
+    std::vector<rope_adapater> streams(num_threads);
     {
-        std::vector<iobuffer<std::stringstream>> bufs;
+        std::vector<iobuffer<rope_adapater>> bufs;
         for (auto& stream : streams) {
             bufs.emplace_back(stream, buffer_size, float_precision);
         }
@@ -1713,7 +1766,7 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
             std::vector<std::thread> threads;
             for (int n = 0; n < num_threads; ++n) {
                 std::int64_t begin = n * group_size;
-                threads.emplace_back(std::thread(write_worker<std::stringstream>,
+                threads.emplace_back(std::thread(write_worker<rope_adapater>,
                                                  &exception_mutex,
                                                  &exceptions,
                                                  &bufs[n],
@@ -1736,9 +1789,8 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
     std::vector<std::size_t> sizes;
     std::size_t outsize = 0;
     for (auto& stream : streams) {
-        sizes.emplace_back(stream.tellp());
+        sizes.emplace_back(stream.size());
         outsize += sizes.back();
-        stream.seekp(0);
     }
 
     char* underlying_buffer;
@@ -1792,8 +1844,11 @@ void write(T& stream,
     }
 
     std::size_t num_rows = columns[0].size();
-    auto formatters = detail::get_format_functions<T>(columns);
-    detail::iobuffer<T> buf(stream, buffer_size, float_precision);
+    auto formatters = detail::get_format_functions<detail::ostream_adapter<T>>(columns);
+    detail::ostream_adapter stream_adapter(stream);
+    detail::iobuffer<detail::ostream_adapter<T>> buf(stream_adapter,
+                                                     buffer_size,
+                                                     float_precision);
     detail::write_header(buf, column_names);
     detail::write_worker_impl(buf, columns, 0, num_rows, formatters);
 }
