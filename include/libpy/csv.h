@@ -1408,17 +1408,14 @@ public:
           m_float_coef(std::pow(10, float_precision)),
           m_expected_frac_digits(float_precision) {
         if (__builtin_popcountll(buffer_size) != 1) {
-            throw py::exception(PyExc_ValueError,
-                                "buffer_size must be power of 2, got: ",
-                                buffer_size);
+            throw std::runtime_error("buffer_size must be power of 2");
         }
 
         if (buffer_size < min_buffer_size) {
-            throw py::exception(PyExc_ValueError,
-                                "buffer_size must be at least ",
-                                min_buffer_size,
-                                " got: ",
-                                buffer_size);
+            std::stringstream stream;
+            stream << "buffer_size must be at least " << min_buffer_size
+                   << " got: " << buffer_size;
+            throw std::runtime_error(stream.str());
         }
     }
 
@@ -1547,36 +1544,15 @@ void format_datetime64(iobuffer<T>& buf, const py::any_ref& any_value) {
     auto [p, errc] = py::to_chars(begin, end, as_M8);
     buf.consume(p - begin);
 }
-}  // namespace detail
 
-/** Format a CSV from an array of columns.
-
-    @param stream The ostream to write into.
-    @param column_names The names to write into the column header.
-    @param columns The arrays of values for each column. Columns are written in the order
-                   they appear here, and  must be aligned with `column_names`.
-    @param buffer_size The number of bytes to buffer between calls to `stream.write`.
-                       This must be a power of 2 greater than or equal to 2 ** 8.
-    @param float_precision The number of digits of precision to write floats as.
-*/
 template<typename T>
-void write(T& stream,
-           std::vector<std::string> column_names,
-           std::vector<py::array_view<py::any_ref>>& columns,
-           std::size_t buffer_size,
-           std::uint8_t float_precision = 10) {
-    if (columns.size() != column_names.size()) {
-        throw std::runtime_error("mismatched column_names and columns");
-    }
+using format_function = void (*)(detail::iobuffer<T>&, const py::any_ref&);
 
-    if (!columns.size()) {
-        return;
-    }
-
+template<typename T>
+std::vector<format_function<T>>
+get_format_functions(std::vector<py::array_view<py::any_ref>>& columns) {
     std::size_t num_rows = columns[0].size();
-
-    using format_function = void (*)(detail::iobuffer<T>&, const py::any_ref&);
-    std::vector<format_function> formatters;
+    std::vector<detail::format_function<T>> formatters;
     for (const auto& column : columns) {
         if (column.size() != num_rows) {
             throw std::runtime_error("mismatched column lengths");
@@ -1642,8 +1618,11 @@ void write(T& stream,
         }
     }
 
-    detail::iobuffer<T> buf(stream, buffer_size, float_precision);
+    return formatters;
+}
 
+template<typename T>
+void write_header(iobuffer<T>& buf, const std::vector<std::string>& column_names) {
     auto names_it = column_names.begin();
     buf.write(*names_it);
     for (++names_it; names_it != column_names.end(); ++names_it) {
@@ -1651,8 +1630,15 @@ void write(T& stream,
         buf.write(*names_it);
     }
     buf.write('\n');
+}
 
-    for (std::int64_t ix = 0; ix < static_cast<std::int64_t>(num_rows); ++ix) {
+template<typename T>
+void write_worker_impl(iobuffer<T>& buf,
+                       std::vector<py::array_view<py::any_ref>>& columns,
+                       std::int64_t begin,
+                       std::int64_t end,
+                       const std::vector<format_function<T>>& formatters) {
+    for (std::int64_t ix = begin; ix < end; ++ix) {
         auto columns_it = columns.begin();
         auto format_it = formatters.begin();
         (*format_it)(buf, (*columns_it)[ix]);
@@ -1663,6 +1649,151 @@ void write(T& stream,
         }
         buf.write('\n');
     }
+}
+
+template<typename T>
+void write_worker(std::mutex* exception_mutex,
+                  std::vector<std::exception_ptr>* exceptions,
+                  iobuffer<T>* buf,
+                  std::vector<py::array_view<py::any_ref>>* columns,
+                  std::int64_t begin,
+                  std::int64_t end,
+                  const std::vector<format_function<T>>* formatters) {
+    try {
+        write_worker_impl<T>(*buf, *columns, begin, end, *formatters);
+    }
+    catch (const std::exception&) {
+        std::lock_guard<std::mutex> guard(*exception_mutex);
+        exceptions->emplace_back(std::current_exception());
+    }
+}
+
+inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
+                                 std::vector<py::array_view<py::any_ref>>& columns,
+                                 std::size_t buffer_size,
+                                 int num_threads,
+                                 std::uint8_t float_precision = 10) {
+    if (columns.size() != column_names.size()) {
+        throw std::runtime_error("mismatched column_names and columns");
+    }
+
+    if (!columns.size()) {
+        return py::to_object("").escape();
+    }
+
+    if (num_threads <= 0) {
+        num_threads = 1;
+    }
+
+    std::size_t num_rows = columns[0].size();
+    auto formatters = get_format_functions<std::stringstream>(columns);
+
+
+    std::vector<std::stringstream> streams(num_threads);
+    std::vector<iobuffer<std::stringstream>> bufs;
+    for (auto& stream : streams) {
+        bufs.emplace_back(stream, buffer_size, float_precision);
+    }
+
+    write_header(bufs[0], column_names);
+
+    if (num_threads <= 1) {
+        write_worker_impl(bufs[0],
+                          columns,
+                          0,
+                          num_rows,
+                          formatters);
+    }
+    else {
+        std::mutex exception_mutex;
+        std::vector<std::exception_ptr> exceptions;
+
+        std::size_t group_size = num_rows / num_threads + 1;
+        std::vector<std::thread> threads;
+        for (int n = 0; n < num_threads; ++n) {
+            std::int64_t begin = n * group_size;
+            threads.emplace_back(std::thread(write_worker<std::stringstream>,
+                                             &exception_mutex,
+                                             &exceptions,
+                                             &bufs[n],
+                                             &columns,
+                                             begin,
+                                             std::min(begin + group_size, num_rows),
+                                             &formatters));
+        }
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        for (auto& e : exceptions) {
+            std::rethrow_exception(e);
+        }
+    }
+
+    std::vector<std::size_t> sizes;
+    std::size_t outsize = 0;
+    for (auto& stream : streams) {
+        sizes.emplace_back(stream.tellp());
+        outsize += sizes.back();
+        stream.seekp(0);
+    }
+
+    char* underlying_buffer;
+#if PY_MAJOR_VERSION == 2
+    py::scoped_ref out(PyString_FromStringAndSize(nullptr, outsize));
+    if (!out) {
+        return nullptr;
+    }
+    underlying_buffer = PyString_AS_STRING(out.get());
+#else
+    py::scoped_ref out(PyBytes_FromStringAndSize(nullptr, outsize));
+    if (!out) {
+        return nullptr;
+    }
+    underlying_buffer = PyBytes_AS_STRING(out.get());
+#endif
+
+    std::size_t ix = 0;
+    for (auto [stream, size] : py::zip(streams, sizes)) {
+        stream.read(underlying_buffer + ix, size);
+        ix += size;
+    }
+
+    return std::move(out).escape();
+}
+}  // namespace detail
+
+
+/** Format a CSV from an array of columns.
+
+    @param stream The ostream to write into.
+    @param column_names The names to write into the column header.
+    @param columns The arrays of values for each column. Columns are written in the order
+                   they appear here, and  must be aligned with `column_names`.
+    @param buffer_size The number of bytes to buffer between calls to `stream.write`.
+                       This must be a power of 2 greater than or equal to 2 ** 8.
+    @param float_precision The number of digits of precision to write floats as.
+*/
+template<typename T>
+void write(T& stream,
+           const std::vector<std::string>& column_names,
+           std::vector<py::array_view<py::any_ref>>& columns,
+           std::size_t buffer_size,
+           std::uint8_t float_precision = 10) {
+    if (columns.size() != column_names.size()) {
+        throw std::runtime_error("mismatched column_names and columns");
+    }
+
+    if (!columns.size()) {
+        return;
+    }
+
+    std::size_t num_rows = columns[0].size();
+    auto formatters = detail::get_format_functions<T>(columns);
+    detail::iobuffer<T> buf(stream, buffer_size, float_precision);
+    detail::write_header(buf, column_names);
+    detail::write_worker_impl(buf, columns, 0, num_rows, formatters);
 }
 
 /** Format a CSV from an array of columns. This is meant to be exposed to Python with
@@ -1677,32 +1808,22 @@ void write(T& stream,
 */
 inline PyObject* py_write(PyObject*,
                           const py::scoped_ref<>& file,
-                          std::vector<std::string> column_names,
+                          const std::vector<std::string>& column_names,
                           std::vector<py::array_view<py::any_ref>>& columns,
                           std::size_t buffer_size,
+                          int num_threads,
                           std::uint8_t float_precision) {
     if (file.get() == Py_None) {
-        std::stringstream stream;
-        write(stream, column_names, columns, buffer_size, float_precision);
-        auto size = stream.tellp();
-        stream.seekp(0);
-
-        char* underlying_buffer;
-#if PY_MAJOR_VERSION == 2
-        py::scoped_ref out(PyString_FromStringAndSize(nullptr, size));
-        if (!out) {
-            return nullptr;
-        }
-        underlying_buffer = PyString_AS_STRING(out.get());
-#else
-        py::scoped_ref out(PyBytes_FromStringAndSize(nullptr, size));
-        if (!out) {
-            return nullptr;
-        }
-        underlying_buffer = PyBytes_AS_STRING(out.get());
-#endif
-        stream.read(underlying_buffer, size);
-        return std::move(out).escape();
+        return detail::write_in_memory(column_names,
+                                       columns,
+                                       buffer_size,
+                                       num_threads,
+                                       float_precision);
+    }
+    else if (num_threads > 1) {
+        py::raise(PyExc_ValueError)
+            << "cannot pass num_threads > 1 with file-backed output";
+        return nullptr;
     }
     else {
         const char* text = py::util::pystring_to_cstring(file);
