@@ -1390,23 +1390,35 @@ namespace detail {
 template<typename T>
 class iobuffer {
 private:
+    // we need this to be large enough that it will be safe to do writes of floats,
+    // ints, and datetimes after a flush without double checking the `space_left`
+    static constexpr std::size_t min_buffer_size = 1 << 8;
+
     T& m_stream;
     std::vector<char> m_buffer;
     std::size_t m_ix;
-    std::uint8_t m_float_precision;
+    std::int64_t m_float_coef;
+    std::int64_t m_expected_frac_digits;
 
 public:
-    iobuffer(T& stream, std::size_t buffer_size, uint8_t float_precision)
+    iobuffer(T& stream, std::size_t buffer_size, std::uint8_t float_precision)
         : m_stream(stream),
           m_buffer(buffer_size),
           m_ix(0),
-          m_float_precision(float_precision) {
+          m_float_coef(std::pow(10, float_precision)),
+          m_expected_frac_digits(float_precision) {
         if (__builtin_popcountll(buffer_size) != 1) {
-            throw std::runtime_error("buffer_size must be power of 2");
+            throw py::exception(PyExc_ValueError,
+                                "buffer_size must be power of 2, got: ",
+                                buffer_size);
         }
 
-        if (buffer_size < 1 << 8) {
-            throw std::runtime_error("buffer_size must be at least 2 ** 8");
+        if (buffer_size < min_buffer_size) {
+            throw py::exception(PyExc_ValueError,
+                                "buffer_size must be at least ",
+                                min_buffer_size,
+                                " got: ",
+                                buffer_size);
         }
     }
 
@@ -1452,13 +1464,23 @@ public:
         std::int64_t whole_component = f;
         write(whole_component);
         write('.');
-        std::int64_t frac = (f - whole_component) * std::pow(10, m_float_precision) + 0.5;
+        std::int64_t frac = (f - whole_component) * m_float_coef + 0.5;
+        std::int64_t digits = std::floor(std::log10(frac));
+        digits += 1;
+        std::int64_t padding = m_expected_frac_digits - digits;
+        if (padding > 0) {
+            if (static_cast<std::int64_t>(space_left()) < padding) {
+                flush();
+            }
+            std::memset(m_buffer.data() + m_ix, '0', padding);
+            m_ix += padding;
+        }
         write(frac);
     }
 
     void write(std::int64_t v) {
         using namespace py::cs::literals;
-        constexpr std::size_t max_int_size = "-9223372036854775808"_arr.size();
+        constexpr std::int64_t max_int_size = "-9223372036854775808"_arr.size();
         if (space_left() < max_int_size) {
             flush();
         }
@@ -1679,7 +1701,7 @@ inline PyObject* py_write(PyObject*,
         }
         underlying_buffer = PyBytes_AS_STRING(out.get());
 #endif
-        stream.get(underlying_buffer, size);
+        stream.read(underlying_buffer, size);
         return std::move(out).escape();
     }
     else {
