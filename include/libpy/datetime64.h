@@ -381,7 +381,7 @@ inline void write(char* data, char*, int& ix, char v) {
     data[ix++] = v;
 }
 
-void write(char* data, char* end, int& ix, std::int64_t v) {
+inline void write(char* data, char* end, int& ix, std::int64_t v) {
     auto begin = data + ix;
     auto [p, ec] = std::to_chars(data + ix, end, v);
     if (ec != std::errc()) {
@@ -412,12 +412,13 @@ std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& d
     if (dt.isnat()) {
         // format all `NaT` values in a uniform way, regardless of the unit
         std::memcpy(first, detail::nat_string.data(), detail::nat_string.size());
+        return {first + detail::nat_string.size(), std::errc()};
     }
 
     int ix = 0;
     auto write = [&](auto value) { detail::formatting::write(first, last, ix, value); };
 
-    auto zero_pad_skip = [&](int expected_digits, std::int64_t value) {
+    auto zero_pad = [&](int expected_digits, std::int64_t value) {
         std::int64_t digits = std::floor(std::log10(value));
         digits += 1;
         if (expected_digits > digits) {
@@ -437,10 +438,10 @@ std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& d
     if (year < 0 && year > -100) {
         write('-');
         year = std::abs(year);
-        zero_pad_skip(3, year);
+        zero_pad(3, year);
     }
     else if (year > 0) {
-        zero_pad_skip(4, year);
+        zero_pad(4, year);
     }
     write(year);
     write('-');
@@ -477,7 +478,7 @@ std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& d
     if (fractional_seconds) {
         write('.');
         std::int64_t expected_digits = std::log10(unit::period::den);
-        zero_pad_skip(expected_digits, fractional_seconds);
+        zero_pad(expected_digits, fractional_seconds);
         write(fractional_seconds);
     }
     return finalize();

@@ -1538,11 +1538,11 @@ void format_datetime64(iobuffer<T>& buf, const py::any_ref& any_value) {
     @param float_precision The number of digits of precision to write floats as.
 */
 template<typename T>
-inline void write(T& stream,
-                  std::vector<std::string> column_names,
-                  std::vector<py::array_view<py::any_ref>>& columns,
-                  std::size_t buffer_size,
-                  std::uint8_t float_precision = 10) {
+void write(T& stream,
+           std::vector<std::string> column_names,
+           std::vector<py::array_view<py::any_ref>>& columns,
+           std::size_t buffer_size,
+           std::uint8_t float_precision = 10) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -1647,10 +1647,11 @@ inline void write(T& stream,
     `py::automethod`.
 
     @param file A python object which is either a string to be interpreted as a file name,
-                or a file-like object to be written to.
+                or None, in which case the data will be returned as a Python string.
     @param column_names The names to write into the column header.
     @param columns The arrays of values for each column. Columns are written in the order
                    they appear here, and  must be aligned with `column_names`.
+    @return Either the data as a Python string, or None.
 */
 inline PyObject* py_write(PyObject*,
                           const py::scoped_ref<>& file,
