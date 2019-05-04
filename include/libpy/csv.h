@@ -1690,44 +1690,46 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
 
 
     std::vector<std::stringstream> streams(num_threads);
-    std::vector<iobuffer<std::stringstream>> bufs;
-    for (auto& stream : streams) {
-        bufs.emplace_back(stream, buffer_size, float_precision);
-    }
-
-    write_header(bufs[0], column_names);
-
-    if (num_threads <= 1) {
-        write_worker_impl(bufs[0],
-                          columns,
-                          0,
-                          num_rows,
-                          formatters);
-    }
-    else {
-        std::mutex exception_mutex;
-        std::vector<std::exception_ptr> exceptions;
-
-        std::size_t group_size = num_rows / num_threads + 1;
-        std::vector<std::thread> threads;
-        for (int n = 0; n < num_threads; ++n) {
-            std::int64_t begin = n * group_size;
-            threads.emplace_back(std::thread(write_worker<std::stringstream>,
-                                             &exception_mutex,
-                                             &exceptions,
-                                             &bufs[n],
-                                             &columns,
-                                             begin,
-                                             std::min(begin + group_size, num_rows),
-                                             &formatters));
+    {
+        std::vector<iobuffer<std::stringstream>> bufs;
+        for (auto& stream : streams) {
+            bufs.emplace_back(stream, buffer_size, float_precision);
         }
 
-        for (auto& thread : threads) {
-            thread.join();
-        }
+        write_header(bufs[0], column_names);
 
-        for (auto& e : exceptions) {
-            std::rethrow_exception(e);
+        if (num_threads <= 1) {
+            write_worker_impl(bufs[0],
+                              columns,
+                              0,
+                              num_rows,
+                              formatters);
+        }
+        else {
+            std::mutex exception_mutex;
+            std::vector<std::exception_ptr> exceptions;
+
+            std::size_t group_size = num_rows / num_threads + 1;
+            std::vector<std::thread> threads;
+            for (int n = 0; n < num_threads; ++n) {
+                std::int64_t begin = n * group_size;
+                threads.emplace_back(std::thread(write_worker<std::stringstream>,
+                                                 &exception_mutex,
+                                                 &exceptions,
+                                                 &bufs[n],
+                                                 &columns,
+                                                 begin,
+                                                 std::min(begin + group_size, num_rows),
+                                                 &formatters));
+            }
+
+            for (auto& thread : threads) {
+                thread.join();
+            }
+
+            for (auto& e : exceptions) {
+                std::rethrow_exception(e);
+            }
         }
     }
 
@@ -1831,7 +1833,15 @@ inline PyObject* py_write(PyObject*,
             return nullptr;
         }
         std::ofstream stream(text, std::ios::binary);
+        if (!stream) {
+            py::raise(PyExc_OSError) << "failed to open file";
+            return nullptr;
+        }
         write(stream, column_names, columns, buffer_size, float_precision);
+        if (!stream) {
+            py::raise(PyExc_OSError) << "failed to write csv";
+            return nullptr;
+        }
         Py_RETURN_NONE;
     }
 }
