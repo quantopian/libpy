@@ -83,25 +83,23 @@ constexpr any_vtable_impl any_vtable_instance = {
     [](const void* lhs, const void* rhs) -> bool {
         return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
     },
-    [](const void* addr) -> scoped_ref<> {
+    []([[maybe_unused]] const void* addr) -> scoped_ref<> {
         if constexpr (py::has_to_object<T>) {
             return to_object(*static_cast<const T*>(addr));
         }
         else {
-            static_cast<void>(addr);
             throw py::exception(PyExc_TypeError,
                                 "cannot convert values of type ",
                                 py::util::type_name<T>().get(),
                                 " into Python object");
         }
     },
-    [](std::ostream& stream, const void* addr) -> std::ostream& {
+    []([[maybe_unused]] std::ostream& stream,
+       [[maybe_unused]] const void* addr) -> std::ostream& {
         if constexpr (has_ostream_format<const T&>::value) {
             return stream << *reinterpret_cast<const T*>(addr);
         }
         else {
-            static_cast<void>(stream);
-            static_cast<void>(addr);
             throw py::exception(
                 PyExc_TypeError,
                 "cannot use operator<<(std::ostream&, const T&) for values of type ",
