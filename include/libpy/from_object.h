@@ -159,13 +159,13 @@ struct from_object<std::string_view> {
         if (PyBytes_Check(cs)) {
             size = PyBytes_GET_SIZE(cs);
             data = PyBytes_AS_STRING(cs);
-        }
+         }
         else {
-            throw invalid_conversion::make<std::string_view>(cs);
-        }
+             throw invalid_conversion::make<std::string_view>(cs);
+         }
 
         return std::string_view(data, size);
-    }
+     }
 };
 
 template<>
@@ -222,7 +222,7 @@ public:
         if (wide > std::numeric_limits<T>::max() ||
             wide < std::numeric_limits<T>::min()) {
             py::raise(PyExc_OverflowError)
-                << "converting " << value << " to type" << py::util::type_name<T>().get()
+                << "converting " << value << " to type " << py::util::type_name<T>().get()
                 << " overflows";
             throw invalid_conversion::make<T>(value);
         }

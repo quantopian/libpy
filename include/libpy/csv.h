@@ -1386,48 +1386,146 @@ PyObject* py_parse(PyObject*,
     return std::move(out).escape();
 }
 
-inline void format_any(std::ostream& stream, const py::any_ref& value) {
+namespace detail {
+template<typename T>
+class iobuffer {
+private:
+    T& m_stream;
+    std::vector<char> m_buffer;
+    std::size_t m_ix;
+    std::uint8_t m_float_precision;
+
+public:
+    iobuffer(T& stream, std::size_t buffer_size, uint8_t float_precision)
+        : m_stream(stream),
+          m_buffer(buffer_size),
+          m_ix(0),
+          m_float_precision(float_precision) {
+        if (__builtin_popcountll(buffer_size) != 1) {
+            throw std::runtime_error("buffer_size must be power of 2");
+        }
+
+        if (buffer_size < 1 << 8) {
+            throw std::runtime_error("buffer_size must be at least 2 ** 8");
+        }
+    }
+
+    void flush() {
+        if (m_ix) {
+            m_stream.write(m_buffer.data(), m_ix);
+            m_ix = 0;
+        }
+    }
+
+    std::tuple<char*, char*> buffer() {
+        return {m_buffer.data() + m_ix, m_buffer.data() + m_buffer.size()};
+    }
+
+    void consume(std::size_t amount) {
+        m_ix += amount;
+    }
+
+    std::size_t space_left() const {
+        return m_buffer.size() - m_ix;
+    }
+
+    void write(const std::string_view& data) {
+        if (space_left() < data.size()) {
+            flush();
+            if (space_left() < data.size()) {
+                m_stream.write(data.data(), data.size());
+                return;
+            }
+        }
+        std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
+        m_ix += data.size();
+    }
+
+    void write(char c) {
+        if (!space_left()) {
+            flush();
+        }
+        m_buffer[m_ix++] = c;
+    }
+
+    void write(double f) {
+        std::int64_t whole_component = f;
+        write(whole_component);
+        write('.');
+        std::int64_t frac = (f - whole_component) * std::pow(10, m_float_precision) + 0.5;
+        write(frac);
+    }
+
+    void write(std::int64_t v) {
+        using namespace py::cs::literals;
+        constexpr std::size_t max_int_size = "-9223372036854775808"_arr.size();
+        if (space_left() < max_int_size) {
+            flush();
+        }
+        auto begin = m_buffer.data() + m_ix;
+        auto [p, errc] = std::to_chars(begin, m_buffer.data() + m_buffer.size(), v);
+        m_ix += p - begin;
+    }
+
+    ~iobuffer() {
+        flush();
+    }
+};
+
+template<typename T>
+void format_any(iobuffer<T>& buf, const py::any_ref& value) {
+    std::stringstream stream;
     stream << value;
+    buf.write(stream.str());
 }
 
-inline void format_pyobject(std::ostream& stream, const py::any_ref& any_value) {
+template<typename T>
+void format_pyobject(iobuffer<T>& buf, const py::any_ref& any_value) {
     const auto& as_ob = *reinterpret_cast<const py::scoped_ref<>*>(any_value.addr());
     if (as_ob.get() == Py_None) {
         return;
     }
 
-    const char* text = py::util::pystring_to_cstring(as_ob.get());
-    if (!text) {
-        throw py::exception{};
-    }
-    stream << '"';
-    while (*text) {
-        if (*text == '"') {
-            stream << '/';
+    std::string_view text = py::util::pystring_to_string_view(as_ob);
+    buf.write('"');
+    for (char c : text) {
+        if (c == '"') {
+            buf.write('/');
         }
-        stream << *text;
-        ++text;
+        buf.write(c);
     }
-    stream << '"';
+    buf.write('"');
 }
 
-template<typename T>
-void format_float(std::ostream& stream, const py::any_ref& any_value) {
-    const auto& as_f8 = *reinterpret_cast<const T*>(any_value.addr());
-    if (as_f8 != as_f8) {
+template<typename T, typename F>
+void format_float(iobuffer<T>& buf, const py::any_ref& any_value) {
+    const auto& as_float = *reinterpret_cast<const F*>(any_value.addr());
+    if (as_float != as_float) {
         return;
     }
-    stream << as_f8;
+    buf.write(as_float);
 }
 
-template<typename unit>
-void format_datetime64(std::ostream& stream, const py::any_ref& any_value) {
+template<typename T, typename I>
+void format_int(iobuffer<T>& buf, const py::any_ref& any_value) {
+    std::int64_t as_int = *reinterpret_cast<const I*>(any_value.addr());
+    buf.write(as_int);
+}
+
+template<typename T, typename unit>
+void format_datetime64(iobuffer<T>& buf, const py::any_ref& any_value) {
     const auto& as_M8 = *reinterpret_cast<const py::datetime64<unit>*>(any_value.addr());
     if (as_M8.isnat()) {
         return;
     }
-    stream << as_M8;
+    if (buf.space_left() < py::detail::max_size<unit>) {
+        buf.flush();
+    }
+    auto [begin, end] = buf.buffer();
+    auto [p, errc] = py::to_chars(begin, end, as_M8);
+    buf.consume(p - begin);
 }
+}  // namespace detail
 
 /** Format a CSV from an array of columns.
 
@@ -1435,12 +1533,16 @@ void format_datetime64(std::ostream& stream, const py::any_ref& any_value) {
     @param column_names The names to write into the column header.
     @param columns The arrays of values for each column. Columns are written in the order
                    they appear here, and  must be aligned with `column_names`.
+    @param buffer_size The number of bytes to buffer between calls to `stream.write`.
+                       This must be a power of 2 greater than or equal to 2 ** 8.
     @param float_precision The number of digits of precision to write floats as.
 */
-inline void write(std::ostream& stream,
+template<typename T>
+inline void write(T& stream,
                   std::vector<std::string> column_names,
                   std::vector<py::array_view<py::any_ref>>& columns,
-                  int float_precision = 10) {
+                  std::size_t buffer_size,
+                  std::uint8_t float_precision = 10) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -1451,7 +1553,7 @@ inline void write(std::ostream& stream,
 
     std::size_t num_rows = columns[0].size();
 
-    using format_function = void (*)(std::ostream&, const py::any_ref&);
+    using format_function = void (*)(detail::iobuffer<T>&, const py::any_ref&);
     std::vector<format_function> formatters;
     for (const auto& column : columns) {
         if (column.size() != num_rows) {
@@ -1460,61 +1562,84 @@ inline void write(std::ostream& stream,
 
         const auto& vtable = column.vtable();
         if (vtable == py::any_vtable::make<double>()) {
-            formatters.emplace_back(format_float<double>);
+            formatters.emplace_back(detail::format_float<T, double>);
         }
         else if (vtable == py::any_vtable::make<float>()) {
-            formatters.emplace_back(format_float<float>);
+            formatters.emplace_back(detail::format_float<T, float>);
+        }
+        else if (vtable == py::any_vtable::make<std::int64_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::int64_t>);
+        }
+        else if (vtable == py::any_vtable::make<std::int32_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::int32_t>);
+        }
+        else if (vtable == py::any_vtable::make<std::int16_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::int16_t>);
+        }
+        else if (vtable == py::any_vtable::make<std::int8_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::int8_t>);
+        }
+        else if (vtable == py::any_vtable::make<std::uint64_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::uint64_t>);
+        }
+        else if (vtable == py::any_vtable::make<std::uint32_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::uint32_t>);
+        }
+        else if (vtable == py::any_vtable::make<std::uint16_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::uint16_t>);
+        }
+        else if (vtable == py::any_vtable::make<std::uint8_t>()) {
+            formatters.emplace_back(detail::format_int<T, std::uint8_t>);
         }
         else if (vtable == py::any_vtable::make<py::scoped_ref<>>()) {
-            formatters.emplace_back(format_pyobject);
+            formatters.emplace_back(detail::format_pyobject<T>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::ns>>()) {
-            formatters.emplace_back(format_datetime64<py::chrono::ns>);
+            formatters.emplace_back(detail::format_datetime64<T, py::chrono::ns>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::us>>()) {
-            formatters.emplace_back(format_datetime64<py::chrono::us>);
+            formatters.emplace_back(detail::format_datetime64<T, py::chrono::us>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::ms>>()) {
-            formatters.emplace_back(format_datetime64<py::chrono::ms>);
+            formatters.emplace_back(detail::format_datetime64<T, py::chrono::ms>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::s>>()) {
-            formatters.emplace_back(format_datetime64<py::chrono::s>);
+            formatters.emplace_back(detail::format_datetime64<T, py::chrono::s>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::m>>()) {
-            formatters.emplace_back(format_datetime64<py::chrono::m>);
+            formatters.emplace_back(detail::format_datetime64<T, py::chrono::m>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::h>>()) {
-            formatters.emplace_back(format_datetime64<py::chrono::h>);
+            formatters.emplace_back(detail::format_datetime64<T, py::chrono::h>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::D>>()) {
-            formatters.emplace_back(format_datetime64<py::chrono::D>);
+            formatters.emplace_back(detail::format_datetime64<T, py::chrono::D>);
         }
         else {
-            formatters.emplace_back(format_any);
+            formatters.emplace_back(detail::format_any<T>);
         }
     }
 
-    int old_precision = stream.precision();
-    stream << std::setprecision(float_precision);
-    py::util::scope_guard reset_precision(
-        [&]() { stream << std::setprecision(old_precision); });
+    detail::iobuffer<T> buf(stream, buffer_size, float_precision);
 
     auto names_it = column_names.begin();
-    stream << *names_it;
+    buf.write(*names_it);
     for (++names_it; names_it != column_names.end(); ++names_it) {
-        stream << ',' << *names_it;
+        buf.write(',');
+        buf.write(*names_it);
     }
-    stream << '\n';
+    buf.write('\n');
 
     for (std::int64_t ix = 0; ix < static_cast<std::int64_t>(num_rows); ++ix) {
         auto columns_it = columns.begin();
         auto format_it = formatters.begin();
-        (*format_it)(stream, (*columns_it)[ix]);
+        (*format_it)(buf, (*columns_it)[ix]);
         for (++columns_it, ++format_it; columns_it != columns.end();
              ++columns_it, ++format_it) {
-            (*format_it)(stream << ',', (*columns_it)[ix]);
+            buf.write(',');
+            (*format_it)(buf, (*columns_it)[ix]);
         }
-        stream << '\n';
+        buf.write('\n');
     }
 }
 
@@ -1527,21 +1652,43 @@ inline void write(std::ostream& stream,
     @param columns The arrays of values for each column. Columns are written in the order
                    they appear here, and  must be aligned with `column_names`.
 */
-inline void py_write(PyObject*,
-                     const py::scoped_ref<>& file,
-                     std::vector<std::string> column_names,
-                     std::vector<py::array_view<py::any_ref>>& columns,
-                     int float_precision) {
-    const char* text = py::util::pystring_to_cstring(file);
-    if (!text) {
-        PyErr_Clear();
+inline PyObject* py_write(PyObject*,
+                          const py::scoped_ref<>& file,
+                          std::vector<std::string> column_names,
+                          std::vector<py::array_view<py::any_ref>>& columns,
+                          std::size_t buffer_size,
+                          std::uint8_t float_precision) {
+    if (file.get() == Py_None) {
+        std::stringstream stream;
+        write(stream, column_names, columns, buffer_size, float_precision);
+        auto size = stream.tellp();
+        stream.seekp(0);
 
-        py::ostream stream(file);
-        write(stream, column_names, columns, float_precision);
+        char* underlying_buffer;
+#if PY_MAJOR_VERSION == 2
+        py::scoped_ref out(PyString_FromStringAndSize(nullptr, size));
+        if (!out) {
+            return nullptr;
+        }
+        underlying_buffer = PyString_AS_STRING(out.get());
+#else
+        py::scoped_ref out(PyBytes_FromStringAndSize(nullptr, size));
+        if (!out) {
+            return nullptr;
+        }
+        underlying_buffer = PyBytes_AS_STRING(out.get());
+#endif
+        stream.get(underlying_buffer, size);
+        return std::move(out).escape();
     }
     else {
-        std::ofstream stream(text);
-        write(stream, column_names, columns, float_precision);
+        const char* text = py::util::pystring_to_cstring(file);
+        if (!text) {
+            return nullptr;
+        }
+        std::ofstream stream(text, std::ios::binary);
+        write(stream, column_names, columns, buffer_size, float_precision);
+        Py_RETURN_NONE;
     }
 }
 }  // namespace py::csv

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdexcept>
+#include <string_view>
+
 #include <Python.h>
 
 #include "libpy/scoped_ref.h"
@@ -28,6 +31,26 @@ inline const char* pystring_to_cstring(PyObject* ob) {
 
 inline const char* pystring_to_cstring(const py::scoped_ref<>& ob) {
     return pystring_to_cstring(ob.get());
+}
+
+inline std::string_view pystring_to_string_view(PyObject* ob) {
+    Py_ssize_t size;
+    const char* cs;
+#if PY_MAJOR_VERSION == 2
+    if (PyString_AsStringAndSize(ob, const_cast<char**>(&cs), &size)) {
+        throw std::runtime_error("failed to get string and size");
+    }
+#else
+    cs = PyUnicode_AsUTF8AndSize(ob, &size);
+    if (!cs) {
+        throw std::runtime_error("failed to get string and size");
+    }
+#endif
+    return {cs, static_cast<std::size_t>(size)};
+}
+
+inline std::string_view pystring_to_string_view(const py::scoped_ref<>& ob) {
+    return pystring_to_string_view(ob.get());
 }
 
 /* Taken from google benchmark, this is useful for debugging.

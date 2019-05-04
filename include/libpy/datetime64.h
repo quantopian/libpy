@@ -8,6 +8,7 @@
 #include <limits>
 #include <ostream>
 #include <ratio>
+#include <system_error>
 #include <tuple>
 #include <type_traits>
 
@@ -278,31 +279,31 @@ constexpr auto nat_string = "NaT"_arr;
 
 // The maximum size for a datetime string of the given units.
 template<typename unit>
-constexpr std::size_t max_size = 0;
+constexpr std::int64_t max_size = 0;
 
 template<>
-constexpr std::size_t
+constexpr std::int64_t
     max_size<py::chrono::ns> = "-2262-04-11T23:47:16.854775807"_arr.size();
 
 template<>
-constexpr std::size_t
+constexpr std::int64_t
     max_size<py::chrono::us> = "-294247-01-10T04:00:54.775807"_arr.size();
 
 template<>
-constexpr std::size_t
+constexpr std::int64_t
     max_size<py::chrono::ms> = "-292278994-08-17T07:12:55.807"_arr.size();
 
 template<>
-constexpr std::size_t max_size<py::chrono::s> = "-292277026596-12-04T15:30:07"_arr.size();
+constexpr std::int64_t max_size<py::chrono::s> = "-292277026596-12-04T15:30:07"_arr.size();
 
 template<>
-constexpr std::size_t max_size<py::chrono::m> = "-17536621479585-08-30T18:07"_arr.size();
+constexpr std::int64_t max_size<py::chrono::m> = "-17536621479585-08-30T18:07"_arr.size();
 
 template<>
-constexpr std::size_t max_size<py::chrono::h> = "-1052197288658909-10-10T07"_arr.size();
+constexpr std::int64_t max_size<py::chrono::h> = "-1052197288658909-10-10T07"_arr.size();
 
 template<>
-constexpr std::size_t max_size<py::chrono::D> = "-25252734927768524-07-27"_arr.size();
+constexpr std::int64_t max_size<py::chrono::D> = "-25252734927768524-07-27"_arr.size();
 }  // namespace
 
 /** convert a count of days from 1970 to a year and the number of days into the year
@@ -375,45 +376,46 @@ month_day_for_year_days(std::int64_t year, std::int16_t days_into_year) {
     __builtin_unreachable();
 }
 
-template<typename T>
-void write(T& data, int& ix, char v) {
+namespace formatting {
+inline void write(char* data, char*, int& ix, char v) {
     data[ix++] = v;
 }
 
-template<typename T>
-void write(T& data, int& ix, std::int64_t v) {
-    auto begin = data.begin() + ix;
-    auto [p, ec] = std::to_chars(data.begin() + ix, data.end(), v);
+void write(char* data, char* end, int& ix, std::int64_t v) {
+    auto begin = data + ix;
+    auto [p, ec] = std::to_chars(data + ix, end, v);
     if (ec != std::errc()) {
         throw std::runtime_error("failed to format integer");
     }
     ix += p - begin;
 }
 
-template<typename T, std::size_t size>
-void write(T& data, int& ix, const std::array<char, size>& v) {
-    std::memcpy(data.begin() + ix, v.data(), size);
+template<std::size_t size>
+void write(char* data, char*, int& ix, const std::array<char, size>& v) {
+    std::memcpy(data + ix, v.data(), size);
     ix += size;
 }
 
-template<typename T>
-void write(T& data, int& ix, const std::string_view& v) {
-    std::memcpy(data.begin() + ix, v.data(), v.size());
+inline void write(char* data, char*, int& ix, const std::string_view& v) {
+    std::memcpy(data + ix, v.data(), v.size());
     ix += v.size();
+}
 }
 }  // namespace detail
 
 template<typename unit>
-std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
-    if (dt.isnat()) {
-        // format all `NaT` values in a uniform way, regardless of the unit
-        return stream.write(detail::nat_string.data(), detail::nat_string.size());
+std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& dt) {
+    if (last - first < detail::max_size<unit>) {
+        return {first, std::errc::value_too_large};
     }
 
-    std::array<char, detail::max_size<unit>> data;
-    int ix = 0;
+    if (dt.isnat()) {
+        // format all `NaT` values in a uniform way, regardless of the unit
+        std::memcpy(first, detail::nat_string.data(), detail::nat_string.size());
+    }
 
-    auto write = [&](auto value) { detail::write(data, ix, value); };
+    int ix = 0;
+    auto write = [&](auto value) { detail::formatting::write(first, last, ix, value); };
 
     auto zero_pad_skip = [&](int expected_digits, std::int64_t value) {
         std::int64_t digits = std::floor(std::log10(value));
@@ -424,7 +426,7 @@ std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
         }
     };
 
-    auto finalize = [&]() -> std::ostream& { return stream.write(data.data(), ix); };
+    auto finalize = [&]() -> std::to_chars_result { return {first + ix, std::errc()}; };
 
     datetime64<chrono::D>
         as_days(dt);
@@ -479,6 +481,16 @@ std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
         write(fractional_seconds);
     }
     return finalize();
+}
+
+template<typename unit>
+std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
+    std::array<char, detail::max_size<unit>> data;
+    auto [end, errc] = to_chars(data.begin(), data.end(), dt);
+    if (errc != std::errc()) {
+        throw std::runtime_error("failed to format datetime64");
+    }
+    return stream.write(data.begin(), end - data.begin());
 }
 }  // namespace py
 
