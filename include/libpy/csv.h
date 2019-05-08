@@ -1515,6 +1515,7 @@ public:
         write(whole_component);
         write('.');
         std::int64_t frac = (f - whole_component) * m_float_coef + 0.5;
+        frac = std::abs(frac);
         std::int64_t digits = std::floor(std::log10(frac));
         digits += 1;
         std::int64_t padding = m_expected_frac_digits - digits;
