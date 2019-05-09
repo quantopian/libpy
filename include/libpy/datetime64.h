@@ -354,7 +354,7 @@ inline constexpr bool is_leapyear(std::int64_t year) {
     return (year % 4) == 0 && ((year % 100) != 0 || (year % 400) == 0);
 }
 
-/** Convert a year an number of days into the year into the month number and day number,
+/** Convert a year and number of days into the year into the month number and day number,
     both 1-indexed.
 
     @param year The gregorian year.

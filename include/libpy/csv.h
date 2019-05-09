@@ -1387,7 +1387,7 @@ PyObject* py_parse(PyObject*,
 }
 
 namespace detail {
-class rope_adapater {
+class rope_adapter {
 private:
     std::vector<std::string> m_buffers;
     std::size_t m_size = 0;
@@ -1751,12 +1751,11 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
     }
 
     std::size_t num_rows = columns[0].size();
-    auto formatters = get_format_functions<rope_adapater>(columns);
+    auto formatters = get_format_functions<rope_adapter>(columns);
 
-
-    std::vector<rope_adapater> streams(num_threads);
+    std::vector<rope_adapter> streams(num_threads);
     {
-        std::vector<iobuffer<rope_adapater>> bufs;
+        std::vector<iobuffer<rope_adapter>> bufs;
         for (auto& stream : streams) {
             bufs.emplace_back(stream, buffer_size, float_precision);
         }
@@ -1764,11 +1763,7 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
         write_header(bufs[0], column_names);
 
         if (num_threads <= 1) {
-            write_worker_impl(bufs[0],
-                              columns,
-                              0,
-                              num_rows,
-                              formatters);
+            write_worker_impl(bufs[0], columns, 0, num_rows, formatters);
         }
         else {
             std::mutex exception_mutex;
@@ -1778,7 +1773,7 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
             std::vector<std::thread> threads;
             for (int n = 0; n < num_threads; ++n) {
                 std::int64_t begin = n * group_size;
-                threads.emplace_back(std::thread(write_worker<rope_adapater>,
+                threads.emplace_back(std::thread(write_worker<rope_adapter>,
                                                  &exception_mutex,
                                                  &exceptions,
                                                  &bufs[n],
@@ -1829,7 +1824,6 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
     return std::move(out).escape();
 }
 }  // namespace detail
-
 
 /** Format a CSV from an array of columns.
 
