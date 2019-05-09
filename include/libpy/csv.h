@@ -1511,6 +1511,17 @@ public:
     }
 
     void write(double f) {
+        if (f > 1LL << 54 || f < -(1LL << 54)) {
+            // abs(f) > (1 << 54) cannot be perfectly represented as an int, so the whole
+            // component will lose precision. We don't expect this case to be common so we
+            // just defer to stringstream
+            std::stringstream ss;
+            ss.precision(m_expected_frac_digits);
+            ss << f;
+            write(ss.str());
+            return;
+        }
+
         std::int64_t whole_component = f;
         write(whole_component);
         write('.');
