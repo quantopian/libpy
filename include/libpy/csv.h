@@ -1523,7 +1523,12 @@ public:
         }
 
         std::int64_t whole_component = f;
-        write(whole_component);
+        if (f < 0.0) {
+            // Ensure that we write a minus sign for negative floats with a zero whole
+            // component.
+            write('-');
+        }
+        write(abs(whole_component));
         write('.');
         std::int64_t frac = (f - whole_component) * m_float_coef + 0.5;
         frac = std::abs(frac);
