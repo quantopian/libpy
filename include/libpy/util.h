@@ -23,7 +23,10 @@ inline bool all_equal() {
 
 inline const char* pystring_to_cstring(PyObject* ob) {
 #if PY_MAJOR_VERSION == 2
-    return PyString_AsString(ob);
+    if (!PyString_Check(ob)) {
+        throw std::runtime_error("ob is not a string");
+    }
+    return PyString_AS_STRING(ob);
 #else
     return PyUnicode_AsUTF8(ob);
 #endif
@@ -37,9 +40,11 @@ inline std::string_view pystring_to_string_view(PyObject* ob) {
     Py_ssize_t size;
     const char* cs;
 #if PY_MAJOR_VERSION == 2
-    if (PyString_AsStringAndSize(ob, const_cast<char**>(&cs), &size)) {
-        throw std::runtime_error("failed to get string and size");
+    if (!PyString_Check(ob)) {
+        throw std::runtime_error("ob is not a string");
     }
+    size = PyString_GET_SIZE(ob);
+    cs = PyString_AS_STRING(ob);
 #else
     cs = PyUnicode_AsUTF8AndSize(ob, &size);
     if (!cs) {

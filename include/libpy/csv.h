@@ -19,6 +19,8 @@
 #include <variant>
 #include <vector>
 
+#include <unistd.h>
+
 #include "libpy/datetime64.h"
 #include "libpy/exception.h"
 #include "libpy/itertools.h"
@@ -675,7 +677,7 @@ private:
     static std::tuple<int, int, int> parse_year_month_day(const std::string_view& raw,
                                                           bool expect_time) {
         if (expect_time) {
-            if (raw.size() <= 10) {
+            if (raw.size() < 10) {
                 throw detail::formatted_error(
                     "date string is not at least 10 characters: ", raw);
             }
@@ -707,6 +709,9 @@ private:
 
     static std::tuple<int, int, int, int>
     parse_hours_minutes_seconds_nanoseconds(const std::string_view& raw) {
+        if (raw.size() == 10) {
+            return {0, 0, 0, 0};
+        }
         constexpr std::size_t no_fractional_second_size = 19;
         if (std::is_same_v<Unit, py::chrono::s>) {
             if (raw.size() != no_fractional_second_size) {
@@ -1438,45 +1443,10 @@ public:
 template<typename T>
 class iobuffer {
 private:
-    // we need this to be large enough that it will be safe to do writes of floats,
-    // ints, and datetimes after a flush without double checking the `space_left`
-    static constexpr std::size_t min_buffer_size = 1 << 8;
-
     T& m_stream;
     std::string m_buffer;
     std::size_t m_ix;
-    std::int64_t m_float_coef;
-    std::int64_t m_expected_frac_digits;
-
-public:
-    iobuffer(T& stream, std::size_t buffer_size, std::uint8_t float_precision)
-        : m_stream(stream),
-          m_buffer(buffer_size, '\0'),
-          m_ix(0),
-          m_float_coef(std::pow(10, float_precision)),
-          m_expected_frac_digits(float_precision) {
-        if (__builtin_popcountll(buffer_size) != 1) {
-            throw std::runtime_error("buffer_size must be power of 2");
-        }
-
-        if (buffer_size < min_buffer_size) {
-            std::stringstream stream;
-            stream << "buffer_size must be at least " << min_buffer_size
-                   << " got: " << buffer_size;
-            throw std::runtime_error(stream.str());
-        }
-    }
-
-    void flush() {
-        if (m_ix) {
-            m_stream.write(m_buffer, m_ix);
-            m_ix = 0;
-        }
-    }
-
-    std::tuple<char*, char*> buffer() {
-        return {m_buffer.data() + m_ix, m_buffer.data() + m_buffer.size()};
-    }
+    int m_float_sigfigs;
 
     void consume(std::size_t amount) {
         m_ix += amount;
@@ -1486,21 +1456,50 @@ public:
         return m_buffer.size() - m_ix;
     }
 
-    void write(std::string&& data) {
-        if (space_left() < data.size()) {
-            flush();
-            if (space_left() < data.size()) {
-                m_stream.write(std::move(data), data.size());
-                return;
-            }
+public:
+    iobuffer(T& stream, std::size_t buffer_size, std::uint8_t float_sigfigs)
+        : m_stream(stream),
+          m_buffer(buffer_size, '\0'),
+          m_ix(0),
+          m_float_sigfigs(float_sigfigs) {
+        if (buffer_size % 4096) {
+            throw std::runtime_error(
+                format_string("buffer_size must be a multiple of 4096, got:",
+                              buffer_size));
         }
-        std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
-        m_ix += data.size();
+
+        if (!buffer_size) {
+            throw std::runtime_error("buffer_size cannot be 0");
+        }
+
+        if (float_sigfigs == 0 || float_sigfigs > 17) {
+            throw std::runtime_error(
+                format_string("float_sigfigs must be in the range [1, 17], got: ",
+                              float_sigfigs));
+        }
+    }
+
+    void flush() {
+        m_stream.write(m_buffer, m_ix);
+        m_ix = 0;
+    }
+
+    void write(std::string&& data) {
+        m_stream.write(std::move(data), data.size());
     }
 
     void write(const std::string& data) {
-        std::string copy = data;
-        write(std::move(copy));
+        if (space_left() < data.size()) {
+            if (m_buffer.size() < data.size()) {
+                std::string copy = data;
+                m_stream.write(std::move(copy), data.size());
+                return;
+            }
+            flush();
+
+        }
+        std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
+        m_ix += data.size();
     }
 
     void write(char c) {
@@ -1511,33 +1510,19 @@ public:
     }
 
     void write(double f) {
-        if (f > 1LL << 54 || f < -(1LL << 54)) {
-            // abs(f) > (1 << 54) cannot be perfectly represented as an int, so the whole
-            // component will lose precision. We don't expect this case to be common so we
-            // just defer to stringstream
-            std::stringstream ss;
-            ss.precision(m_expected_frac_digits);
-            ss << f;
-            write(ss.str());
-            return;
+        auto write = [&] {
+            return std::snprintf(m_buffer.data() + m_ix,
+                                 m_buffer.size() - m_ix,
+                                 "%.*g",
+                                 m_float_sigfigs,
+                                 f);
+        };
+        int written = write();
+        if (written >= static_cast<std::int64_t>(m_buffer.size() - m_ix)) {
+            flush();
+            write();
         }
-
-        std::int64_t whole_component = f;
-        write(whole_component);
-        write('.');
-        std::int64_t frac = (f - whole_component) * m_float_coef + 0.5;
-        frac = std::abs(frac);
-        std::int64_t digits = std::floor(std::log10(frac));
-        digits += 1;
-        std::int64_t padding = m_expected_frac_digits - digits;
-        if (padding > 0) {
-            if (static_cast<std::int64_t>(space_left()) < padding) {
-                flush();
-            }
-            std::memset(m_buffer.data() + m_ix, '0', padding);
-            m_ix += padding;
-        }
-        write(frac);
+        m_ix += written;
     }
 
     void write(std::int64_t v) {
@@ -1549,6 +1534,16 @@ public:
         auto begin = m_buffer.data() + m_ix;
         auto [p, errc] = std::to_chars(begin, m_buffer.data() + m_buffer.size(), v);
         m_ix += p - begin;
+    }
+
+    template<typename unit>
+    void write(const py::datetime64<unit>& dt) {
+        if (space_left() < py::detail::max_size<unit>) {
+            flush();
+        }
+        auto begin = m_buffer.data() + m_ix;
+        auto [p, errc] = py::to_chars(begin, m_buffer.data() + m_buffer.size(), dt, true);
+        consume(p - begin);
     }
 
     ~iobuffer() {
@@ -1602,12 +1597,7 @@ void format_datetime64(iobuffer<T>& buf, const py::any_ref& any_value) {
     if (as_M8.isnat()) {
         return;
     }
-    if (buf.space_left() < py::detail::max_size<unit>) {
-        buf.flush();
-    }
-    auto [begin, end] = buf.buffer();
-    auto [p, errc] = py::to_chars(begin, end, as_M8);
-    buf.consume(p - begin);
+    buf.write(as_M8);
 }
 
 template<typename T>
@@ -1655,6 +1645,17 @@ get_format_functions(std::vector<py::array_view<py::any_ref>>& columns) {
             formatters.emplace_back(detail::format_int<T, std::uint8_t>);
         }
         else if (vtable == py::any_vtable::make<py::scoped_ref<>>()) {
+#if PY_MAJOR_VERSION != 2
+            // `py::util::pystring_to_string_view` may allocate memory to hold the utf8
+            // form. This is cached, so future calls to
+            // `py::util::pystring_to_string_view` will return views over the same memory,
+            // thus making those future calls safe without holding the GIL
+            for (const py::scoped_ref<>& maybe_string : column.cast<py::scoped_ref<>>()) {
+                if (maybe_string.get() != Py_None) {
+                    py::util::pystring_to_string_view(maybe_string);
+                }
+            }
+#endif
             formatters.emplace_back(detail::format_pyobject<T>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::ns>>()) {

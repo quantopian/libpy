@@ -271,10 +271,6 @@ static constexpr std::array<std::array<char, 2>, 60> datetime_strings =
      "48"_arr, "49"_arr, "50"_arr, "51"_arr, "52"_arr, "53"_arr, "54"_arr, "55"_arr,
      "56"_arr, "57"_arr, "58"_arr, "59"_arr};
 
-// The maximum number of zeros we will need to pad out a non-zero nanoseconds value in the
-// fractional seconds part of an datetime
-static constexpr auto zeros_string = "00000000"_arr;
-
 constexpr auto nat_string = "NaT"_arr;
 
 // The maximum size for a datetime string of the given units.
@@ -381,6 +377,11 @@ inline void write(char* data, char*, int& ix, char v) {
     data[ix++] = v;
 }
 
+inline void write(char* data, char*, int& ix, char c, std::int64_t count) {
+    std::memset(data + ix, c, count);
+    ix += count;
+}
+
 inline void write(char* data, char* end, int& ix, std::int64_t v) {
     auto begin = data + ix;
     auto [p, ec] = std::to_chars(data + ix, end, v);
@@ -404,7 +405,8 @@ inline void write(char* data, char*, int& ix, const std::string_view& v) {
 }  // namespace detail
 
 template<typename unit>
-std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& dt) {
+std::to_chars_result
+to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = false) {
     if (last - first < detail::max_size<unit>) {
         return {first, std::errc::value_too_large};
     }
@@ -416,14 +418,15 @@ std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& d
     }
 
     int ix = 0;
-    auto write = [&](auto value) { detail::formatting::write(first, last, ix, value); };
+    auto write = [&](auto... args) {
+        detail::formatting::write(first, last, ix, args...);
+    };
 
     auto zero_pad = [&](int expected_digits, std::int64_t value) {
         std::int64_t digits = std::floor(std::log10(value));
         digits += 1;
         if (expected_digits > digits) {
-            write(
-                std::string_view(detail::zeros_string.data(), expected_digits - digits));
+            write('0', expected_digits - digits);
         }
     };
 
@@ -448,7 +451,7 @@ std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& d
     write(detail::datetime_strings[month]);
     write('-');
     write(detail::datetime_strings[day]);
-    if (std::is_same_v<unit, py::chrono::D>) {
+    if (std::is_same_v<unit, py::chrono::D> || (compress && dt == as_days)) {
         return finalize();
     }
 
@@ -456,21 +459,21 @@ std::to_chars_result to_chars(char* first, char* last, const datetime64<unit>& d
     datetime64<chrono::h> as_hours(dt);
     write(detail::datetime_strings[std::abs(
         static_cast<std::int64_t>(as_hours - as_days))]);
-    if (std::is_same_v<unit, py::chrono::h>) {
+    if (std::is_same_v<unit, py::chrono::h> || (compress && dt == as_hours)) {
         return finalize();
     }
 
     write(':');
     datetime64<chrono::m> as_minutes(dt);
     write(detail::datetime_strings[static_cast<std::int64_t>(as_minutes - as_hours)]);
-    if (std::is_same_v<unit, py::chrono::m>) {
+    if (std::is_same_v<unit, py::chrono::m> || (compress && dt == as_minutes)) {
         return finalize();
     }
 
     write(':');
     datetime64<chrono::s> as_seconds(dt);
     write(detail::datetime_strings[static_cast<std::int64_t>(as_seconds - as_minutes)]);
-    if (std::is_same_v<unit, py::chrono::s>) {
+    if (std::is_same_v<unit, py::chrono::s> || (compress && dt == as_seconds)) {
         return finalize();
     }
 
