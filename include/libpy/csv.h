@@ -19,8 +19,6 @@
 #include <variant>
 #include <vector>
 
-#include <unistd.h>
-
 #include "libpy/datetime64.h"
 #include "libpy/exception.h"
 #include "libpy/itertools.h"
