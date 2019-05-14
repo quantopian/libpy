@@ -302,7 +302,7 @@ template<>
 constexpr std::int64_t max_size<py::chrono::D> = "-25252734927768524-07-27"_arr.size();
 }  // namespace
 
-/** convert a count of days from 1970 to a year and the number of days into the year
+/** Convert a count of days from 1970 to a year and the number of days into the year
 
     @param days_from_epoch The number of days since 1970-01-01.
     @return The year number and the number of days into that year.
