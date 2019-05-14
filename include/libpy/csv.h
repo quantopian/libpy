@@ -393,9 +393,9 @@ public:
 template<typename T>
 T fast_unsigned_strtod(const char* ptr, const char** last) {
     T result;
-    std::int64_t whole_part = 0;
-    std::int64_t fractional_part = 0;
-    std::int64_t fractional_denom = 1;
+    std::size_t whole_part = 0;
+    T fractional_part = 0;
+    T fractional_denom = 1;
 
     while (true) {
         char c = *ptr;
@@ -432,7 +432,7 @@ after_decimal:
         if (value < 0 || value > 9) {
             *last = ptr;
 
-            result = whole_part + static_cast<double>(fractional_part) / fractional_denom;
+            result = whole_part + fractional_part / fractional_denom;
             return result;
         }
 
@@ -443,7 +443,7 @@ after_decimal:
     }
 
 begin_exponent:
-    result = whole_part + static_cast<double>(fractional_part) / fractional_denom;
+    result = whole_part + fractional_part / fractional_denom;
 
     long exponent = 0;
     bool exponent_negate = *ptr == '-';
@@ -456,9 +456,9 @@ begin_exponent:
             *last = ptr;
 
             if (exponent_negate) {
-                exponent = -exponent_negate;
+                exponent = -exponent;
             }
-            result *= std::pow(10, exponent_negate);
+            result *= std::pow(10, exponent);
             return result;
         }
 
@@ -1515,18 +1515,25 @@ public:
     }
 
     void write(std::string&& data) {
-        m_stream.write(std::move(data), data.size());
+        if (space_left() < data.size()) {
+            flush();
+            if (m_buffer.size() < data.size()) {
+                m_stream.write(std::move(data), data.size());
+                return;
+            }
+        }
+        std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
+        m_ix += data.size();
     }
 
     void write(const std::string& data) {
         if (space_left() < data.size()) {
+            flush();
             if (m_buffer.size() < data.size()) {
                 std::string copy = data;
                 m_stream.write(std::move(copy), data.size());
                 return;
             }
-            flush();
-
         }
         std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
         m_ix += data.size();
@@ -1537,6 +1544,10 @@ public:
             flush();
         }
         m_buffer[m_ix++] = c;
+    }
+
+    void write(bool b) {
+        write('0' + b);
     }
 
     void write(double f) {
@@ -1628,6 +1639,12 @@ void format_datetime64(iobuffer<T>& buf, const py::any_ref& any_value) {
         return;
     }
     buf.write(as_M8);
+}
+
+template<typename T>
+void format_pybool(iobuffer<T>& buf, const py::any_ref& any_value) {
+    const auto& as_pybool = *reinterpret_cast<py::py_bool*>(any_value.addr());
+    buf.write(as_pybool);
 }
 
 template<typename T>
