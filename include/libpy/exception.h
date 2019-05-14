@@ -9,7 +9,7 @@
 #include "libpy/char_sequence.h"
 #include "libpy/meta.h"
 #include "libpy/scoped_ref.h"
-#include "libpy/utils.h"
+#include "libpy/util.h"
 
 namespace py {
 namespace dispatch {
@@ -52,7 +52,7 @@ struct raise_format<PyObject*> {
             out << "<error calling str on id=" << static_cast<void*>(value) << '>';
         }
         else {
-            out << py::utils::pystring_to_cstring(as_str.get());
+            out << py::util::pystring_to_cstring(as_str.get());
         }
         return out;
     }

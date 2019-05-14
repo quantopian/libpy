@@ -18,7 +18,7 @@
 #include "libpy/demangle.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
-#include "libpy/utils.h"
+#include "libpy/util.h"
 
 namespace py {
 namespace dispatch {
@@ -47,7 +47,7 @@ public:
         if (!repr) {
             throw py::exception("failed to call repr on ob");
         }
-        const char* data = utils::pystring_to_cstring(repr.get());
+        const char* data = py::util::pystring_to_cstring(repr.get());
         if (!data) {
             throw py::exception("failed to get utf8 string from repr result");
         }
@@ -159,13 +159,13 @@ struct from_object<std::string_view> {
         if (PyBytes_Check(cs)) {
             size = PyBytes_GET_SIZE(cs);
             data = PyBytes_AS_STRING(cs);
-        }
+         }
         else {
-            throw invalid_conversion::make<std::string_view>(cs);
-        }
+             throw invalid_conversion::make<std::string_view>(cs);
+         }
 
         return std::string_view(data, size);
-    }
+     }
 };
 
 template<>
@@ -191,13 +191,27 @@ public:
     static T f(PyObject* value) {
         wide_type wide;
 
-        // convert the object to the widest type for the given signedness
-        if constexpr (std::is_signed_v<T>) {
-            wide = PyLong_AsLongLong(value);
+#if PY_MAJOR_VERSION == 2
+        if (PyInt_Check(value)) {
+            if constexpr (std::is_signed_v<T>) {
+                wide = PyInt_AS_LONG(value);
+            }
+            else {
+                wide = static_cast<wide_type>(PyInt_AS_LONG(value));
+            }
         }
         else {
-            wide = PyLong_AsUnsignedLongLong(value);
+#endif
+            // convert the object to the widest type for the given signedness
+            if constexpr (std::is_signed_v<T>) {
+                wide = PyLong_AsLongLong(value);
+            }
+            else {
+                wide = PyLong_AsUnsignedLongLong(value);
+            }
+#if PY_MAJOR_VERSION == 2
         }
+#endif
 
         // check if `value` would overflow `wide_type`
         if (PyErr_Occurred()) {
@@ -208,7 +222,7 @@ public:
         if (wide > std::numeric_limits<T>::max() ||
             wide < std::numeric_limits<T>::min()) {
             py::raise(PyExc_OverflowError)
-                << "converting " << value << " to type" << py::util::type_name<T>().get()
+                << "converting " << value << " to type " << py::util::type_name<T>().get()
                 << " overflows";
             throw invalid_conversion::make<T>(value);
         }

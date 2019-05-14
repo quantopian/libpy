@@ -7,7 +7,6 @@
 
 #include "libpy/array_view.h"
 #include "libpy/itertools.h"
-#include "libpy/utils.h"
 
 namespace test_array_view {
 /** A non-fundamental type.

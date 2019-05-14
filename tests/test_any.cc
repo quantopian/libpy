@@ -1,3 +1,6 @@
+#include <sstream>
+#include <string>
+
 #include "gtest/gtest.h"
 
 #include "libpy/any.h"
@@ -35,6 +38,52 @@ TEST(any_vtable, void_vtable) {
     EXPECT_EQ(vtable, py::any_vtable{});  // default construct makes void table
     EXPECT_NE(vtable, py::any_vtable::make<int>());
     EXPECT_NE(vtable, py::any_vtable::make<float>());
+}
+
+TEST(any_vtable, ostream_format) {
+    using namespace std::string_literals;
+    {
+        py::any_vtable vtable = py::any_vtable::make<int>();
+        std::stringstream stream;
+        int value = 99;
+        vtable.ostream_format(stream, &value);
+        value = -50;
+        vtable.ostream_format(stream, &value);
+
+        EXPECT_EQ(stream.str(), "99-50"s);
+    }
+    {
+        py::any_vtable vtable = py::any_vtable::make<float>();
+        std::stringstream stream;
+        float value = 1.5;
+        vtable.ostream_format(stream, &value);
+        value = -3.5;
+        vtable.ostream_format(stream, &value);
+
+        EXPECT_EQ(stream.str(), "1.5-3.5"s);
+    }
+    {
+        // a new type which doesn't have an overload for:
+        // `operator<<(std::ostream&, constS&)`
+        struct S {
+            int a;
+
+            bool operator==(const S& other) const {
+                return a == other.a;
+            }
+
+            bool operator!=(const S& other) const {
+                return !(*this == other);
+            }
+        };
+
+        py::any_vtable vtable = py::any_vtable::make<S>();
+        std::stringstream stream;
+        S value{0};
+
+        // this should throw a runtime error because this operation isn't defined
+        EXPECT_THROW(vtable.ostream_format(stream, &value), py::exception);
+    }
 }
 
 TEST(any_vtable, map_key) {

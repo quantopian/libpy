@@ -8,7 +8,7 @@
 
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
-#include "libpy/utils.h"
+#include "libpy/util.h"
 
 inline std::string format_current_python_exception() {
     PyObject* exc[3];
@@ -36,7 +36,7 @@ inline std::string format_current_python_exception() {
     if (!contents) {
         return "<unknown>";
     }
-    return py::utils::pystring_to_cstring(contents.get());
+    return py::util::pystring_to_cstring(contents.get());
 }
 
 class with_python_interpreter : public testing::Test {

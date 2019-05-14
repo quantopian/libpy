@@ -4,7 +4,7 @@
 #include <tuple>
 
 #include "libpy/meta.h"
-#include "libpy/utils.h"
+#include "libpy/util.h"
 
 namespace py {
 namespace detail {
@@ -59,7 +59,7 @@ public:
         py::meta::remove_cvref<decltype(std::declval<const Ts>().begin())>...>;
 
     constexpr zipper(Ts&&... iterables) : m_iterables(std::forward<Ts>(iterables)...) {
-        if (!utils::all_equal(iterables.size()...)) {
+        if (!py::util::all_equal(iterables.size()...)) {
             throw std::invalid_argument("iterables must be same length");
         }
     }
