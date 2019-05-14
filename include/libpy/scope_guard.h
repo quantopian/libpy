@@ -1,12 +1,11 @@
 #pragma once
-#include <vector>
 #include <utility>
 #include <optional>
 
 namespace py::util {
 /** Assign an arbitrary callback to run when the scope closes, either through an exception
     or return. This callback may be dismissed later. This is useful for implementing
-    "atomic" behavior, where all operations either succeed or fail together.
+    transactional behavior, where all operations either succeed or fail together.
 
     ### Example
 

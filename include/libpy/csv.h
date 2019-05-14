@@ -707,10 +707,10 @@ private:
         return {year, month, day};
     }
 
-    static std::tuple<int, int, int, int>
-    parse_hours_minutes_seconds_nanoseconds(const std::string_view& raw) {
+    static std::chrono::nanoseconds parse_time(const std::string_view& raw) {
+        std::chrono::nanoseconds time(0);
         if (raw.size() == 10) {
-            return {0, 0, 0, 0};
+            return time;
         }
         constexpr std::size_t no_fractional_second_size = 19;
         if (std::is_same_v<Unit, py::chrono::s>) {
@@ -725,24 +725,34 @@ private:
         }
 
         expect_char(raw, 10, ' ', 'T');
-        int hours = parse_int<2>(raw.substr(11));
-        if (hours < 0 || hours > 23) {
+        std::chrono::hours hours(parse_int<2>(raw.substr(11)));
+        if (hours < std::chrono::hours(0) || hours > std::chrono::hours(23)) {
             throw detail::formatted_error("hour not in range [0, 24): ", raw);
         }
+        time += hours;
 
         expect_char(raw, 13, ':');
-        int minutes = parse_int<2>(raw.substr(14));
+        std::chrono::minutes minutes(parse_int<2>(raw.substr(14)));
+        if (minutes < std::chrono::minutes(0) || minutes > std::chrono::minutes(59)) {
+            throw detail::formatted_error("minutes not in range [0, 59): ", raw);
+        }
+        time += minutes;
 
         expect_char(raw, 16, ':');
-        int seconds = parse_int<2>(raw.substr(17));
+        std::chrono::seconds seconds(parse_int<2>(raw.substr(17)));
+        if (seconds < std::chrono::seconds(0) || seconds > std::chrono::seconds(60)) {
+            throw detail::formatted_error("seconds not in range [0, 60): ", raw);
+        }
+        time += seconds;
 
-        int nanoseconds = 0;
+        std::chrono::nanoseconds nanoseconds(0);
         if (std::is_same_v<Unit, py::chrono::ns> &&
             raw.size() > no_fractional_second_size) {
             expect_char(raw, 19, '.');
             const char* end;
             const char* begin = raw.begin() + 20;
-            nanoseconds = detail::fast_unsigned_strtol<int>(begin, &end);
+            nanoseconds = std::chrono::nanoseconds(
+                detail::fast_unsigned_strtol<int>(begin, &end));
             if (end != raw.end()) {
                 throw detail::formatted_error(
                     "couldn't parse fractional seconds component: ", raw);
@@ -750,8 +760,9 @@ private:
             std::ptrdiff_t digits = end - begin;
             nanoseconds *= std::pow(10, 9 - digits);
         }
+        time += nanoseconds;
 
-        return {hours, minutes, seconds, nanoseconds};
+        return time;
     }
 
 public:
@@ -767,12 +778,7 @@ public:
         bool expect_time = !std::is_same_v<Unit, py::chrono::D>;
         auto value = std::apply(time_since_epoch, parse_year_month_day(raw, expect_time));
         if (expect_time) {
-            auto [hours, minutes, seconds, nanoseconds] =
-                parse_hours_minutes_seconds_nanoseconds(raw);
-            value += std::chrono::hours(hours);
-            value += std::chrono::minutes(minutes);
-            value += std::chrono::seconds(seconds);
-            value += std::chrono::nanoseconds(nanoseconds);
+            value += parse_time(raw);
         }
 
         this->m_parsed[ix] = py::datetime64ns(value);
@@ -1392,33 +1398,51 @@ PyObject* py_parse(PyObject*,
 }
 
 namespace detail {
+/** A rope-backed buffer for building up CSVs in memory.
+ */
 class rope_adapter {
 private:
     std::vector<std::string> m_buffers;
     std::size_t m_size = 0;
 
 public:
+    /** Move a string into the rope.
+
+        @param data The string to move into the rope.
+        @param size The size of the semantic data in this string.
+     */
     inline void write(std::string&& data, std::size_t size) {
         data.erase(data.begin() + size, data.end());
         m_buffers.emplace_back(std::move(data));
         m_size += size;
     }
 
+    /** Write a string into the rope. The state of data in `data` after `write` is
+        unspecified, but the size is unchanged.
+
+        @param data The string to write.
+        @param size The size of the semantic data in this string.
+     */
     inline void write(std::string& data, std::size_t size) {
         std::string entry(data.size(), '\0');
         std::swap(data, entry);
         write(std::move(entry), size);
     }
 
-    inline void read(char* out_buffer, std::size_t size) {
+    /** Read the contents of this rope into a flat buffer.
+
+        @param begin The start of the buffer to write into.
+        @param end The end of the buffer to write into.
+     */
+    inline void read(char* begin, char* end) {
+        std::ptrdiff_t size = end - begin;
         std::size_t buffer_ix = 0;
-        char* end = out_buffer + size;
-        while (out_buffer < end) {
+        while (begin < end) {
             const std::string& buffer = m_buffers[buffer_ix++];
-            std::size_t to_read_from_buffer = std::min(size, buffer.size());
-            std::memcpy(out_buffer, buffer.data(), to_read_from_buffer);
+            std::size_t to_read_from_buffer = std::min<std::size_t>(size, buffer.size());
+            std::memcpy(begin, buffer.data(), to_read_from_buffer);
             size -= to_read_from_buffer;
-            out_buffer += to_read_from_buffer;
+            begin += to_read_from_buffer;
         }
     }
 
@@ -1427,6 +1451,8 @@ public:
     }
 };
 
+/** Wrapper to present a `write(std::string&, std::size_t)` interface to a `std::ostream`.
+ */
 template<typename T>
 class ostream_adapter {
 private:
@@ -1440,6 +1466,10 @@ public:
     }
 };
 
+/** A buffer over an output stream, which may either be an `ostream_adapter` or
+    `rope_adapter`. This object manages formatting objects into large blocks of memory
+    before delegating to the underlying stream to write these larger buffers.
+ */
 template<typename T>
 class iobuffer {
 private:
@@ -1738,7 +1768,7 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
                                  std::vector<py::array_view<py::any_ref>>& columns,
                                  std::size_t buffer_size,
                                  int num_threads,
-                                 std::uint8_t float_precision = 10) {
+                                 std::uint8_t float_sigfigs) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -1758,7 +1788,7 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
     {
         std::vector<iobuffer<rope_adapter>> bufs;
         for (auto& stream : streams) {
-            bufs.emplace_back(stream, buffer_size, float_precision);
+            bufs.emplace_back(stream, buffer_size, float_sigfigs);
         }
 
         write_header(bufs[0], column_names);
@@ -1818,7 +1848,7 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
 
     std::size_t ix = 0;
     for (auto [stream, size] : py::zip(streams, sizes)) {
-        stream.read(underlying_buffer + ix, size);
+        stream.read(underlying_buffer + ix, underlying_buffer + ix + size);
         ix += size;
     }
 
@@ -1834,14 +1864,14 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
                    they appear here, and  must be aligned with `column_names`.
     @param buffer_size The number of bytes to buffer between calls to `stream.write`.
                        This must be a power of 2 greater than or equal to 2 ** 8.
-    @param float_precision The number of digits of precision to write floats as.
+    @param float_sigfigs The number of significant figures to print floats with.
 */
 template<typename T>
 void write(T& stream,
            const std::vector<std::string>& column_names,
            std::vector<py::array_view<py::any_ref>>& columns,
            std::size_t buffer_size,
-           std::uint8_t float_precision = 10) {
+           std::uint8_t float_sigfigs) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -1855,7 +1885,7 @@ void write(T& stream,
     detail::ostream_adapter stream_adapter(stream);
     detail::iobuffer<detail::ostream_adapter<T>> buf(stream_adapter,
                                                      buffer_size,
-                                                     float_precision);
+                                                     float_sigfigs);
     detail::write_header(buf, column_names);
     detail::write_worker_impl(buf, columns, 0, num_rows, formatters);
 }
@@ -1868,6 +1898,7 @@ void write(T& stream,
     @param column_names The names to write into the column header.
     @param columns The arrays of values for each column. Columns are written in the order
                    they appear here, and  must be aligned with `column_names`.
+    @param float_sigfigs The number of significant figures to print floats with.
     @return Either the data as a Python string, or None.
 */
 inline PyObject* py_write(PyObject*,
@@ -1876,13 +1907,13 @@ inline PyObject* py_write(PyObject*,
                           std::vector<py::array_view<py::any_ref>>& columns,
                           std::size_t buffer_size,
                           int num_threads,
-                          std::uint8_t float_precision) {
+                          std::uint8_t float_sigfigs) {
     if (file.get() == Py_None) {
         return detail::write_in_memory(column_names,
                                        columns,
                                        buffer_size,
                                        num_threads,
-                                       float_precision);
+                                       float_sigfigs);
     }
     else if (num_threads > 1) {
         py::raise(PyExc_ValueError)
@@ -1899,7 +1930,7 @@ inline PyObject* py_write(PyObject*,
             py::raise(PyExc_OSError) << "failed to open file";
             return nullptr;
         }
-        write(stream, column_names, columns, buffer_size, float_precision);
+        write(stream, column_names, columns, buffer_size, float_sigfigs);
         if (!stream) {
             py::raise(PyExc_OSError) << "failed to write csv";
             return nullptr;
