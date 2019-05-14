@@ -459,14 +459,14 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
     datetime64<chrono::h> as_hours(dt);
     write(detail::datetime_strings[std::abs(
         static_cast<std::int64_t>(as_hours - as_days))]);
-    if (std::is_same_v<unit, py::chrono::h> || (compress && dt == as_hours)) {
+    if (std::is_same_v<unit, py::chrono::h>) {
         return finalize();
     }
 
     write(':');
     datetime64<chrono::m> as_minutes(dt);
     write(detail::datetime_strings[static_cast<std::int64_t>(as_minutes - as_hours)]);
-    if (std::is_same_v<unit, py::chrono::m> || (compress && dt == as_minutes)) {
+    if (std::is_same_v<unit, py::chrono::m>) {
         return finalize();
     }
 
