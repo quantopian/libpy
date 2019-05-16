@@ -1512,7 +1512,7 @@ public:
         m_ix = 0;
     }
 
-    void write(const std::string_view& view) {
+    void write_quoted(const std::string_view& view) {
          write('"');
          for (char c : view) {
              if (c == '"') {
@@ -1606,7 +1606,7 @@ void format_pyobject(iobuffer<T>& buf, const py::any_ref& any_value) {
     }
 
     std::string_view text = py::util::pystring_to_string_view(as_ob);
-    buf.write(text);
+    buf.write_quoted(text);
 }
 
 template<typename T, typename F>
@@ -1729,10 +1729,10 @@ get_format_functions(std::vector<py::array_view<py::any_ref>>& columns) {
 template<typename T>
 void write_header(iobuffer<T>& buf, const std::vector<std::string>& column_names) {
     auto names_it = column_names.begin();
-    buf.write(*names_it);
+    buf.write_quoted(*names_it);
     for (++names_it; names_it != column_names.end(); ++names_it) {
         buf.write(',');
-        buf.write(*names_it);
+        buf.write_quoted(*names_it);
     }
     buf.write('\n');
 }
