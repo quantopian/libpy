@@ -1819,14 +1819,15 @@ inline PyObject* write_in_memory(const std::vector<std::string>& column_names,
             std::vector<std::thread> threads;
             for (int n = 0; n < num_threads; ++n) {
                 std::int64_t begin = n * group_size;
-                threads.emplace_back(std::thread(write_worker<rope_adapter>,
-                                                 &exception_mutex,
-                                                 &exceptions,
-                                                 &bufs[n],
-                                                 &columns,
-                                                 begin,
-                                                 std::min(begin + group_size, num_rows),
-                                                 &formatters));
+                threads.emplace_back(
+                    std::thread(write_worker<rope_adapter>,
+                                &exception_mutex,
+                                &exceptions,
+                                &bufs[n],
+                                &columns,
+                                begin,
+                                std::min<std::int64_t>(begin + group_size, num_rows),
+                                &formatters));
             }
 
             for (auto& thread : threads) {
