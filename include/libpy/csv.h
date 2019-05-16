@@ -1605,6 +1605,14 @@ void format_pyobject(iobuffer<T>& buf, const py::any_ref& any_value) {
         return;
     }
 
+#if PY_MAJOR_VERSION == 2
+    if (PyUnicode_Check(as_ob)) {
+        auto utf8_ob = py::scoped_ref(PyUnicode_AsUTF8String(as_ob.get()));
+        std::string_view text = py::util::pystring_to_string_view(utf8_ob);
+        buf.write_quoted(text);
+        return;
+    }
+#endif
     std::string_view text = py::util::pystring_to_string_view(as_ob);
     buf.write_quoted(text);
 }
