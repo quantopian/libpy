@@ -1512,24 +1512,25 @@ public:
         m_ix = 0;
     }
 
+    void write(const std::string_view& view) {
+         write('"');
+         for (char c : view) {
+             if (c == '"') {
+                 write('\\');
+             }
+             else if (c == '\\') {
+                 write('\\');
+             }
+             write(c);
+         }
+         write('"');
+    }
+
     void write(std::string&& data) {
         if (space_left() < data.size()) {
             flush();
             if (m_buffer.size() < data.size()) {
                 m_stream.write(std::move(data), data.size());
-                return;
-            }
-        }
-        std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
-        m_ix += data.size();
-    }
-
-    void write(const std::string& data) {
-        if (space_left() < data.size()) {
-            flush();
-            if (m_buffer.size() < data.size()) {
-                std::string copy = data;
-                m_stream.write(std::move(copy), data.size());
                 return;
             }
         }
@@ -1605,14 +1606,7 @@ void format_pyobject(iobuffer<T>& buf, const py::any_ref& any_value) {
     }
 
     std::string_view text = py::util::pystring_to_string_view(as_ob);
-    buf.write('"');
-    for (char c : text) {
-        if (c == '"') {
-            buf.write('/');
-        }
-        buf.write(c);
-    }
-    buf.write('"');
+    buf.write(text);
 }
 
 template<typename T, typename F>
