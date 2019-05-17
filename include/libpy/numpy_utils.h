@@ -4,6 +4,7 @@
 #include <functional>
 #include <optional>
 #include <ostream>
+#include <type_traits>
 #include <vector>
 
 #include <Python.h>
@@ -439,6 +440,10 @@ struct from_object<ndarray_view<T, ndim>> {
         auto given_dtype = PyArray_DTYPE(array);
 
         if constexpr (std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) {
+            if (!(std::is_same_v<T, py::any_cref> | PyArray_ISWRITEABLE(array))) {
+                throw exception(PyExc_TypeError,
+                                "cannot take a mutable view over an immutable array");
+            }
             any_vtable vtable = dtype_to_vtable(given_dtype);
             using view_type = ndarray_view<T, ndim>;
             return view_type(reinterpret_cast<typename view_type::buffer_type>(
@@ -448,6 +453,10 @@ struct from_object<ndarray_view<T, ndim>> {
                              vtable);
         }
         else {
+            if (!(std::is_const_v<T> || PyArray_ISWRITEABLE(array))) {
+                throw exception(PyExc_TypeError,
+                                "cannot take a mutable view over an immutable array");
+            }
             // note: This is a "constexpr else", removing and unindenting this
             // else block would have semantic meaning and be incorrect. This
             // branch is only expanded when the above test is false; if the

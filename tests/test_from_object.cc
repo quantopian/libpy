@@ -6,6 +6,7 @@
 #include "libpy/from_object.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/scoped_ref.h"
+#include "libpy/util.h"
 
 #include "test_utils.h"
 
@@ -97,45 +98,64 @@ TEST_F(from_object, test_overflow) {
                typed_values);
 }
 
-TEST_F(from_object, ndarray_view) {
-    {
-        auto ndarray = py::move_to_numpy_array(std::vector<std::int32_t>{0, 1, 2, 3});
-        auto view = py::from_object<py::array_view<std::int32_t>>(ndarray);
+template<typename T>
+void test_typed_array_view_bad_conversion(const py::scoped_ref<>& ndarray) {
+    EXPECT_THROW(py::from_object<py::array_view<T>>(ndarray),
+                 py::exception) << py::util::type_name<T>().get();
+    PyErr_Clear();
+}
 
-        std::int32_t expected = 0;
-        for (auto v : view) {
-            EXPECT_EQ(v, expected);
-            ++expected;
-        }
+template<typename T, typename... IncorrectTypes>
+void test_typed_array_view() {
+    auto ndarray = py::move_to_numpy_array(std::vector<std::remove_const_t<T>>{0, 1, 2, 3});
+    auto view = py::from_object<py::array_view<T>>(ndarray);
 
-        EXPECT_THROW(py::from_object<py::array_view<std::int8_t>>(ndarray),
-                     py::exception);
-        EXPECT_THROW(py::from_object<py::array_view<std::int16_t>>(ndarray),
-                     py::exception);
-        EXPECT_THROW(py::from_object<py::array_view<std::int64_t>>(ndarray),
-                     py::exception);
-
-        PyErr_Clear();
+    std::remove_const_t<T> expected = 0;
+    for (auto v : view) {
+        EXPECT_EQ(v, expected);
+        ++expected;
     }
+
+    (test_typed_array_view_bad_conversion<IncorrectTypes>(ndarray), ...);
+}
+
+TEST_F(from_object, ndarray_view) {
+    test_typed_array_view<std::int64_t, std::int8_t, std::int16_t, std::int32_t>();
+    test_typed_array_view<std::int64_t,
+                          const std::int8_t,
+                          const std::int16_t,
+                          const std::int32_t>();
+    test_typed_array_view<const std::int64_t,
+                          const std::int8_t,
+                          const std::int16_t,
+                          const std::int32_t>();
+
+    test_typed_array_view<std::int32_t, std::int8_t, std::int16_t, std::int64_t>();
+    test_typed_array_view<const std::int32_t,
+                          const std::int8_t,
+                          const std::int16_t,
+                          const std::int64_t>();
+    test_typed_array_view<std::int32_t,
+                          const std::int8_t,
+                          const std::int16_t,
+                          const std::int64_t>();
 
     {
         auto ndarray = py::move_to_numpy_array(std::vector<std::int64_t>{0, 1, 2, 3});
-        auto view = py::from_object<py::array_view<std::int64_t>>(ndarray);
+        PyArray_CLEARFLAGS(reinterpret_cast<PyArrayObject*>(ndarray.get()),
+                           NPY_ARRAY_WRITEABLE);
+
+        EXPECT_THROW(py::from_object<py::array_view<std::int64_t>>(ndarray),
+                     py::exception);
+        PyErr_Clear();
+
+        auto view = py::from_object<py::array_view<const std::int64_t>>(ndarray);
 
         std::int64_t expected = 0;
         for (auto v : view) {
             EXPECT_EQ(v, expected);
             ++expected;
         }
-
-        EXPECT_THROW(py::from_object<py::array_view<std::int8_t>>(ndarray),
-                     py::exception);
-        EXPECT_THROW(py::from_object<py::array_view<std::int16_t>>(ndarray),
-                     py::exception);
-        EXPECT_THROW(py::from_object<py::array_view<std::int32_t>>(ndarray),
-                     py::exception);
-
-        PyErr_Clear();
     }
 }
 
@@ -197,6 +217,24 @@ TEST_F(from_object, ndarray_view_any_ref) {
             // compare the underlying PyObject* which compares the objects on identity
             EXPECT_EQ(v.cast<py::scoped_ref<>>().get(), objects[ix].get());
             ++ix;
+        }
+    }
+
+    {
+        auto ndarray = py::move_to_numpy_array(std::vector<std::int64_t>{0, 1, 2, 3});
+        PyArray_CLEARFLAGS(reinterpret_cast<PyArrayObject*>(ndarray.get()),
+                           NPY_ARRAY_WRITEABLE);
+
+        EXPECT_THROW(py::from_object<py::array_view<py::any_ref>>(ndarray),
+                     py::exception);
+        PyErr_Clear();
+
+        auto view = py::from_object<py::array_view<py::any_cref>>(ndarray);
+
+        std::int64_t expected = 0;
+        for (auto v : view) {
+            EXPECT_EQ(v, expected);
+            ++expected;
         }
     }
 }
