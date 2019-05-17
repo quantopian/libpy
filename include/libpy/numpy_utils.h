@@ -439,7 +439,7 @@ struct from_object<ndarray_view<T, ndim>> {
         auto given_dtype = PyArray_DTYPE(array);
 
         if constexpr (std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) {
-            if (!(std::is_same_v<T, py::any_cref> | PyArray_ISWRITEABLE(array))) {
+            if (!(std::is_same_v<T, py::any_cref> || PyArray_ISWRITEABLE(array))) {
                 throw exception(PyExc_TypeError,
                                 "cannot take a mutable view over an immutable array");
             }
