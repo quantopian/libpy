@@ -542,10 +542,7 @@ public:
 
     /** Default constructor creates an empty view over nothing.
      */
-    any_ref_ndarray_view()
-        : m_shape({0}),
-          m_strides({0}),
-          m_buffer(nullptr) {}
+    any_ref_ndarray_view() : m_shape({0}), m_strides({0}), m_buffer(nullptr) {}
 
     /** Take a view over `buffer`.
 
@@ -808,7 +805,9 @@ public:
 
         @param contiguous_container The container to take a view of.
      */
-    template<typename C, typename U = typename C::value_type, typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
+    template<typename C,
+             typename U = typename C::value_type,
+             typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
     any_ref_ndarray_view(const C& contiguous_container)
         : generic_ndarray_impl(contiguous_container.data(),
                                {contiguous_container.size()},

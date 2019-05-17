@@ -5,8 +5,8 @@
 
 #include "gtest/gtest.h"
 
-#include "libpy/ndarray_view.h"
 #include "libpy/itertools.h"
+#include "libpy/ndarray_view.h"
 
 namespace test_array_view {
 /** A non-fundamental type.
@@ -171,7 +171,6 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
                            front_back,
                            virtual_array,
                            negative_strides);
-
 
 template<typename T>
 struct tuple_to_types;
