@@ -100,14 +100,15 @@ TEST_F(from_object, test_overflow) {
 
 template<typename T>
 void test_typed_array_view_bad_conversion(const py::scoped_ref<>& ndarray) {
-    EXPECT_THROW(py::from_object<py::array_view<T>>(ndarray),
-                 py::exception) << py::util::type_name<T>().get();
+    EXPECT_THROW(py::from_object<py::array_view<T>>(ndarray), py::exception)
+        << py::util::type_name<T>().get();
     PyErr_Clear();
 }
 
 template<typename T, typename... IncorrectTypes>
 void test_typed_array_view() {
-    auto ndarray = py::move_to_numpy_array(std::vector<std::remove_const_t<T>>{0, 1, 2, 3});
+    auto ndarray = py::move_to_numpy_array(
+        std::vector<std::remove_const_t<T>>{0, 1, 2, 3});
     auto view = py::from_object<py::array_view<T>>(ndarray);
 
     std::remove_const_t<T> expected = 0;

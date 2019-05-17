@@ -290,7 +290,8 @@ constexpr std::int64_t
     max_size<py::chrono::ms> = "-292278994-08-17T07:12:55.807"_arr.size();
 
 template<>
-constexpr std::int64_t max_size<py::chrono::s> = "-292277026596-12-04T15:30:07"_arr.size();
+constexpr std::int64_t
+    max_size<py::chrono::s> = "-292277026596-12-04T15:30:07"_arr.size();
 
 template<>
 constexpr std::int64_t max_size<py::chrono::m> = "-17536621479585-08-30T18:07"_arr.size();
@@ -401,7 +402,7 @@ inline void write(char* data, char*, int& ix, const std::string_view& v) {
     std::memcpy(data + ix, v.data(), v.size());
     ix += v.size();
 }
-}
+}  // namespace formatting
 }  // namespace detail
 
 template<typename unit>
@@ -432,8 +433,7 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
 
     auto finalize = [&]() -> std::to_chars_result { return {first + ix, std::errc()}; };
 
-    datetime64<chrono::D>
-        as_days(dt);
+    datetime64<chrono::D> as_days(dt);
     auto [year, days_into_year] = detail::days_to_year_and_days(
         static_cast<std::int64_t>(as_days));
     auto [month, day] = detail::month_day_for_year_days(year, days_into_year);

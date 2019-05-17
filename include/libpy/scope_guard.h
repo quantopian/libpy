@@ -1,6 +1,6 @@
 #pragma once
-#include <utility>
 #include <optional>
+#include <utility>
 
 namespace py::util {
 /** Assign an arbitrary callback to run when the scope closes, either through an exception
@@ -26,8 +26,8 @@ namespace py::util {
 
         cs.push_back(c);
 
-        // everything that could fail has already run, if we make it here we succeeded so we
-        // can dismiss the guards
+        // everything that could fail has already run, if we make it here we succeeded so
+        // we can dismiss the guards
         a_guard.dismiss();
         b_guard.dismiss();
     }

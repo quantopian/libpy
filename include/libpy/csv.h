@@ -1513,17 +1513,17 @@ public:
     }
 
     void write_quoted(const std::string_view& view) {
-         write('"');
-         for (char c : view) {
-             if (c == '"') {
-                 write('\\');
-             }
-             else if (c == '\\') {
-                 write('\\');
-             }
-             write(c);
-         }
-         write('"');
+        write('"');
+        for (char c : view) {
+            if (c == '"') {
+                write('\\');
+            }
+            else if (c == '\\') {
+                write('\\');
+            }
+            write(c);
+        }
+        write('"');
     }
 
     void write(std::string&& data) {

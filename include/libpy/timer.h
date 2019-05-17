@@ -21,4 +21,4 @@ public:
         std::cout << (end - m_start).count() << " nanoseconds\n";
     }
 };
-}
+}  // namespace py::util

@@ -159,13 +159,13 @@ struct from_object<std::string_view> {
         if (PyBytes_Check(cs)) {
             size = PyBytes_GET_SIZE(cs);
             data = PyBytes_AS_STRING(cs);
-         }
+        }
         else {
-             throw invalid_conversion::make<std::string_view>(cs);
-         }
+            throw invalid_conversion::make<std::string_view>(cs);
+        }
 
         return std::string_view(data, size);
-     }
+    }
 };
 
 template<>

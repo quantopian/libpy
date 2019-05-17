@@ -270,7 +270,6 @@ struct raise_format<PyArray_Descr*> {
     }
 };
 
-
 template<>
 struct from_object<py_bool> {
     static py_bool f(PyObject* ob) {
