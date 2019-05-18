@@ -13,6 +13,8 @@
 #include "test_utils.h"
 
 namespace test_to_object {
+using namespace std::literals;
+
 class to_object : public with_python_interpreter {};
 
 template<typename T>
@@ -110,12 +112,12 @@ void test_map_to_object_impl(M m) {
     check_python_map(rvalueref_result);
 }
 
-TEST_F(to_object, test_map_to_object) {
+TEST_F(to_object, map_to_object) {
     // NOTE: This test takes a long time to compile (about a .5s per entry in this
     // tuple). This is just enough coverage to test all three of our hash table types,
     // and a few important key/value types.
     auto maps = std::make_tuple(py::dense_hash_map<std::string, py::scoped_ref<PyObject>>(
-                                    std::string("missing_value")),
+                                    "missing_value"s),
                                 py::sparse_hash_map<std::int64_t, std::array<char, 3>>(),
                                 std::unordered_map<std::string, bool>());
 
@@ -165,12 +167,35 @@ void test_vector_to_object_impl(V v) {
     check_python_list(rvalueref_result);
 }
 
-TEST_F(to_object, test_vector_to_object) {
+TEST_F(to_object, vector_to_object) {
     auto vectors = std::make_tuple(std::vector<std::string>(),
                                    std::vector<double>(),
                                    std::vector<py::scoped_ref<PyObject>>());
     // Call test_vector_to_object_impl on each entry in ``vectors``.
     std::apply([&](auto... vec) { (test_vector_to_object_impl(vec), ...); }, vectors);
+}
+
+template<typename R, typename T>
+auto test_any_ref_to_object(T value) {
+    R ref(std::addressof(value), py::any_vtable::make<T>());
+
+    auto ref_to_object = py::to_object(ref);
+    ASSERT_TRUE(ref_to_object);
+    auto value_to_object = py::to_object(value);
+    ASSERT_TRUE(ref_to_object);
+
+    int eq = PyObject_RichCompareBool(ref_to_object.get(), value_to_object.get(), Py_EQ);
+    ASSERT_EQ(eq, 1);
+}
+
+TEST_F(to_object, any_ref) {
+    test_any_ref_to_object<py::any_ref>(1);
+    test_any_ref_to_object<py::any_ref>(1.5);
+    test_any_ref_to_object<py::any_ref>("test"s);
+
+    test_any_ref_to_object<py::any_cref>(1);
+    test_any_ref_to_object<py::any_cref>(1.5);
+    test_any_ref_to_object<py::any_cref>("test"s);
 }
 
 TEST_F(to_object, any_ref_of_object_refcnt) {

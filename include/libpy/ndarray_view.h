@@ -62,13 +62,6 @@ public:
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
-    /** Implicitly allow conversions from `ndarray_view<T>` to `ndarray_view<const T>`
-     */
-    ndarray_view(const ndarray_view<const T, ndim, false>& cpfrom)
-        : m_shape(cpfrom.shape()),
-          m_strides(cpfrom.strides()),
-          m_buffer(cpfrom.buffer()) {}
-
     ndarray_view& operator=(const ndarray_view<const T, ndim, false>& cpfrom) {
         m_shape = cpfrom.shape();
         m_strides = cpfrom.strides();
