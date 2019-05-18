@@ -290,6 +290,8 @@ public:
     }
 };
 
+class any_cref;
+
 /** A mutable dynamic reference to a value whose type isn't known until runtime.
 
     This object is like `std::any`, except it is *non-owning*. Assignment has
@@ -315,10 +317,12 @@ private:
         }
     }
 
+    inline void typecheck(const any_cref& other) const;
+
     template<typename T>
     bool cmp(bool (*f)(const void*, const void*), const T& other) const {
         typecheck(other);
-        if constexpr (std::is_same_v<T, any_ref>) {
+        if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
             return f(m_addr, other.m_addr);
         }
         else {
@@ -342,6 +346,8 @@ public:
         m_vtable.copy_assign(m_addr, rhs.m_addr);
         return *this;
     }
+
+    inline any_ref& operator=(const any_cref& rhs);
 
     template<typename T>
     any_ref& operator=(const T& rhs) {
@@ -432,6 +438,12 @@ private:
         }
     }
 
+    inline void typecheck(const any_ref& other) const {
+        if (m_vtable != other.vtable()) {
+            throw std::bad_any_cast{};
+        }
+    }
+
     inline void typecheck(const any_cref& other) const {
         if (m_vtable != other.m_vtable) {
             throw std::bad_any_cast{};
@@ -441,7 +453,7 @@ private:
     template<typename T>
     bool cmp(bool (*f)(const void*, const void*), const T& other) const {
         typecheck(other);
-        if constexpr (std::is_same_v<T, any_cref>) {
+        if constexpr (std::is_same_v<T, any_cref> || std::is_same_v<T, any_ref>) {
             return f(m_addr, other.m_addr);
         }
         else {
@@ -512,12 +524,33 @@ any_cref make_any_cref(T& ob) {
     return {&ob, any_vtable::make<T>()};
 }
 
+// Deferred definition because this deeds to see the definition of `any_cref` to call
+// methods. This breaks the cycle between these objects.
+inline void any_ref::typecheck(const any_cref& other) const {
+    if (m_vtable != other.vtable()) {
+        throw std::bad_any_cast{};
+    }
+}
+
+inline any_ref& any_ref::operator=(const any_cref& rhs) {
+    typecheck(rhs);
+    m_vtable.copy_assign(m_addr, rhs.addr());
+    return *this;
+}
+
 namespace dispatch {
 /** Convert an any_ref into a Python object.
  */
 template<>
 struct to_object<py::any_ref> {
     static PyObject* f(const py::any_ref& ref) {
+        return ref.vtable().to_object(ref.addr()).escape();
+    }
+};
+
+template<>
+struct to_object<py::any_cref> {
+    static PyObject* f(const py::any_cref& ref) {
         return ref.vtable().to_object(ref.addr()).escape();
     }
 };

@@ -97,6 +97,7 @@ TEST(any_vtable, map_key) {
     EXPECT_EQ(map[py::any_vtable::make<float>()], 1);
     EXPECT_EQ(map[py::any_vtable::make<std::string>()], 2);
 }
+
 TEST(any_ref, test_construction) {
     int underlying = 1;
     py::any_ref ref = py::make_any_ref(underlying);
@@ -127,6 +128,13 @@ TEST(any_ref, test_assign) {
 
     // `ref` from another `py::any_ref` should have no affect on the `rhs`.
     EXPECT_EQ(another_object, 3);
+
+    another_object = 5;
+    py::any_cref another_cref = py::make_any_cref(another_object);
+
+    ref = another_cref;
+    EXPECT_EQ(ref.cast<int>(), another_object);
+    EXPECT_EQ(underlying, another_object);
 }
 
 TEST(any_ref, test_assign_type_check) {
@@ -143,6 +151,13 @@ TEST(any_ref, test_assign_type_check) {
 
     EXPECT_THROW(ref = another_ref, std::bad_any_cast);
 
+    EXPECT_EQ(ref.cast<int>(), 1);
+    EXPECT_EQ(underlying, 1);
+
+    another_object = 4.5;
+    py::any_cref another_cref = py::make_any_cref(another_object);
+
+    EXPECT_THROW(ref = another_cref, std::bad_any_cast);
     EXPECT_EQ(ref.cast<int>(), 1);
     EXPECT_EQ(underlying, 1);
 }

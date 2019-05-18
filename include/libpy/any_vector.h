@@ -509,11 +509,11 @@ public:
         --m_size;
     }
 
-    inline void* data() noexcept {
+    inline std::byte* data() noexcept {
         return m_storage;
     }
 
-    inline const void* data() const noexcept {
+    inline const std::byte* data() const noexcept {
         return m_storage;
     }
 
