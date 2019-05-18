@@ -661,10 +661,9 @@ private:
     template<typename... Cs>
     static void expect_char(const std::string_view& raw, std::size_t ix, Cs... cs) {
         if (((raw[ix] != cs) && ...)) {
-            std::string options;
-            (options.push_back(cs), ...);
-            throw detail::formatted_error("expected one of: \"",
-                                          options,
+            throw detail::formatted_error((sizeof...(cs) == 1) ? "expected \""
+                                                               : "expected one of: \"",
+                                          cs...,
                                           "\" at index ",
                                           ix,
                                           ": ",
@@ -1930,7 +1929,7 @@ inline PyObject* py_write(PyObject*,
             << "cannot pass num_threads > 1 with file-backed output";
         return nullptr;
     }
-    else {
+    else if (PyUnicode_Check(file)) {
         const char* text = py::util::pystring_to_cstring(file);
         if (!text) {
             return nullptr;
@@ -1940,6 +1939,15 @@ inline PyObject* py_write(PyObject*,
             py::raise(PyExc_OSError) << "failed to open file";
             return nullptr;
         }
+        write(stream, column_names, columns, buffer_size, float_sigfigs);
+        if (!stream) {
+            py::raise(PyExc_OSError) << "failed to write csv";
+            return nullptr;
+        }
+        Py_RETURN_NONE;
+    }
+    else {
+        py::ostream stream(file);
         write(stream, column_names, columns, buffer_size, float_sigfigs);
         if (!stream) {
             py::raise(PyExc_OSError) << "failed to write csv";
