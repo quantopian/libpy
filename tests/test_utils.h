@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 
 #include "libpy/exception.h"
+#include "libpy/call_function.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"
 
@@ -32,7 +33,7 @@ inline std::string format_current_python_exception() {
 
     PyErr_Restore(exc[0], exc[1], exc[2]);
     PyErr_PrintEx(false);
-    py::scoped_ref contents(PyObject_CallMethod(buf.get(), "getvalue", nullptr));
+    py::scoped_ref contents = py::call_method(buf, "getvalue");
     if (!contents) {
         return "<unknown>";
     }
@@ -50,7 +51,7 @@ public:
         if (!io) {
             throw py::exception();
         }
-        py::scoped_ref buf(PyObject_CallMethod(io.get(), "StringIO", nullptr));
+        py::scoped_ref buf = py::call_method(io, "StringIO");
         if (!buf) {
             throw py::exception();
         }
@@ -96,7 +97,7 @@ run_python(const std::string_view& python_source,
         return nullptr;
     }
 
-    py::scoped_ref buf(PyObject_CallMethod(io.get(), "StringIO", nullptr));
+    py::scoped_ref buf = py::call_method(io, "StringIO");
     if (!buf) {
         return nullptr;
     }
