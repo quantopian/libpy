@@ -152,7 +152,7 @@ private:
     inline constexpr any_vtable(const detail::any_vtable_impl* impl) : m_impl(impl) {}
 
 public:
-    any_vtable() : any_vtable(&detail::any_vtable_instance<void>) {}
+    constexpr any_vtable() : any_vtable(&detail::any_vtable_instance<void>) {}
 
     template<typename T>
     static inline constexpr any_vtable make() {
@@ -161,39 +161,39 @@ public:
 
     /** Get access to the underlying collection of function pointers.
      */
-    const detail::any_vtable_impl* impl() const {
+    constexpr inline const detail::any_vtable_impl* impl() const {
         return m_impl;
     }
 
-    inline const std::type_info& type_info() const {
+    constexpr inline const std::type_info& type_info() const {
         return m_impl->type_info;
     }
 
-    inline std::size_t size() const {
+    constexpr inline std::size_t size() const {
         return m_impl->size;
     }
 
-    inline std::size_t align() const {
+    constexpr inline std::size_t align() const {
         return m_impl->align;
     }
 
-    inline bool is_trivially_default_constructible() const {
+    constexpr inline bool is_trivially_default_constructible() const {
         return m_impl->is_trivially_default_constructible;
     }
 
-    inline bool is_trivially_destructible() const {
+    constexpr inline bool is_trivially_destructible() const {
         return m_impl->is_trivially_destructible;
     }
 
-    inline bool is_trivially_move_constructible() const {
+    constexpr inline bool is_trivially_move_constructible() const {
         return m_impl->is_trivially_move_constructible;
     }
 
-    inline bool is_trivially_copy_constructible() const {
+    constexpr inline bool is_trivially_copy_constructible() const {
         return m_impl->is_trivially_copy_constructible;
     }
 
-    inline bool is_trivially_copyable() const {
+    constexpr inline bool is_trivially_copyable() const {
         return m_impl->is_trivially_copyable;
     }
 
@@ -277,7 +277,7 @@ public:
         return std::aligned_alloc(align(), size() * count);
     }
 
-    inline bool operator==(const any_vtable& other) const {
+    constexpr inline bool operator==(const any_vtable& other) const {
         // The m_impl can be the same based on optimization/linking; however, it is not
         // guaranteed to be the same if the type is the same. If `m_impl` is the same, we
         // know it must point to the same type, but if not, fall back to the slower
@@ -285,7 +285,7 @@ public:
         return m_impl == other.m_impl || m_impl->type_info == other.m_impl->type_info;
     }
 
-    inline bool operator!=(const any_vtable& other) const {
+    constexpr inline bool operator!=(const any_vtable& other) const {
         return !(*this == other);
     }
 };
@@ -323,7 +323,7 @@ private:
     bool cmp(bool (*f)(const void*, const void*), const T& other) const {
         typecheck(other);
         if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-            return f(m_addr, other.m_addr);
+            return f(m_addr, other.addr());
         }
         else {
             return f(m_addr, std::addressof(other));
@@ -454,7 +454,7 @@ private:
     bool cmp(bool (*f)(const void*, const void*), const T& other) const {
         typecheck(other);
         if constexpr (std::is_same_v<T, any_cref> || std::is_same_v<T, any_ref>) {
-            return f(m_addr, other.m_addr);
+            return f(m_addr, other.addr());
         }
         else {
             return f(m_addr, std::addressof(other));
