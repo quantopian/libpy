@@ -101,7 +101,7 @@ TEST(any_vector, default_construct_elements) {
 }
 
 TEST(any_vector, copy_construct_elements) {
-    auto f =
+    auto inner_test =
         [](const py::any_vtable& vtable, std::size_t count, const auto& expected_value) {
             py::any_vector vec(vtable, count, expected_value);
 
@@ -114,8 +114,29 @@ TEST(any_vector, copy_construct_elements) {
             }
         };
 
+    auto test =
+        [&](const py::any_vtable& vtable, std::size_t count, const auto& expected_value) {
+            auto copy = expected_value;
+            inner_test(vtable, count, copy);
+
+            py::any_ref ref(&copy, vtable);
+            inner_test(vtable, count, ref);
+
+            py::any_cref cref(&copy, vtable);
+            inner_test(vtable, count, cref);
+        };
+
     struct S {
         int data = 0;
+
+        S() = default;
+        S(int data) : data(data) {}
+        S(const S& cpfrom) : S(cpfrom.data) {}
+
+        S& operator=(const S& cpfrom) {
+            data = cpfrom.data;
+            return *this;
+        }
 
         bool operator==(S other) const {
             return data == other.data;
@@ -125,19 +146,22 @@ TEST(any_vector, copy_construct_elements) {
             return data != other.data;
         }
     };
+    static_assert(
+        !py::any_vtable::make<S>().is_trivially_copy_constructible(),
+        "S shouldn't be trivially copy constructible to check the fallback cases");
 
     for (std::size_t count = 0; count < 256; count += 8) {
-        f(py::any_vtable::make<int>(), count, 0);
-        f(py::any_vtable::make<int>(), count, 1);
-        f(py::any_vtable::make<int>(), count, 3);
+        test(py::any_vtable::make<int>(), count, 0);
+        test(py::any_vtable::make<int>(), count, 1);
+        test(py::any_vtable::make<int>(), count, 3);
 
-        f(py::any_vtable::make<float>(), count, 0.0f);
-        f(py::any_vtable::make<float>(), count, 1.0f);
-        f(py::any_vtable::make<float>(), count, 3.0f);
+        test(py::any_vtable::make<float>(), count, 0.0f);
+        test(py::any_vtable::make<float>(), count, 1.0f);
+        test(py::any_vtable::make<float>(), count, 3.0f);
 
-        f(py::any_vtable::make<S>(), count, S{0});
-        f(py::any_vtable::make<S>(), count, S{1});
-        f(py::any_vtable::make<S>(), count, S{3});
+        test(py::any_vtable::make<S>(), count, S{0});
+        test(py::any_vtable::make<S>(), count, S{1});
+        test(py::any_vtable::make<S>(), count, S{3});
     }
 }
 
