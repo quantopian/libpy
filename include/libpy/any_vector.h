@@ -323,26 +323,45 @@ public:
         typecheck(value);
 
         std::size_t itemsize = m_vtable.size();
-        std::byte* data = m_storage;
-        try {
-            for (std::size_t ix = 0; ix < count; ++ix) {
-                if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-                    m_vtable.copy_construct(data, value.addr());
-                }
-                else {
-                    m_vtable.copy_construct(data, std::addressof(value));
-                }
-                data += itemsize;
+
+        if (m_vtable.is_trivially_copy_constructible()) {
+            const void* addr;
+            if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
+                addr = value.addr();
+            }
+            else {
+                addr = std::addressof(value);
+            }
+
+            std::byte* end = m_storage + count * itemsize;
+            for (std::byte* data = m_storage; data < end; data += itemsize) {
+                std::memcpy(data, addr, itemsize);
             }
         }
-        catch (...) {
-            // if an exception occurs default constructing the vector, be sure to
-            // unwind the partially initialized state
-            for (std::byte* p = m_storage; p < data; p += itemsize) {
-                vtable.destruct(p);
+        else {
+            std::byte* data = m_storage;
+
+            try {
+                for (std::size_t ix = 0; ix < count; ++ix) {
+                    if constexpr (std::is_same_v<T, any_ref> ||
+                                  std::is_same_v<T, any_cref>) {
+                        m_vtable.copy_construct(data, value.addr());
+                    }
+                    else {
+                        m_vtable.copy_construct(data, std::addressof(value));
+                    }
+                    data += itemsize;
+                }
             }
-            std::free(m_storage);
-            throw;
+            catch (...) {
+                // if an exception occurs default constructing the vector, be sure to
+                // unwind the partially initialized state
+                for (std::byte* p = m_storage; p < data; p += itemsize) {
+                    vtable.destruct(p);
+                }
+                std::free(m_storage);
+                throw;
+            }
         }
     }
 
