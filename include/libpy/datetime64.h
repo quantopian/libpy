@@ -65,13 +65,13 @@ public:
 
     /** The largest representable datetime64.
      */
-    constexpr static datetime64 max() {
+    constexpr static datetime64 max() noexcept {
         return datetime64(std::numeric_limits<std::int64_t>::max());
     }
 
     /** The smallest representable datetime64.
      */
-    constexpr static datetime64 min() {
+    constexpr static datetime64 min() noexcept {
         if (std::is_same_v<Unit, chrono::ns>) {
             // The same value as pandas.Timestamp.min.asm8.view('i8').
             // Currently numpy will overflow an integer in the repr of very
@@ -86,30 +86,30 @@ public:
     /** The special 'not-a-time' value which has `nan` like behavior with
         datetime64 objects.
      */
-    constexpr static datetime64 nat() {
+    constexpr static datetime64 nat() noexcept {
         return datetime64(nat_value);
     }
 
     /** Retrieve the epoch in the given unit.
      */
-    constexpr static datetime64 epoch() {
+    constexpr static datetime64 epoch() noexcept {
         return datetime64(0);
     }
 
     /** 1990-01-02, the first day of the zipline NYSE calendar.
      */
-    constexpr static datetime64 nyse_epoch() {
+    constexpr static datetime64 nyse_epoch() noexcept {
         return datetime64(std::chrono::nanoseconds(631238400000000000l));
     }
 
     /** Default constructor provides a nat value.
      */
-    constexpr datetime64() : m_value(nat_value) {}
+    constexpr datetime64() noexcept : m_value(nat_value) {}
 
     /** Unit coercion constructor.
      */
     template<typename Unit2>
-    constexpr datetime64(const datetime64<Unit2>& cpfrom)
+    constexpr datetime64(const datetime64<Unit2>& cpfrom) noexcept
         : m_value(std::chrono::floor<Unit>(cpfrom.m_value)) {}
 
     /** Constructor from the number of `unit` ticks since the epoch as an
