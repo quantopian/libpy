@@ -62,10 +62,37 @@ scoped_ref<> to_object(T&& ob) {
 }
 
 namespace dispatch {
+template<typename C>
+PyObject* sequence_to_list(const C& v) {
+    py::scoped_ref out(PyList_New(v.size()));
+    if (!out) {
+        return nullptr;
+    }
+
+    std::size_t ix = 0;
+    for (const auto& elem : v) {
+        PyObject* ob = py::to_object(elem).escape();
+        if (!ob) {
+            return nullptr;
+        }
+
+        PyList_SET_ITEM(out.get(), ix++, ob);
+    }
+
+    return std::move(out).escape();
+}
+
 template<std::size_t n>
 struct to_object<std::array<char, n>> {
     static PyObject* f(const std::array<char, n>& cs) {
         return PyBytes_FromStringAndSize(cs.data(), n);
+    }
+};
+
+template<typename T, std::size_t n>
+struct to_object<std::array<T, n>> {
+    static PyObject* f(const std::array<T, n>& v) {
+        return sequence_to_list(v);
     }
 };
 
@@ -202,23 +229,7 @@ struct to_object<std::unordered_map<K, V, Hash, KeyEqual>>
 template<typename T>
 struct to_object<std::vector<T>> {
     static PyObject* f(const std::vector<T>& v) {
-        py::scoped_ref out(PyList_New(v.size()));
-
-        if (!out) {
-            return nullptr;
-        }
-
-        std::size_t ix = 0;
-        for (const auto& elem : v) {
-            PyObject* ob = py::to_object(elem).escape();
-            if (!ob) {
-                return nullptr;
-            }
-
-            PyList_SET_ITEM(out.get(), ix++, ob);
-        }
-
-        return std::move(out).escape();
+        return sequence_to_list(v);
     }
 };
 

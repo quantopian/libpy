@@ -49,20 +49,13 @@ std::array<double, 3> examples() {
 }
 
 template<>
-std::array<py::scoped_ref<PyObject>, 3> examples() {
-    PyObject* true_ = Py_True;
-    PyObject* false_ = Py_False;
-    PyObject* none = Py_None;
-
-    Py_INCREF(true_);
-    Py_INCREF(false_);
-    Py_INCREF(none);
-
-    return {
-        py::scoped_ref<PyObject>(true_),
-        py::scoped_ref<PyObject>(false_),
-        py::scoped_ref<PyObject>(none),
-    };
+std::array<py::scoped_ref<>, 3> examples() {
+    Py_INCREF(Py_True);
+    Py_INCREF(Py_False);
+    Py_INCREF(Py_None);
+    return {py::scoped_ref<>(Py_True),
+            py::scoped_ref<>(Py_False),
+            py::scoped_ref<>(Py_None)};
 }
 
 template<typename M>
@@ -126,11 +119,7 @@ TEST_F(to_object, map_to_object) {
 }
 
 template<typename V>
-void test_vector_to_object_impl(V v) {
-    for (auto k : examples<typename V::value_type>()) {
-        v.push_back(k);
-    }
-
+void test_sequence_to_object_impl(V v) {
     auto check_python_list = [&](py::scoped_ref<PyObject> ob) {
         ASSERT_TRUE(ob) << "to_object should not return null";
         EXPECT_EQ(PyList_Check(ob.get()), 1) << "ob should be a list";
@@ -168,11 +157,20 @@ void test_vector_to_object_impl(V v) {
 }
 
 TEST_F(to_object, vector_to_object) {
-    auto vectors = std::make_tuple(std::vector<std::string>(),
-                                   std::vector<double>(),
-                                   std::vector<py::scoped_ref<PyObject>>());
-    // Call test_vector_to_object_impl on each entry in ``vectors``.
-    std::apply([&](auto... vec) { (test_vector_to_object_impl(vec), ...); }, vectors);
+    auto to_vec = [](const auto& arr) { return std::vector(arr.begin(), arr.end()); };
+    auto vectors = std::make_tuple(to_vec(examples<std::string>()),
+                                   to_vec(examples<double>()),
+                                   to_vec(examples<py::scoped_ref<>>()));
+    // Call test_sequence_to_object_impl on each entry in `vectors`.
+    std::apply([&](auto... vec) { (test_sequence_to_object_impl(vec), ...); }, vectors);
+}
+
+TEST_F(to_object, array_to_object) {
+    auto arrays = std::make_tuple(examples<std::string>(),
+                                  examples<double>(),
+                                  examples<py::scoped_ref<>>());
+    // Call test_sequence_to_object_impl on each entry in `arrays`.
+    std::apply([&](auto... arr) { (test_sequence_to_object_impl(arr), ...); }, arrays);
 }
 
 template<typename R, typename T>
