@@ -210,7 +210,7 @@ private:
         using iterator_category = std::random_access_iterator_tag;
 
         reference operator*() const {
-            return *reinterpret_cast<V*>(m_ptr);
+            return *reinterpret_cast<V*>(m_ptr + m_ix * m_stride);
         }
 
         reference operator[](difference_type ix) const {
@@ -218,47 +218,41 @@ private:
         }
 
         pointer operator->() const {
-            return reinterpret_cast<const V*>(m_ptr);
+            return reinterpret_cast<const V*>(m_ptr + m_ix * m_stride);
         }
 
         generic_iterator& operator++() {
-            m_ptr += m_stride;
             m_ix += 1;
             return *this;
         }
 
         generic_iterator operator++(int) {
             generic_iterator out = *this;
-            m_ptr += m_stride;
             m_ix += 1;
             return out;
         }
 
         generic_iterator& operator+=(difference_type n) {
-            m_ptr += m_stride * n;
             m_ix += n;
             return *this;
         }
 
         generic_iterator operator+(difference_type n) const {
-            return generic_iterator(m_ptr + n * m_stride, m_ix + n, m_stride);
+            return generic_iterator(m_ptr, m_ix + n, m_stride);
         }
 
         generic_iterator& operator--() {
-            m_ptr -= m_stride;
             m_ix -= 1;
             return *this;
         }
 
         generic_iterator operator--(int) {
             generic_iterator out = *this;
-            m_ptr -= m_stride;
             m_ix -= 1;
             return out;
         }
 
         generic_iterator& operator-=(difference_type n) {
-            m_ptr -= m_stride * n;
             m_ix -= n;
             return *this;
         }
@@ -268,11 +262,11 @@ private:
         }
 
         bool operator!=(const generic_iterator& other) const {
-            return !(m_ix == other.m_ix && m_ptr == other.m_ptr);
+            return m_ix != other.m_ix;
         }
 
         bool operator==(const generic_iterator& other) const {
-            return m_ix == other.m_ix && m_ptr == other.m_ptr;
+            return m_ix == other.m_ix;
         }
 
         bool operator<(const generic_iterator& other) const {
@@ -673,7 +667,7 @@ private:
         using iterator_category = std::random_access_iterator_tag;
 
         reference operator*() const {
-            return {m_ptr, m_vtable};
+            return {m_ptr + m_ix * m_stride, m_vtable};
         }
 
         reference operator[](difference_type ix) const {
@@ -681,43 +675,37 @@ private:
         }
 
         generic_iterator& operator++() {
-            m_ptr += m_stride;
             m_ix += 1;
             return *this;
         }
 
         generic_iterator operator++(int) {
             generic_iterator out = *this;
-            m_ptr += m_stride;
             m_ix += 1;
             return out;
         }
 
         generic_iterator& operator+=(difference_type n) {
-            m_ptr += m_stride * n;
             m_ix += n;
             return *this;
         }
 
         generic_iterator operator+(difference_type n) const {
-            return {m_ptr + n * m_stride, m_ix + n, m_stride, m_vtable};
+            return {m_ptr, m_ix + n, m_stride, m_vtable};
         }
 
         generic_iterator& operator--() {
-            m_ptr -= m_stride;
             m_ix -= 1;
             return *this;
         }
 
         generic_iterator operator--(int) {
             generic_iterator out = *this;
-            m_ptr -= m_stride;
             m_ix -= 1;
             return out;
         }
 
         generic_iterator& operator-=(difference_type n) {
-            m_ptr -= m_stride * n;
             m_ix -= n;
             return *this;
         }
@@ -727,11 +715,11 @@ private:
         }
 
         bool operator!=(const generic_iterator& other) const {
-            return !(m_ix == other.m_ix && m_ptr == other.m_ptr);
+            return m_ix != other.m_ix;
         }
 
         bool operator==(const generic_iterator& other) const {
-            return m_ix == other.m_ix && m_ptr == other.m_ptr;
+            return m_ix == other.m_ix;
         }
 
         bool operator<(const generic_iterator& other) const {
