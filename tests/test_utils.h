@@ -78,7 +78,9 @@ run_python(const std::string_view& python_source,
         if (!main_module) {
             throw py::exception();
         }
-        py::scoped_ref main_dict(PyModule_GetDict(main_module.get()));
+
+        // PyModule_GetDict returns a borrowed reference
+        PyObject* main_dict = PyModule_GetDict(main_module.get());
         if (!main_dict) {
             return nullptr;
         }
@@ -87,7 +89,7 @@ run_python(const std::string_view& python_source,
             return nullptr;
         }
 
-        if (PyDict_Update(python_namespace.get(), main_dict.get())) {
+        if (PyDict_Update(python_namespace.get(), main_dict)) {
             return nullptr;
         }
     }
