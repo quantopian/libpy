@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sparsehash/dense_hash_map>
+#include <sparsehash/dense_hash_set>
 #include <sparsehash/sparse_hash_map>
 
 #include "libpy/to_object.h"
@@ -40,7 +41,7 @@ public:
        @param expected_size A size hint for the map.
      */
     dense_hash_map(const Key& empty_key, std::size_t expected_size)
-        : google::dense_hash_map<Key, T>(expected_size) {
+        : base(expected_size) {
         this->set_empty_key(empty_key);
     }
 
@@ -99,6 +100,54 @@ public:
     }
 };
 
+template<typename Key,
+         typename HashFcn = std::hash<Key>,
+         typename EqualKey = std::equal_to<Key>,
+         typename Alloc = google::libc_allocator_with_realloc<Key>>
+struct dense_hash_set : public google::dense_hash_set<Key, HashFcn, EqualKey, Alloc> {
+private:
+    using base = google::dense_hash_set<Key, HashFcn, EqualKey, Alloc>;
+
+    using base::dense_hash_set;
+
+public:
+    dense_hash_set() = delete;  // User must give a missing value.
+
+    /**
+       @param empty_key An element of type `Key` which denotes an empty slot.
+                        This value can not itself be used as a valid key.
+     */
+    dense_hash_set(const Key& empty_key) {
+        this->set_empty_key(empty_key);
+    }
+
+    /**
+       @param empty_key An element of type `Key` which denotes an empty slot.
+                        This value can not itself be used as a valid key.
+       @param expected_size A size hint for the map.
+     */
+    dense_hash_set(const Key& empty_key, std::size_t expected_size)
+        : base(expected_size) {
+        this->set_empty_key(empty_key);
+    }
+
+    dense_hash_set(const dense_hash_set& cpfrom) : base(cpfrom) {}
+
+    dense_hash_set(dense_hash_set&& mvfrom) noexcept {
+        this->swap(mvfrom);
+    }
+
+    dense_hash_set& operator=(const dense_hash_set& cpfrom) {
+        base::operator=(cpfrom);
+        return *this;
+    }
+
+    dense_hash_set& operator=(dense_hash_set&& mvfrom) noexcept {
+        this->swap(mvfrom);
+        return *this;
+    }
+};
+
 namespace dispatch {
 template<typename Key, typename T, typename HashFcn, typename EqualKey, typename Alloc>
 struct to_object<dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>>
@@ -107,5 +156,10 @@ struct to_object<dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>>
 template<typename Key, typename T, typename HashFcn, typename EqualKey, typename Alloc>
 struct to_object<sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>>
     : public map_to_object<sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>> {};
+
+template<typename Key, typename HashFcn, typename EqualKey, typename Alloc>
+struct to_object<dense_hash_set<Key, HashFcn, EqualKey, Alloc>>
+    : public set_to_object<dense_hash_set<Key, HashFcn, EqualKey, Alloc>> {};
+
 }  // namespace dispatch
 }  // namespace py

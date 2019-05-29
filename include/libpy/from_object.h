@@ -16,6 +16,7 @@
 #include <Python.h>
 
 #include "libpy/demangle.h"
+#include "libpy/dict_range.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"
@@ -274,28 +275,25 @@ struct from_object<double> {
     }
 };
 
-template<typename K, typename V, typename Hash, typename KeyEqual>
-struct from_object<std::unordered_map<K, V, Hash, KeyEqual>> {
-    using map_type = std::unordered_map<K, V, Hash, KeyEqual>;
-
-    static map_type f(PyObject* m) {
+template<typename M>
+struct map_from_object {
+    static M f(PyObject* m) {
         if (!PyDict_Check(m)) {
-            throw invalid_conversion::make<map_type>(m);
+            throw invalid_conversion::make<M>(m);
         }
 
-        map_type out;
-
-        Py_ssize_t pos = 0;
-        PyObject* key;
-        PyObject* value;
-
-        while (PyDict_Next(m, &pos, &key, &value)) {
-            out.emplace(py::from_object<K>(key), py::from_object<V>(value));
+        M out;
+        for (auto [key, value] : py::dict_range(m)) {
+            out.insert({py::from_object<typename M::key_type>(key),
+                        py::from_object<typename M::mapped_type>(value)});
         }
-
         return out;
     }
 };
+
+template<typename K, typename V, typename Hash, typename KeyEqual>
+struct from_object<std::unordered_map<K, V, Hash, KeyEqual>>
+    : map_from_object<std::unordered_map<K, V, Hash, KeyEqual>> {};
 
 template<typename T>
 struct from_object<std::vector<T>> {
