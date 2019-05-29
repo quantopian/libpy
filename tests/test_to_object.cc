@@ -9,6 +9,7 @@
 #include "libpy/itertools.h"
 #include "libpy/meta.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/object_map_key.h"
 #include "libpy/to_object.h"
 #include "test_utils.h"
 
@@ -242,5 +243,18 @@ TEST_F(to_object, any_ref_non_convertible_object) {
 
     EXPECT_THROW(py::to_object(ref), py::exception);
     PyErr_Clear();
+}
+
+TEST_F(to_object, object_map_key) {
+    py::object_map_key key{py::to_object(5)};
+    ASSERT_TRUE(key);
+    Py_ssize_t starting_ref_count = Py_REFCNT(key.get());
+
+    py::scoped_ref as_ob = py::to_object(key);
+    // should be the same pointer
+    EXPECT_EQ(key.get(), as_ob.get());
+
+    // now owned by both as_ob and key
+    EXPECT_EQ(Py_REFCNT(key.get()), starting_ref_count + 1);
 }
 }  // namespace test_to_object
