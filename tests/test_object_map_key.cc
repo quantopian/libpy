@@ -2,6 +2,7 @@
 
 #include "gtest/gtest.h"
 
+#include "libpy/dense_hash_map.h"
 #include "libpy/exception.h"
 #include "libpy/object_map_key.h"
 #include "libpy/scoped_ref.h"
@@ -48,12 +49,45 @@ TEST_F(object_map_key, eq_fails) {
     PyErr_Clear();
 }
 
+TEST_F(object_map_key, null_eq) {
+    {
+        py::object_map_key a;
+        ASSERT_FALSE(a);
+
+        py::object_map_key b;
+        ASSERT_FALSE(b);
+
+        EXPECT_EQ(a, b);
+    }
+    {
+        py::object_map_key a;
+        ASSERT_FALSE(a);
+
+        py::object_map_key b{py::to_object(5)};
+        ASSERT_TRUE(b);
+
+        EXPECT_NE(a, b);
+    }
+    {
+        py::object_map_key a{py::to_object(5)};
+        ASSERT_TRUE(a);
+
+        py::object_map_key b;
+        ASSERT_FALSE(b);
+
+        EXPECT_NE(a, b);
+    }
+}
+
 TEST_F(object_map_key, hash) {
     int value = 10;
     py::object_map_key a{py::to_object(value)};
     ASSERT_TRUE(a);
 
     EXPECT_EQ(std::hash<py::object_map_key>{}(a), value);
+
+    // nullptr just hashes to 0
+    EXPECT_EQ(std::hash<py::object_map_key>{}(py::object_map_key{}), 0);
 }
 
 TEST_F(object_map_key, hash_fails) {
@@ -75,8 +109,8 @@ TEST_F(object_map_key, hash_fails) {
     PyErr_Clear();
 }
 
-TEST_F(object_map_key, use_in_map) {
-    std::unordered_map<py::object_map_key, int> map;
+template<typename M>
+void test_use_in_map(M map) {
 
     int a_value = 10;
     py::object_map_key a_key{py::to_object(a_value)};
@@ -100,10 +134,16 @@ TEST_F(object_map_key, use_in_map) {
     py::scoped_ref c_key = py::to_object(c_value);
     ASSERT_TRUE(c_key);
 
-    map.emplace(c_key, c_value);
+    map.insert({c_key, c_value});
 
     EXPECT_EQ(map[c_key], c_value);
     EXPECT_EQ(map[b_key], b_value);
     EXPECT_EQ(map[a_key], a_value);
+}
+
+TEST_F(object_map_key, use_in_map) {
+    test_use_in_map(std::unordered_map<py::object_map_key, int>{});
+    test_use_in_map(py::sparse_hash_map<py::object_map_key, int>{});
+    test_use_in_map(py::dense_hash_map<py::object_map_key, int>{py::object_map_key{}});
 }
 }  // namespace test_object_hash_key
