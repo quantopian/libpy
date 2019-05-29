@@ -5,6 +5,7 @@
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/object_map_key.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"
 
@@ -238,5 +239,15 @@ TEST_F(from_object, ndarray_view_any_ref) {
             ++expected;
         }
     }
+}
+
+TEST_F(from_object, object_map_key) {
+    PyObject* ob = Py_None;
+    Py_ssize_t starting_ref_count = Py_REFCNT(ob);
+
+    py::object_map_key key = py::from_object<py::object_map_key>(ob);
+    EXPECT_EQ(key.get(), ob);
+    // the key owns a new reference
+    EXPECT_EQ(Py_REFCNT(ob), starting_ref_count + 1);
 }
 }  // namespace test_from_object

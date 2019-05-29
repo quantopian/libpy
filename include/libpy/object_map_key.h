@@ -4,6 +4,8 @@
 
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
+#include "libpy/from_object.h"
+#include "libpy/to_object.h"
 
 namespace py {
 
@@ -55,13 +57,33 @@ public:
         return r;
     }
 };
+
+namespace dispatch {
+template<>
+struct from_object<object_map_key> {
+    static object_map_key f(PyObject* ob) {
+        Py_INCREF(ob);
+        return object_map_key{py::scoped_ref<>{ob}};
+    }
+};
+
+template<>
+struct to_object<object_map_key> {
+    static PyObject* f(const object_map_key& ob) {
+        PyObject* out = ob.get();
+        Py_INCREF(out);
+        return out;
+    }
+};
+}  // namespace dispatch
 }  // namespace py
 
 namespace std {
 template<>
 struct hash<py::object_map_key> {
-    Py_hash_t operator()(const py::object_map_key& ob) const {
-        Py_ssize_t r = PyObject_Hash(ob.get());
+    auto operator()(const py::object_map_key& ob) const {
+        // this returns a different type in Python 2 and Python 3
+        auto r = PyObject_Hash(ob.get());
         if (r == -1) {
             throw py::exception{};
         }
