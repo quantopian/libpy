@@ -220,7 +220,13 @@ inline std::nullptr_t raise_from_cxx_exception(const std::exception& e) {
     PyObject* tb;
     PyErr_Fetch(&type, &value, &tb);
     Py_XDECREF(tb);
-    raise(type) << value << " (raised from C++ exception: " << e.what() << ")";
+    const char* what = e.what();
+    if (!what[0]) {
+        raise(type) << value << " (raised from C++ exception)";
+    }
+    else {
+        raise(type) << value << " (raised from C++ exception: " << e.what() << ')';
+    }
     Py_DECREF(type);
     Py_DECREF(value);
     return nullptr;

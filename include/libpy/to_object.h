@@ -233,9 +233,9 @@ struct to_object<std::vector<T>> {
     }
 };
 
-template<typename T>
-struct to_object<std::unordered_set<T>> {
-    static PyObject* f(const std::unordered_set<T>& s) {
+template<typename S>
+struct set_to_object {
+    static PyObject* f(const S& s) {
         py::scoped_ref out(PySet_New(nullptr));
 
         if (!out) {
@@ -255,6 +255,9 @@ struct to_object<std::unordered_set<T>> {
         return std::move(out).escape();
     }
 };
+
+template<typename T>
+struct to_object<std::unordered_set<T>> : set_to_object<std::unordered_set<T>> {};
 
 template<typename... Ts>
 struct to_object<std::tuple<Ts...>> {
