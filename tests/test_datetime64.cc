@@ -47,6 +47,10 @@ TYPED_TEST_P(datetime64_all_units, nat) {
     // default construct is also nat
     EXPECT_EQ(static_cast<std::int64_t>(py::datetime64<TypeParam>{}),
               int64_limits::min());
+
+    // unambiguously test `operator==()` and `operator!=()`:
+    EXPECT_FALSE(py::datetime64<TypeParam>{} == py::datetime64<TypeParam>{});
+    EXPECT_TRUE(py::datetime64<TypeParam>{} != py::datetime64<TypeParam>{});
 }
 
 TYPED_TEST_P(datetime64_all_units, min) {

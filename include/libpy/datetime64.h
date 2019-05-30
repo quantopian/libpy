@@ -158,7 +158,7 @@ public:
     }
 
     constexpr bool operator!=(const datetime64& other) const {
-        return m_value != other.m_value && !isnat() && !other.isnat();
+        return isnat() || other.isnat() || m_value != other.m_value;
     }
 
     constexpr bool operator<(const datetime64& other) const {
