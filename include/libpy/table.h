@@ -458,8 +458,7 @@ private:
     using tuple_type = std::tuple<py::array_view<column_type<columns>>...>;
     tuple_type m_columns;
 
-    template<auto... inner_columns>
-    class generic_iterator {
+    class iterator {
     private:
         tuple_type m_columns;
         std::size_t m_ix;
@@ -467,104 +466,94 @@ private:
     protected:
         friend class rows;
 
-        generic_iterator(const tuple_type& cs, std::size_t ix)
+        iterator(const tuple_type& cs, std::size_t ix)
             : m_columns(cs), m_ix(ix) {}
 
     public:
         using difference_type = std::int64_t;
-        using value_type = row_view<inner_columns...>;
-        using const_value_type = row_view<const_column<inner_columns>...>;
-        using reference = const_value_type;
+        using value_type = row<columns...>;
+        using const_value_type = const value_type;
+        using reference = row_view<columns...>;
+        using const_reference = row<const_column<columns>...>;
         using pointer = value_type*;
         using iterator_category = std::random_access_iterator_tag;
 
-        value_type operator*() {
-            return std::apply([this](auto&... cs) { return value_type{&cs[m_ix]...}; },
-                              m_columns);
-        }
-
-        const_value_type operator*() const {
+        reference operator*() const {
             return std::apply(
-                [this](const auto&... cs) { return const_value_type{cs[m_ix]...}; },
+                [this](auto&... cs) { return reference{&cs[m_ix]...}; },
                 m_columns);
         }
 
-        value_type operator[](difference_type ix) {
+        reference operator[](difference_type ix) const {
             return *(*this + ix);
         }
 
-        const_value_type operator[](difference_type ix) const {
-            return *(*this + ix);
-        }
-
-        generic_iterator& operator++() {
+        iterator& operator++() {
             m_ix += 1;
             return *this;
         }
 
-        generic_iterator operator++(int) {
-            generic_iterator out = *this;
+        iterator operator++(int) {
+            iterator out = *this;
             m_ix += 1;
             return out;
         }
 
-        generic_iterator& operator+=(difference_type n) {
+        iterator& operator+=(difference_type n) {
             m_ix += n;
             return *this;
         }
 
-        generic_iterator operator+(difference_type n) const {
-            return generic_iterator(m_columns, m_ix + n);
+        iterator operator+(difference_type n) const {
+            return iterator(m_columns, m_ix + n);
         }
 
-        generic_iterator& operator--() {
+        iterator& operator--() {
             m_ix -= 1;
             return *this;
         }
 
-        generic_iterator operator--(int) {
-            generic_iterator out = *this;
+        iterator operator--(int) {
+            iterator out = *this;
             m_ix -= 1;
             return out;
         }
 
-        generic_iterator& operator-=(difference_type n) {
+        iterator& operator-=(difference_type n) {
             m_ix -= n;
             return *this;
         }
 
-        difference_type operator-(const generic_iterator& other) const {
+        difference_type operator-(const iterator& other) const {
             return m_ix - other.m_ix;
         }
 
-        bool operator!=(const generic_iterator& other) const {
+        bool operator!=(const iterator& other) const {
             return !(m_ix == other.m_ix && m_columns == other.m_columns);
         }
 
-        bool operator==(const generic_iterator& other) const {
+        bool operator==(const iterator& other) const {
             return m_ix == other.m_ix && m_columns == other.m_columns;
         }
 
-        bool operator<(const generic_iterator& other) const {
+        bool operator<(const iterator& other) const {
             return m_ix < other.m_ix;
         }
 
-        bool operator<=(const generic_iterator& other) const {
+        bool operator<=(const iterator& other) const {
             return m_ix <= other.m_ix;
         }
 
-        bool operator>(const generic_iterator& other) const {
+        bool operator>(const iterator& other) const {
             return m_ix > other.m_ix;
         }
 
-        bool operator>=(const generic_iterator& other) const {
+        bool operator>=(const iterator& other) const {
             return m_ix >= other.m_ix;
         }
     };
 
 public:
-    using iterator = generic_iterator<columns...>;
-
     rows(const tuple_type& cs) : m_columns(cs) {}
 
     std::size_t size() const {
@@ -595,15 +584,20 @@ class table_view;
  */
 template<auto... columns>
 class table {
+public:
+    using view_type = table_view<columns...>;
+    using row_type = row<columns...>;
+    using row_view_type = row_view<columns...>;
+
 private:
     using keys_type = column_names<columns...>;
     using tuple_type = std::tuple<std::vector<column_type<columns>>...>;
 
     tuple_type m_columns;
 
-    template<std::size_t... ix, typename... Row>
-    void emplace_back(std::index_sequence<ix...>, Row&&... row) {
-        (std::get<ix>(m_columns).emplace_back(std::forward<Row>(row)), ...);
+    template<std::size_t... ix>
+    void emplace_back(std::index_sequence<ix...>, row_type&& row) {
+        (std::get<ix>(m_columns).emplace_back(std::move(row.template get<ix>())), ...);
     }
 
     /** Retrieve a column by name.
@@ -649,10 +643,6 @@ private:
     }
 
 public:
-    using view_type = table_view<columns...>;
-    using row_type = row<columns...>;
-    using row_view_type = row_view<columns...>;
-
     table() = default;
 
     /** Create an owning copy of a compatible table view. The tables will be aligned by
@@ -734,60 +724,12 @@ public:
 
     /** Append a row of data to the table.
 
-        @param row A tuple of scalar elements to add for each column. The parameter order
-                   matches the column order in the type definition.
+        @param args Arguments to forward to the `row_type` constructor.
      */
-    template<typename... Row>
-    void emplace_back(const std::tuple<Row...>& row) {
-        std::apply(
-            [this](const auto&... row) {
-                this->emplace_back(std::make_index_sequence<sizeof...(columns)>{},
-                                   row...);
-            },
-            row);
-    }
-
-    /** Append a row of data to the table.
-
-        @param row A tuple of scalar elements to add for each column. The parameter order
-                   matches the column order in the type definition.
-     */
-    template<typename... Row>
-    void emplace_back(std::tuple<Row...>&& row) {
-        std::apply(
-            [this](auto&&... row) {
-                this->emplace_back(std::make_index_sequence<sizeof...(columns)>{},
-                                   std::move(row)...);
-            },
-            row);
-    }
-
-    /** Append a row of data to the table.
-
-        @param row A row_view of scalar elements to add for each column. The row will be
-                   aligned by column name.
-     */
-    template<auto... other_columns>
-    void emplace_back(const py::row_view<other_columns...>& row) {
-        static_assert(sizeof...(columns) == sizeof...(other_columns),
-                      "input columns do not match");
-        (get_mutable(column_name<columns>{})
-             .emplace_back(row.get(column_name<columns>{})),
-         ...);
-    }
-
-    /** Append a row of data to the table.
-
-        @param row A row of scalar elements to add for each column. The row will be
-                   aligned by column name.
-     */
-    template<auto... other_columns>
-    void emplace_back(const py::row<other_columns...>& row) {
-        static_assert(sizeof...(columns) == sizeof...(other_columns),
-                      "input columns do not match");
-        (get_mutable(column_name<columns>{})
-             .emplace_back(row.get(column_name<columns>{})),
-         ...);
+    template<typename... Args>
+    void emplace_back(Args&&... args) {
+        emplace_back(std::make_index_sequence<sizeof...(columns)>{},
+                     row_type{std::forward<Args>(args)...});
     }
 
     /** Move the structure into a Python dict of numpy arrays.
