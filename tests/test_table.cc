@@ -205,7 +205,7 @@ TEST(row, assign) {
     custom_object c(3);
     R row(a, b, c);
 
-    auto expect_original_unchanged = [&]() {
+    auto expect_original_unchanged = [&] {
         EXPECT_EQ(a, 1L);
         EXPECT_EQ(b, 2.5);
         EXPECT_EQ(c, custom_object(3));
@@ -347,7 +347,7 @@ TEST(table, emplace_back) {
     table.emplace_back(expected_row_0);
     ASSERT_EQ(table.size(), 1ul);
 
-    auto test_row_0 = [&]() {
+    auto test_row_0 = [&] {
         auto row = table.rows()[0];
         EXPECT_EQ(row, row);
         EXPECT_EQ(row, expected_row_0);
@@ -361,7 +361,7 @@ TEST(table, emplace_back) {
     table.emplace_back(expected_row_1);
     ASSERT_EQ(table.size(), 2ul);
 
-    auto test_row_1 = [&]() {
+    auto test_row_1 = [&] {
         auto row = table.rows()[1];
         EXPECT_EQ(row, row);
         EXPECT_EQ(row, expected_row_1);
@@ -372,22 +372,43 @@ TEST(table, emplace_back) {
     test_row_1();
 
     // insert a row_view
-    std::int64_t a = 3;
-    double b = 4.5;
-    custom_object c(5);
-    auto expected_row_2 = T::row_view_type(&a, &b, &c);
+    std::int64_t row_2_a = 3;
+    double row_2_b = 4.5;
+    custom_object row_2_c{5};
+    auto expected_row_2 = T::row_view_type(&row_2_a, &row_2_b, &row_2_c);
     table.emplace_back(expected_row_2);
     ASSERT_EQ(table.size(), 3ul);
 
-    test_row_0();
-    test_row_1();
-
-    {
+    auto test_row_2 = [&] {
         auto row = table.rows()[2];
         EXPECT_EQ(row, row);
         EXPECT_EQ(row, expected_row_2);
         EXPECT_EQ(row, row.copy());
-    }
+    };
+
+    test_row_0();
+    test_row_1();
+    test_row_2();
+
+    // use forwarding constructor
+    // note: 6 is being directly forwarded to `custom_object(int)`
+    table.emplace_back(4, 5.5, 6);
+    std::int64_t row_3_a = 4;
+    double row_3_b = 5.5;
+    custom_object row_3_c{6};
+    auto expected_row_3 = T::row_view_type(&row_3_a, &row_3_b, &row_3_c);
+
+    auto test_row_3 = [&] {
+        auto row = table.rows()[3];
+        EXPECT_EQ(row, row);
+        EXPECT_EQ(row, expected_row_3);
+        EXPECT_EQ(row, row.copy());
+    };
+
+    test_row_0();
+    test_row_1();
+    test_row_2();
+    test_row_3();
 }
 
 TEST(table, row_iter) {
