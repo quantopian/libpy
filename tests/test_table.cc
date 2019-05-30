@@ -411,6 +411,34 @@ TEST(table, emplace_back) {
     test_row_3();
 }
 
+template<typename T>
+void test_row_iter(T& table) {
+    std::int64_t expected_a = 0;
+    double expected_b = 1.5;
+    custom_object expected_c(2);
+
+    for (auto row : table.rows()) {
+        auto& a = row.get("a"_cs);
+        auto& b = row.get("b"_cs);
+        auto& c = row.get("c"_cs);
+
+        if constexpr (std::is_const_v<T>) {
+            testing::StaticAssertTypeEq<decltype(a), const std::int64_t&>();
+            testing::StaticAssertTypeEq<decltype(b), const double&>();
+            testing::StaticAssertTypeEq<decltype(c), const custom_object&>();
+        }
+        else {
+            testing::StaticAssertTypeEq<decltype(a), std::int64_t&>();
+            testing::StaticAssertTypeEq<decltype(b), double&>();
+            testing::StaticAssertTypeEq<decltype(c), custom_object&>();
+        }
+
+        EXPECT_EQ(a, ++expected_a);
+        EXPECT_EQ(b, ++expected_b);
+        EXPECT_EQ(c, ++expected_c);
+    }
+}
+
 TEST(table, row_iter) {
     using T = py::table<py::C<std::int64_t>("a"_cs),
                         py::C<double>("b"_cs),
@@ -425,15 +453,8 @@ TEST(table, row_iter) {
         table.emplace_back(std::make_tuple(++a, ++b, ++c));
     }
 
-    std::int64_t expected_a = 0;
-    double expected_b = 1.5;
-    custom_object expected_c(2);
-
-    for (auto row : table.rows()) {
-        EXPECT_EQ(row.get("a"_cs), ++expected_a);
-        EXPECT_EQ(row.get("b"_cs), ++expected_b);
-        EXPECT_EQ(row.get("c"_cs), ++expected_c);
-    }
+    test_row_iter(table);
+    test_row_iter<const T>(table);
 }
 
 TEST(table_view, relabel) {
