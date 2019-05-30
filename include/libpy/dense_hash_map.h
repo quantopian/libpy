@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+
 #include <sparsehash/dense_hash_map>
 #include <sparsehash/dense_hash_set>
 #include <sparsehash/sparse_hash_map>
@@ -30,18 +32,14 @@ public:
     /**
        @param empty_key An element of type `Key` which denotes an empty slot.
                         This value can not itself be used as a valid key.
-     */
-    dense_hash_map(const Key& empty_key) {
-        this->set_empty_key(empty_key);
-    }
-
-    /**
-       @param empty_key An element of type `Key` which denotes an empty slot.
-                        This value can not itself be used as a valid key.
        @param expected_size A size hint for the map.
      */
-    dense_hash_map(const Key& empty_key, std::size_t expected_size)
+    dense_hash_map(const Key& empty_key, std::size_t expected_size = 0)
         : base(expected_size) {
+        if (empty_key != empty_key) {
+            // the first insert will hang forever if `empty_key != empty_key`
+            throw std::invalid_argument{"dense_hash_map: empty_key != empty_key"};
+        }
         this->set_empty_key(empty_key);
     }
 
@@ -116,18 +114,14 @@ public:
     /**
        @param empty_key An element of type `Key` which denotes an empty slot.
                         This value can not itself be used as a valid key.
+       @param expected_size A size hint for the set.
      */
-    dense_hash_set(const Key& empty_key) {
-        this->set_empty_key(empty_key);
-    }
-
-    /**
-       @param empty_key An element of type `Key` which denotes an empty slot.
-                        This value can not itself be used as a valid key.
-       @param expected_size A size hint for the map.
-     */
-    dense_hash_set(const Key& empty_key, std::size_t expected_size)
+    dense_hash_set(const Key& empty_key, std::size_t expected_size = 0)
         : base(expected_size) {
+        if (empty_key != empty_key) {
+            // the first insert will hang forever if `empty_key != empty_key`
+            throw std::invalid_argument{"dense_hash_set: empty_key != empty_key"};
+        }
         this->set_empty_key(empty_key);
     }
 
