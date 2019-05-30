@@ -471,7 +471,7 @@ private:
 
     public:
         using difference_type = std::int64_t;
-        using value_type = row<columns...>;
+        using value_type = row<remove_const_column<columns>...>;
         using const_value_type = const value_type;
         using reference = row_view<columns...>;
         using const_reference = row<const_column<columns>...>;
@@ -716,8 +716,8 @@ public:
             [](const auto&... cs) {
                 return std::make_tuple(
                     py::array_view<
-                        typename std::remove_reference_t<decltype(cs)>::value_type>(cs)
-                        .freeze()...);
+                        const typename std::remove_reference_t<decltype(cs)>::value_type>(
+                        cs)...);
             },
             m_columns));
     }
