@@ -1603,6 +1603,14 @@ void format_pyobject(iobuffer<T>& buf, const py::any_ref& any_value) {
     if (as_ob.get() == Py_None) {
         return;
     }
+    // We're giving pandas None values in object dtype columns, and it's giving
+    // us back NaN. Instead of updating all possible call sites that might
+    // produce that, we allow NaN here as a possible input, handling as it we
+    // do for None.
+    if (Py_TYPE(as_ob.get()) == &PyFloat_Type &&
+        PyFloat_AsDouble(as_ob.get()) != PyFloat_AsDouble(as_ob.get())) {
+        return;
+    }
 
     std::string_view text = py::util::pystring_to_string_view(as_ob);
     buf.write_quoted(text);
