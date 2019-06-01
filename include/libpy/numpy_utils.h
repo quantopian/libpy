@@ -109,7 +109,7 @@ struct py_bool {
     inline py_bool(npy_bool v) : value(v) {}
     inline py_bool(const py_bool& v) : value(v.value) {}
 
-    inline explicit operator bool() const {
+    inline operator bool() const {
         return value;
     }
 
@@ -658,3 +658,12 @@ inline scoped_ref<> move_to_numpy_array(py::any_vector&& values) {
                                                       values.vtable().size())});
 }
 }  // namespace py
+
+namespace std {
+template<>
+struct hash<py::py_bool> {
+    auto operator()(py::py_bool b) const noexcept {
+        return std::hash<bool>{}(static_cast<bool>(b));
+    }
+};
+}  // namespace std
