@@ -212,7 +212,7 @@ inline detail::raise_buffer<> raise(PyObject* exc) {
  */
 inline std::nullptr_t raise_from_cxx_exception(const std::exception& e) {
     if (!PyErr_Occurred()) {
-        py::raise(PyExc_AssertionError) << "a C++ exception was raised: " << e.what();
+        py::raise(PyExc_RuntimeError) << "a C++ exception was raised: " << e.what();
         return nullptr;
     }
     PyObject* type;
@@ -225,7 +225,7 @@ inline std::nullptr_t raise_from_cxx_exception(const std::exception& e) {
         raise(type) << value << " (raised from C++ exception)";
     }
     else {
-        raise(type) << value << " (raised from C++ exception: " << e.what() << ')';
+        raise(type) << value << " (raised from C++ exception: " << what << ')';
     }
     Py_DECREF(type);
     Py_DECREF(value);
