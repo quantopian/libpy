@@ -47,11 +47,17 @@ public:
         if (!sys) {
             throw py::exception();
         }
-        py::scoped_ref io(PyImport_ImportModule("io"));
-        if (!io) {
+        const char* io_module_name;
+#if PY_MAJOR_VERSION == 2
+        io_module_name = "cStringIO";
+#else
+        io_module_name = "io";
+#endif
+        py::scoped_ref io_module(PyImport_ImportModule(io_module_name));
+        if (!io_module) {
             throw py::exception();
         }
-        py::scoped_ref buf = py::call_method(io, "StringIO");
+        py::scoped_ref buf = py::call_method(io_module, "StringIO");
         if (!buf) {
             throw py::exception();
         }
