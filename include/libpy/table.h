@@ -451,107 +451,144 @@ struct tuple_element<ix, py::row_view<columns...>> {
 }
 
 namespace py {
+template<auto...>
+class table;
+
+template<auto...>
+class table_view;
+
 namespace detail::table_iter {
+template<auto... columns>
+class iterator {
+protected:
+    using tuple_type = std::tuple<py::array_view<column_type<columns>>...>;
+
+public:
+    tuple_type m_columns;
+    std::int64_t m_ix;
+
+protected:
+    template<auto...>
+    friend class rows;
+
+    template<auto...>
+    friend class py::table;
+
+    template<auto...>
+    friend class py::table_view;
+
+    friend class iterator<remove_const_column<columns>...>;
+
+    iterator(const tuple_type& cs, std::int64_t ix) : m_columns(cs), m_ix(ix) {}
+
+    const tuple_type& column_tuple() const {
+        return m_columns;
+    }
+
+    std::int64_t ix() const {
+        return m_ix;
+    }
+
+public:
+    using difference_type = std::int64_t;
+    using value_type = row<remove_const_column<columns>...>;
+    using const_value_type = const value_type;
+    using reference = row_view<columns...>;
+    using const_reference = row<const_column<columns>...>;
+    using pointer = value_type*;
+    using iterator_category = std::random_access_iterator_tag;
+
+    // allow casts from `iterator` to `const_iterator` on `table` and `table_view`
+    operator iterator<const_column<columns>...> () const {
+        return std::apply(
+            [this](const auto&... cs) {
+                return iterator<const_column<columns>...>{std::make_tuple(cs.freeze()...),
+                                                          m_ix};
+            },
+            m_columns);
+    }
+
+    reference operator*() const {
+        return std::apply([this](auto&... cs) { return reference{&cs[m_ix]...}; },
+                          m_columns);
+    }
+
+    reference operator[](difference_type ix) const {
+        return *(*this + ix);
+    }
+
+    iterator& operator++() {
+        m_ix += 1;
+        return *this;
+    }
+
+    iterator operator++(int) {
+        iterator out = *this;
+        m_ix += 1;
+        return out;
+    }
+
+    iterator& operator+=(difference_type n) {
+        m_ix += n;
+        return *this;
+    }
+
+    iterator operator+(difference_type n) const {
+        return iterator(m_columns, m_ix + n);
+    }
+
+    iterator& operator--() {
+        m_ix -= 1;
+        return *this;
+    }
+
+    iterator operator--(int) {
+        iterator out = *this;
+        m_ix -= 1;
+        return out;
+    }
+
+    iterator& operator-=(difference_type n) {
+        m_ix -= n;
+        return *this;
+    }
+
+    difference_type operator-(const iterator& other) const {
+        return m_ix - other.m_ix;
+    }
+
+    bool operator!=(const iterator& other) const {
+        return !(m_ix == other.m_ix && m_columns == other.m_columns);
+    }
+
+    bool operator==(const iterator& other) const {
+        return m_ix == other.m_ix && m_columns == other.m_columns;
+    }
+
+    bool operator<(const iterator& other) const {
+        return m_ix < other.m_ix;
+    }
+
+    bool operator<=(const iterator& other) const {
+        return m_ix <= other.m_ix;
+    }
+
+    bool operator>(const iterator& other) const {
+        return m_ix > other.m_ix;
+    }
+
+    bool operator>=(const iterator& other) const {
+        return m_ix >= other.m_ix;
+    }
+};
+
 template<auto... columns>
 class rows {
 private:
     using tuple_type = std::tuple<py::array_view<column_type<columns>>...>;
     tuple_type m_columns;
 
-    class iterator {
-    private:
-        tuple_type m_columns;
-        std::size_t m_ix;
-
-    protected:
-        friend class rows;
-
-        iterator(const tuple_type& cs, std::size_t ix)
-            : m_columns(cs), m_ix(ix) {}
-
-    public:
-        using difference_type = std::int64_t;
-        using value_type = row<remove_const_column<columns>...>;
-        using const_value_type = const value_type;
-        using reference = row_view<columns...>;
-        using const_reference = row<const_column<columns>...>;
-        using pointer = value_type*;
-        using iterator_category = std::random_access_iterator_tag;
-
-        reference operator*() const {
-            return std::apply(
-                [this](auto&... cs) { return reference{&cs[m_ix]...}; },
-                m_columns);
-        }
-
-        reference operator[](difference_type ix) const {
-            return *(*this + ix);
-        }
-
-        iterator& operator++() {
-            m_ix += 1;
-            return *this;
-        }
-
-        iterator operator++(int) {
-            iterator out = *this;
-            m_ix += 1;
-            return out;
-        }
-
-        iterator& operator+=(difference_type n) {
-            m_ix += n;
-            return *this;
-        }
-
-        iterator operator+(difference_type n) const {
-            return iterator(m_columns, m_ix + n);
-        }
-
-        iterator& operator--() {
-            m_ix -= 1;
-            return *this;
-        }
-
-        iterator operator--(int) {
-            iterator out = *this;
-            m_ix -= 1;
-            return out;
-        }
-
-        iterator& operator-=(difference_type n) {
-            m_ix -= n;
-            return *this;
-        }
-
-        difference_type operator-(const iterator& other) const {
-            return m_ix - other.m_ix;
-        }
-
-        bool operator!=(const iterator& other) const {
-            return !(m_ix == other.m_ix && m_columns == other.m_columns);
-        }
-
-        bool operator==(const iterator& other) const {
-            return m_ix == other.m_ix && m_columns == other.m_columns;
-        }
-
-        bool operator<(const iterator& other) const {
-            return m_ix < other.m_ix;
-        }
-
-        bool operator<=(const iterator& other) const {
-            return m_ix <= other.m_ix;
-        }
-
-        bool operator>(const iterator& other) const {
-            return m_ix > other.m_ix;
-        }
-
-        bool operator>=(const iterator& other) const {
-            return m_ix >= other.m_ix;
-        }
-    };
+    using iterator = table_iter::iterator<columns...>;
 
 public:
     rows(const tuple_type& cs) : m_columns(cs) {}
@@ -575,9 +612,6 @@ public:
 };
 }  // namespace detail
 
-template<auto... columns>
-class table_view;
-
 /** A collection of named `std::vector` objects.
 
     @tparam columns A set of column specifications created by `py::C`.
@@ -594,11 +628,6 @@ private:
     using tuple_type = std::tuple<std::vector<column_type<columns>>...>;
 
     tuple_type m_columns;
-
-    template<std::size_t... ix>
-    void emplace_back(std::index_sequence<ix...>, row_type&& row) {
-        (std::get<ix>(m_columns).emplace_back(std::move(row.template get<ix>())), ...);
-    }
 
     /** Retrieve a column by name.
 
@@ -665,6 +694,75 @@ public:
         return std::get<0>(m_columns).size();
     }
 
+    /** The number of rows this table can store before resizing and invalidating iterators
+        and references.
+     */
+    std::size_t capacity() const {
+        static_assert(sizeof...(columns) > 0, "a table with no columns has no capacity");
+        // This assumes that all of our vectors will grow the same way. At least with
+        // libstdc++ this is true.
+        return std::get<0>(m_columns).capacity();
+    }
+
+    using iterator = detail::table_iter::iterator<columns...>;
+    using const_iterator = detail::table_iter::iterator<const_column<columns>...>;
+
+private:
+    /** Create a tuple of views over the columns.
+
+        @return rows view
+     */
+    auto column_views() {
+        return std::apply(
+            [](auto&... cs) {
+                return std::make_tuple(
+                    py::array_view<
+                        typename std::remove_reference_t<decltype(cs)>::value_type>(
+                        cs)...);
+            },
+            m_columns);
+    }
+
+    /** Create a tuple of views over the columns.
+
+        @return rows view
+     */
+    auto column_views() const {
+        return std::apply(
+            [](const auto&... cs) {
+                return std::make_tuple(
+                    py::array_view<
+                        const typename std::remove_reference_t<decltype(cs)>::value_type>(
+                        cs)...);
+            },
+            m_columns);
+    }
+
+public:
+    iterator begin() {
+        return iterator(column_views(), 0);
+    }
+
+    const_iterator begin() const {
+        return const_iterator(column_views(), 0);
+    }
+
+    iterator end() {
+        return iterator(column_views(), size());
+    }
+
+    const_iterator end() const {
+        return const_iterator(column_views(), size());
+    }
+
+    auto operator[](std::size_t ix) {
+        return begin()[ix];
+    }
+
+    auto operator[](std::size_t ix) const {
+        return begin()[ix];
+    }
+
     /** Retrieve a column by name.
 
         @param ColumnName `std::integer_sequence` of chars containing the column name.
@@ -696,31 +794,47 @@ public:
 
         @return rows view
      */
-    auto rows() {
-        return detail::table_iter::rows<columns...>(std::apply(
-            [](auto&... cs) {
-                return std::make_tuple(
-                    py::array_view<
-                        typename std::remove_reference_t<decltype(cs)>::value_type>(
-                        cs)...);
-            },
-            m_columns));
+    [[deprecated("rows() is now redundant, access rows from the table directly")]] auto
+    rows() {
+        return detail::table_iter::rows<columns...>(column_views());
     }
 
     /** Create a row-wise view over the table.
 
         @return rows view
      */
-    auto rows() const {
-        return detail::table_iter::rows<const_column<columns>...>(std::apply(
-            [](const auto&... cs) {
-                return std::make_tuple(
-                    py::array_view<
-                        const typename std::remove_reference_t<decltype(cs)>::value_type>(
-                        cs)...);
-            },
-            m_columns));
+    [[deprecated("rows() is now redundant, access rows from the table directly")]] auto
+    rows() const {
+        return detail::table_iter::rows<const_column<columns>...>(column_views());
     }
+
+private:
+    template<std::size_t... ix>
+    void reserve(std::index_sequence<ix...>, std::size_t new_cap) {
+        (std::get<ix>(m_columns).reserve(new_cap), ...);
+    }
+
+public:
+    /** Reserve space for up to `new_cap` rows. If `new_cap` is less than the current
+        `size()` of the table, nothing happens.
+
+        `reserve()` does not change the size of the table.
+
+        If `new_cap` is greater than `capacity()`, all iterators, including the
+        past-the-end iterator, and all references to the elements are
+        invalidated. Otherwise, no iterators or references are invalidated.
+     */
+    void reserve(std::size_t new_cap) {
+        reserve(std::make_index_sequence<sizeof...(columns)>{}, new_cap);
+    }
+
+private:
+    template<std::size_t... ix>
+    void emplace_back(std::index_sequence<ix...>, row_type&& row) {
+        (std::get<ix>(m_columns).emplace_back(std::move(row.template get<ix>())), ...);
+    }
+
+public:
 
     /** Append a row of data to the table.
 
@@ -730,6 +844,76 @@ public:
     void emplace_back(Args&&... args) {
         emplace_back(std::make_index_sequence<sizeof...(columns)>{},
                      row_type{std::forward<Args>(args)...});
+    }
+
+private:
+
+    /** Optimization for the case where we know the iterator is over a like-shaped table
+        or table view.
+
+        In this case, we call `insert` on each of the constituent vectors individually
+        instead of `insert`ing one row at a time.
+     */
+    template<std::size_t... ix>
+    iterator insert(std::index_sequence<ix...>,
+                    const_iterator pos,
+                    const_iterator first,
+                    const_iterator last) {
+        auto insert_ix = pos - begin();
+        (std::get<ix>(m_columns).insert(std::get<ix>(m_columns).begin() + insert_ix,
+                                        std::get<ix>(first.column_tuple()).begin() +
+                                            first.ix(),
+                                        std::get<ix>(first.column_tuple()).begin() +
+                                            last.ix()),
+         ...);
+        return begin() + insert_ix;
+    }
+
+    /** Like-shaped table iterators, but non-const versions. Just cast them to const and
+        forward to insert. This is needed because we have a template in this overload
+        set, otherwise the implicit conversion would kick in.
+     */
+    template<std::size_t... ix>
+    iterator insert(std::index_sequence<ix...> is,
+                    const_iterator pos,
+                    iterator first,
+                    iterator last) {
+        return insert(is,
+                      pos,
+                      static_cast<const_iterator>(first),
+                      static_cast<const_iterator>(last));
+    }
+
+    /** If we don't know what kind of iterator this is, just accumulate the result into
+        an intermediate table and then use the optimized insert.
+
+        Calling `insert()` for scalars in a loop is horrific because it will keep shifting
+        the elements to the right of it each time. Insert with iterators just shifts by
+        the size of the newly inserted slice once and then copies everything over.
+
+        More work can be done to optimize this case.
+     */
+    template<std::size_t... ix, typename I>
+    iterator insert(std::index_sequence<ix...> is, const_iterator pos, I first, I last) {
+        table intermediate;
+        intermediate.reserve(last - first);
+        for (; first != last; ++first) {
+            intermediate.emplace_back(*first);
+        }
+        return insert(is, pos, intermediate.begin(), intermediate.end());
+    }
+
+
+public:
+    /** Inserts elements from range `[first, last)` before `pos`.
+
+        @param pos The iterator to the position before which elements will be inserted.
+        @param begin The beginning of the range to insert.
+        @param end The end of the range to insert.
+     */
+    template<typename I>
+    iterator insert(const_iterator pos, I first, I last) {
+        return insert(std::make_index_sequence<sizeof...(columns)>{}, pos, first, last);
     }
 
     /** Move the structure into a Python dict of numpy arrays.
@@ -829,6 +1013,20 @@ public:
         return std::get<0>(m_columns).size();
     }
 
+    using iterator = detail::table_iter::iterator<columns...>;
+
+    iterator begin() const {
+        return {m_columns, 0};
+    }
+
+    iterator end() const {
+        return {m_columns, size()};
+    }
+
+    auto operator[](std::size_t ix) const {
+        return begin()[ix];
+    }
+
     /** Retrieve a column by name.
 
         @param ColumnName `std::integer_sequence` of chars containing the column name.
@@ -844,7 +1042,8 @@ public:
 
         @return rows view
      */
-    auto rows() const {
+    [[deprecated("rows() is now redundant, access rows from the table directly")]] auto
+    rows() const {
         return detail::table_iter::rows<columns...>(m_columns);
     }
 
