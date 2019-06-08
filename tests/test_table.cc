@@ -348,7 +348,7 @@ TEST(table, emplace_back) {
     ASSERT_EQ(table.size(), 1ul);
 
     auto test_row_0 = [&] {
-        auto row = table.rows()[0];
+        auto row = table[0];
         EXPECT_EQ(row, row);
         EXPECT_EQ(row, expected_row_0);
         EXPECT_EQ(row, row.copy());
@@ -362,7 +362,7 @@ TEST(table, emplace_back) {
     ASSERT_EQ(table.size(), 2ul);
 
     auto test_row_1 = [&] {
-        auto row = table.rows()[1];
+        auto row = table[1];
         EXPECT_EQ(row, row);
         EXPECT_EQ(row, expected_row_1);
         EXPECT_EQ(row, row.copy());
@@ -380,7 +380,7 @@ TEST(table, emplace_back) {
     ASSERT_EQ(table.size(), 3ul);
 
     auto test_row_2 = [&] {
-        auto row = table.rows()[2];
+        auto row = table[2];
         EXPECT_EQ(row, row);
         EXPECT_EQ(row, expected_row_2);
         EXPECT_EQ(row, row.copy());
@@ -399,7 +399,7 @@ TEST(table, emplace_back) {
     auto expected_row_3 = T::row_view_type(&row_3_a, &row_3_b, &row_3_c);
 
     auto test_row_3 = [&] {
-        auto row = table.rows()[3];
+        auto row = table[3];
         EXPECT_EQ(row, row);
         EXPECT_EQ(row, expected_row_3);
         EXPECT_EQ(row, row.copy());
@@ -417,7 +417,7 @@ void test_row_iter(T& table) {
     double expected_b = 1.5;
     custom_object expected_c(2);
 
-    for (auto row : table.rows()) {
+    for (auto row : table) {
         auto& a = row.get("a"_cs);
         auto& b = row.get("b"_cs);
         auto& c = row.get("c"_cs);
@@ -452,9 +452,119 @@ TEST(table, row_iter) {
     for (std::size_t ix = 0; ix < 64; ++ix) {
         table.emplace_back(std::make_tuple(++a, ++b, ++c));
     }
+    ASSERT_EQ(table.size(), 64ul);
 
     test_row_iter(table);
     test_row_iter<const T>(table);
+}
+
+TEST(table, insert) {
+    using T = py::table<py::C<std::int64_t>("a"_cs),
+                        py::C<double>("b"_cs),
+                        py::C<custom_object>("c"_cs)>;
+
+    T table;
+
+    T intermediate;
+    std::int64_t a = 0;
+    double b = 1.5;
+    custom_object c(2);
+    for (std::size_t ix = 0; ix < 64; ++ix) {
+        intermediate.emplace_back(std::make_tuple(++a, ++b, ++c));
+    }
+    ASSERT_EQ(intermediate.size(), 64ul);
+
+    table.insert(table.end(), intermediate.begin(), intermediate.end());
+    ASSERT_EQ(table.size(), intermediate.size());
+
+    for (std::size_t ix = 0; ix < 64; ++ix) {
+        EXPECT_EQ(table[ix], intermediate[ix]);
+    }
+
+    // insert into the middle a a subset of the intermedate
+    table.insert(table.begin() + 32, intermediate.begin(), intermediate.begin() + 8);
+    ASSERT_EQ(table.size(), intermediate.size() + 8);
+
+    for (std::size_t ix = 0; ix < 32; ++ix) {
+        // the first 32 elements are the same
+        EXPECT_EQ(table[ix], intermediate[ix]);
+    }
+    for (std::size_t ix = 0; ix < 8; ++ix) {
+        // the next 8 elements are repeats of the first 8 from `intermediate`
+        EXPECT_EQ(table[ix + 32], intermediate[ix]);
+    }
+    for (std::size_t ix = 32; ix < 64; ++ix) {
+        // the last 32 elements are the last 32 elements of `intermediate`
+        EXPECT_EQ(table[ix + 8], intermediate[ix]);
+    }
+
+    class row_iter {
+    private:
+        const T& m_table;
+        std::size_t m_ix;
+
+    public:
+        row_iter(const T& table, std::size_t ix) : m_table(table), m_ix(ix) {}
+
+        void operator++() {
+            ++m_ix;
+        }
+
+        std::int64_t operator-(const row_iter& other) const {
+            return m_ix - other.m_ix;
+        }
+
+        bool operator!=(const row_iter& other) const {
+            return m_ix != other.m_ix;
+        }
+
+        T::row_type operator*() const {
+            return m_table[m_ix];
+        }
+    };
+
+    row_iter begin{intermediate, 0};
+    row_iter end{intermediate, 8};
+
+    // insert from an iterator pair that doesn't come from a like-shaped table
+    table.insert(table.end(), begin, end);
+    ASSERT_EQ(table.size(), intermediate.size() + 8 + 8);
+
+    for (std::size_t ix = 0; ix < 32; ++ix) {
+        // the first 32 elements are the same
+        EXPECT_EQ(table[ix], intermediate[ix]);
+    }
+    for (std::size_t ix = 0; ix < 8; ++ix) {
+        // the next 8 elements are repeats of the first 8 from `intermediate`
+        EXPECT_EQ(table[ix + 32], intermediate[ix]);
+    }
+    for (std::size_t ix = 32; ix < 64; ++ix) {
+        // the next 32 elements are the last 32 elements of `intermediate`
+        EXPECT_EQ(table[ix + 8], intermediate[ix]);
+    }
+    for (std::size_t ix = 0; ix < 8; ++ix) {
+        // the last 8 elements are a repeat of the first 8 elements of `intermediate`
+        EXPECT_EQ(table[ix + 64 + 8], intermediate[ix]);
+    }
+}
+
+TEST(table, reserve) {
+    using T = py::table<py::C<std::int64_t>("a"_cs),
+                        py::C<double>("b"_cs),
+                        py::C<custom_object>("c"_cs)>;
+
+    T table;
+    EXPECT_EQ(table.capacity(), 0ul);
+
+    table.reserve(5);
+    EXPECT_EQ(table.capacity(), 5ul);
+
+    table.reserve(10);
+    EXPECT_EQ(table.capacity(), 10ul);
+
+    // capacity doesn't go down if reserving a smaller size
+    table.reserve(5);
+    EXPECT_EQ(table.capacity(), 10ul);
 }
 
 TEST(table_view, relabel) {
@@ -480,8 +590,8 @@ TEST(table_view, relabel) {
     ASSERT_EQ(relabeled.size(), view.size());
     ASSERT_EQ(relabeled.size(), 64ul);
     for (std::size_t ix = 0; ix < relabeled.size(); ++ix) {
-        auto base_row = view.rows()[ix];
-        auto relabeled_row = relabeled.rows()[ix];
+        auto base_row = view[ix];
+        auto relabeled_row = relabeled[ix];
 
         EXPECT_EQ(&relabeled_row.get("a-new"_cs), &base_row.get("a"_cs));
         EXPECT_EQ(&relabeled_row.get("b"_cs), &base_row.get("b"_cs));

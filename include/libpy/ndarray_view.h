@@ -430,7 +430,7 @@ public:
         @return The frozen view.
      */
     ndarray_view<const T, 1, false> freeze() const {
-        return {this->m_buffer, this->m_shape, this->m_strides};
+        return {reinterpret_cast<const T*>(this->m_buffer), this->m_shape, this->m_strides};
     }
 };
 
