@@ -598,6 +598,12 @@ public:
         return std::get<0>(m_columns).size();
     }
 
+    /** The number of rows in the table.
+     */
+    std::int64_t ssize() const {
+        return static_cast<std::int64_t>(size());
+    }
+
     iterator begin() const {
         return iterator(m_columns, 0);
     }
@@ -692,6 +698,12 @@ public:
     std::size_t size() const {
         static_assert(sizeof...(columns) > 0, "a table with no columns has no size");
         return std::get<0>(m_columns).size();
+    }
+
+    /** The number of rows in the table.
+     */
+    std::int64_t ssize() const {
+        return static_cast<std::int64_t>(size());
     }
 
     /** The number of rows this table can store before resizing and invalidating iterators
@@ -1013,6 +1025,12 @@ public:
         return std::get<0>(m_columns).size();
     }
 
+    /** The number of rows in the table.
+     */
+    std::int64_t ssize() const {
+        return static_cast<std::int64_t>(size());
+    }
+
     using iterator = detail::table_iter::iterator<columns...>;
 
     iterator begin() const {
@@ -1020,7 +1038,7 @@ public:
     }
 
     iterator end() const {
-        return {m_columns, size()};
+        return {m_columns, ssize()};
     }
 
     auto operator[](std::size_t ix) const {
