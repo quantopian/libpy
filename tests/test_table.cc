@@ -411,34 +411,6 @@ TEST(table, emplace_back) {
     test_row_3();
 }
 
-template<typename T>
-void test_row_iter(T& table) {
-    std::int64_t expected_a = 0;
-    double expected_b = 1.5;
-    custom_object expected_c(2);
-
-    for (auto row : table) {
-        auto& a = row.get("a"_cs);
-        auto& b = row.get("b"_cs);
-        auto& c = row.get("c"_cs);
-
-        if constexpr (std::is_const_v<T>) {
-            testing::StaticAssertTypeEq<decltype(a), const std::int64_t&>();
-            testing::StaticAssertTypeEq<decltype(b), const double&>();
-            testing::StaticAssertTypeEq<decltype(c), const custom_object&>();
-        }
-        else {
-            testing::StaticAssertTypeEq<decltype(a), std::int64_t&>();
-            testing::StaticAssertTypeEq<decltype(b), double&>();
-            testing::StaticAssertTypeEq<decltype(c), custom_object&>();
-        }
-
-        EXPECT_EQ(a, ++expected_a);
-        EXPECT_EQ(b, ++expected_b);
-        EXPECT_EQ(c, ++expected_c);
-    }
-}
-
 TEST(table, row_iter) {
     using T = py::table<py::C<std::int64_t>("a"_cs),
                         py::C<double>("b"_cs),
@@ -454,8 +426,99 @@ TEST(table, row_iter) {
     }
     ASSERT_EQ(table.size(), 64ul);
 
-    test_row_iter(table);
-    test_row_iter<const T>(table);
+    bool checked_non_const = false;
+    bool checked_const = false;
+
+    auto check = [&](auto& table) {
+        std::int64_t expected_a = 0;
+        double expected_b = 1.5;
+        custom_object expected_c(2);
+
+        for (auto row : table) {
+            auto& a = row.get("a"_cs);
+            auto& b = row.get("b"_cs);
+            auto& c = row.get("c"_cs);
+
+            if constexpr (std::is_const_v<std::remove_reference_t<decltype(table)>>) {
+                checked_const = true;
+                testing::StaticAssertTypeEq<decltype(a), const std::int64_t&>();
+                testing::StaticAssertTypeEq<decltype(b), const double&>();
+                testing::StaticAssertTypeEq<decltype(c), const custom_object&>();
+            }
+            else {
+                checked_non_const = true;
+                testing::StaticAssertTypeEq<decltype(a), std::int64_t&>();
+                testing::StaticAssertTypeEq<decltype(b), double&>();
+                testing::StaticAssertTypeEq<decltype(c), custom_object&>();
+            }
+
+            EXPECT_EQ(a, ++expected_a);
+            EXPECT_EQ(b, ++expected_b);
+            EXPECT_EQ(c, ++expected_c);
+        }
+    };
+
+    check(table);
+    EXPECT_TRUE(checked_non_const);
+
+    check(const_cast<const T&>(table));
+    EXPECT_TRUE(checked_const);
+}
+
+TEST(table_view, row_iter) {
+    using T = py::table<py::C<std::int64_t>("a"_cs),
+                        py::C<double>("b"_cs),
+                        py::C<custom_object>("c"_cs)>;
+
+    T table;
+
+    std::int64_t a = 0;
+    double b = 1.5;
+    custom_object c(2);
+    for (std::size_t ix = 0; ix < 64; ++ix) {
+        table.emplace_back(std::make_tuple(++a, ++b, ++c));
+    }
+    ASSERT_EQ(table.size(), 64ul);
+
+    bool checked_non_const = false;
+    bool checked_const = false;
+
+    auto check = [&](auto& table_view) {
+        std::int64_t expected_a = 0;
+        double expected_b = 1.5;
+        custom_object expected_c(2);
+
+        for (auto row : table_view) {
+            auto& a = row.get("a"_cs);
+            auto& b = row.get("b"_cs);
+            auto& c = row.get("c"_cs);
+
+            if (std::is_const_v<std::remove_reference_t<decltype(table_view)>>) {
+                checked_const = true;
+            }
+            else {
+                checked_non_const = true;
+            }
+
+            // both const and non-const table_views present a mutable interface to the
+            // data
+            testing::StaticAssertTypeEq<decltype(a), std::int64_t&>();
+            testing::StaticAssertTypeEq<decltype(b), double&>();
+            testing::StaticAssertTypeEq<decltype(c), custom_object&>();
+
+            EXPECT_EQ(a, ++expected_a);
+            EXPECT_EQ(b, ++expected_b);
+            EXPECT_EQ(c, ++expected_c);
+        }
+    };
+
+    T::view_type view(table);
+
+    check(view);
+    EXPECT_TRUE(checked_non_const);
+
+    check(const_cast<const T::view_type&>(view));
+    EXPECT_TRUE(checked_const);
 }
 
 TEST(table, insert) {
@@ -481,7 +544,7 @@ TEST(table, insert) {
         EXPECT_EQ(table[ix], intermediate[ix]);
     }
 
-    // insert into the middle a a subset of the intermedate
+    // insert into the middle of a subset of the intermedate
     table.insert(table.begin() + 32, intermediate.begin(), intermediate.begin() + 8);
     ASSERT_EQ(table.size(), intermediate.size() + 8);
 
