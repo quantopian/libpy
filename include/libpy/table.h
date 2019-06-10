@@ -465,7 +465,7 @@ protected:
 
 public:
     tuple_type m_columns;
-    std::int64_t m_ix;
+    std::intptr_t m_ix;
 
 protected:
     template<auto...>
@@ -479,18 +479,18 @@ protected:
 
     friend class iterator<remove_const_column<columns>...>;
 
-    iterator(const tuple_type& cs, std::int64_t ix) : m_columns(cs), m_ix(ix) {}
+    iterator(const tuple_type& cs, std::intptr_t ix) : m_columns(cs), m_ix(ix) {}
 
     const tuple_type& column_tuple() const {
         return m_columns;
     }
 
-    std::int64_t ix() const {
+    std::intptr_t ix() const {
         return m_ix;
     }
 
 public:
-    using difference_type = std::int64_t;
+    using difference_type = std::ptrdiff_t;
     using value_type = row<remove_const_column<columns>...>;
     using const_value_type = const value_type;
     using reference = row_view<columns...>;
@@ -600,16 +600,16 @@ public:
 
     /** The number of rows in the table.
      */
-    std::int64_t ssize() const {
-        return static_cast<std::int64_t>(size());
+    std::ptrdiff_t ssize() const {
+        return static_cast<std::ptrdiff_t>(size());
     }
 
     iterator begin() const {
-        return iterator(m_columns, 0);
+        return {m_columns, 0};
     }
 
     iterator end() const {
-        return iterator(m_columns, size());
+        return {m_columns, ssize()};
     }
 
     auto operator[](std::size_t ix) const {
@@ -702,8 +702,8 @@ public:
 
     /** The number of rows in the table.
      */
-    std::int64_t ssize() const {
-        return static_cast<std::int64_t>(size());
+    std::ptrdiff_t ssize() const {
+        return static_cast<std::ptrdiff_t>(size());
     }
 
     /** The number of rows this table can store before resizing and invalidating iterators
@@ -752,19 +752,19 @@ private:
 
 public:
     iterator begin() {
-        return iterator(column_views(), 0);
+        return {column_views(), 0};
     }
 
     const_iterator begin() const {
-        return const_iterator(column_views(), 0);
+        return {column_views(), 0};
     }
 
     iterator end() {
-        return iterator(column_views(), size());
+        return {column_views(), ssize()};
     }
 
     const_iterator end() const {
-        return const_iterator(column_views(), size());
+        return {column_views(), ssize()};
     }
 
     auto operator[](std::size_t ix) {
@@ -1027,8 +1027,8 @@ public:
 
     /** The number of rows in the table.
      */
-    std::int64_t ssize() const {
-        return static_cast<std::int64_t>(size());
+    std::ptrdiff_t ssize() const {
+        return static_cast<std::ptrdiff_t>(size());
     }
 
     using iterator = detail::table_iter::iterator<columns...>;
