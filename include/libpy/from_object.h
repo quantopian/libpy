@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <typeindex>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -16,26 +17,16 @@
 #include <Python.h>
 
 #include "libpy/demangle.h"
+#include "libpy/detail/autoclass_cache.h"
 #include "libpy/dict_range.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"
 
 namespace py {
-namespace dispatch {
-/** Dispatch struct for defining overrides for `py::from_object`.
-
-    To add a new dispatch, add an explicit template specialization for the type
-    to convert with a static member function `f` which accepts `PyObject*` and returns
-    a new object of type `T`.
- */
-template<typename T>
-struct from_object;
-}  // namespace dispatch
-
 /** Exception raised when an invalid `py::from_object` call is performed.
  */
-class invalid_conversion : public std::exception {
+class invalid_conversion : public py::exception {
 private:
     std::string m_msg;
 
@@ -65,6 +56,17 @@ public:
     }
 };
 
+namespace dispatch {
+/** Dispatch struct for defining overrides for `py::from_object`.
+
+    To add a new dispatch, add an explicit template specialization for the type
+    to convert with a static member function `f` which accepts `PyObject*` and returns
+    a new object of type `T`.
+ */
+template<typename T>
+struct from_object;
+}  // namespace dispatch
+
 /** Convert a C++ object into a Python object recursively.
 
     @param ob The object to convert
@@ -72,7 +74,7 @@ public:
     @see py::dispatch::from_object
  */
 template<typename T>
-T from_object(PyObject* ob) {
+decltype(auto) from_object(PyObject* ob) {
     return dispatch::from_object<T>::f(ob);
 }
 
@@ -84,11 +86,69 @@ T from_object(PyObject* ob) {
     @see py::dispatch::from_object
  */
 template<typename T, typename U>
-T from_object(const scoped_ref<U>& ob) {
-    return dispatch::from_object<T>::f(static_cast<PyObject*>(ob));
+decltype(auto) from_object(const scoped_ref<U>& ob) {
+    return dispatch::from_object<T>::f(ob.get());
 }
 
+namespace detail {
+template<typename T>
+struct has_from_object {
+private:
+    template<typename U>
+    static decltype(py::dispatch::from_object<U>::f(std::declval<PyObject*>()),
+                    std::true_type{})
+    test(int);
+
+    template<typename>
+    static std::false_type test(long);
+
+public:
+    static constexpr bool value = std::is_same_v<decltype(test<T>(0)), std::true_type>;
+};
+}  // namespace detail
+
+/** Compile time boolean to detect if `from_object` works for a given type. This exists to
+    make it easier to use `if constexpr` to test this condition instead of using more
+    complicated SFINAE.
+ */
+template<typename T>
+constexpr bool has_from_object = detail::has_from_object<T>::value;
+
 namespace dispatch {
+
+#if PY_MAJOR_VERSION != 2
+// this dispatch depends on `autoclass` which is only available for Python 3.
+template<typename T>
+struct from_object<T&> {
+private:
+    static constexpr bool specialized = std::is_const_v<T> &&
+                                        py::has_from_object<std::remove_const_t<T>> &&
+                                        !py::has_from_object<T>;
+
+public:
+    static decltype(auto) f(PyObject* ob) {
+        if constexpr (specialized) {
+            return py::from_object<std::remove_const_t<T>>(ob);
+        }
+        else {
+            auto search = py::detail::autoclass_type_cache.find(
+                typeid(std::remove_const_t<T>));
+            if (search == py::detail::autoclass_type_cache.end()) {
+                throw invalid_conversion::make<T&>(ob);
+            }
+
+            struct object {
+                PyObject base;
+                T cxx_ob;
+            };
+            // NOTE: the parentheses change the behavior of `decltype(auto)` to make this
+            // resolve to a return type of `T&` instead of `T`
+            return (reinterpret_cast<object*>(ob)->cxx_ob);
+        }
+    }
+};
+#endif
+
 template<std::size_t n>
 struct from_object<std::array<char, n>> {
     static std::array<char, n> f(PyObject* cs) {
@@ -176,6 +236,16 @@ struct from_object<std::string> {
     }
 };
 
+template<>
+struct from_object<bool> {
+    static bool f(PyObject* value) {
+        if (!PyBool_Check(value)) {
+            throw invalid_conversion::make<bool>(value);
+        }
+        return value == Py_True;
+    }
+};
+
 namespace detail {
 template<typename T>
 struct int_from_object {
@@ -233,8 +303,7 @@ public:
 }  // namespace detail
 
 template<>
-struct from_object<signed long long> : public detail::int_from_object<signed long long> {
-};
+struct from_object<long long> : public detail::int_from_object<long long> {};
 
 template<>
 struct from_object<signed long> : public detail::int_from_object<signed long> {};
@@ -270,6 +339,17 @@ struct from_object<double> {
         double out = PyFloat_AsDouble(value);
         if (out == -1.0 && PyErr_Occurred()) {
             throw invalid_conversion::make<double>(value);
+        }
+        return out;
+    }
+};
+
+template<>
+struct from_object<float> {
+    static float f(PyObject* value) {
+        float out = PyFloat_AsDouble(value);
+        if (out == -1.0 && PyErr_Occurred()) {
+            throw invalid_conversion::make<float>(value);
         }
         return out;
     }

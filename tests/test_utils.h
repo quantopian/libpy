@@ -11,6 +11,20 @@
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"
 
+inline void expect_pyerr_type_and_message(PyObject* ptype, std::string_view pmsg) {
+    ASSERT_TRUE(PyErr_Occurred()) << "no exception was thrown";
+    EXPECT_TRUE(PyErr_ExceptionMatches(ptype));
+
+    PyObject *type, *value, *traceback;
+    PyErr_Fetch(&type, &value, &traceback);
+    PyErr_Restore(type, value, traceback);
+
+    py::scoped_ref py_msg(PyObject_Str(value));
+    ASSERT_TRUE(py_msg);
+    std::string_view c_msg = py::util::pystring_to_string_view(py_msg);
+    EXPECT_EQ(c_msg, pmsg);
+}
+
 inline std::string format_current_python_exception() {
     PyObject* exc[3];
     PyErr_Fetch(&exc[0], &exc[1], &exc[2]);
@@ -42,7 +56,7 @@ inline std::string format_current_python_exception() {
 
 class with_python_interpreter : public testing::Test {
 public:
-    inline static void SetUpTestCase() {
+    virtual void SetUp() override {
         py::scoped_ref sys(PyImport_ImportModule("sys"));
         if (!sys) {
             throw py::exception();
@@ -67,7 +81,7 @@ public:
         }
     }
 
-    virtual void TearDown() {
+    virtual void TearDown() override {
         EXPECT_FALSE(PyErr_Occurred()) << format_current_python_exception();
         PyErr_Clear();
     }

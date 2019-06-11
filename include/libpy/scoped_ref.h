@@ -75,7 +75,7 @@ public:
         @return The pointer managed by this `scoped_ref`.
         @see escape
      */
-    T* get() const {
+    constexpr T* get() const {
         return m_ref;
     }
 

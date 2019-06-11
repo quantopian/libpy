@@ -81,7 +81,7 @@ inline __attribute__((always_inline)) void do_not_optimize(T& value) {
 }
 
 /** Find lower bound index for needle within contianer.
-*/
+ */
 template<typename C, typename T>
 std::int64_t searchsorted_l(const C& container, const T& needle) {
     auto begin = container.begin();
@@ -89,7 +89,7 @@ std::int64_t searchsorted_l(const C& container, const T& needle) {
 }
 
 /** Find upper bound index for needle within container.
-*/
+ */
 template<typename C, typename T>
 std::int64_t searchsorted_r(const C& container, const T& needle) {
     auto begin = container.begin();

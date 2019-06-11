@@ -89,6 +89,13 @@ struct to_object<std::array<char, n>> {
     }
 };
 
+template<>
+struct to_object<char> {
+    static PyObject* f(char c) {
+        return PyBytes_FromStringAndSize(&c, 1);
+    }
+};
+
 template<typename T, std::size_t n>
 struct to_object<std::array<T, n>> {
     static PyObject* f(const std::array<T, n>& v) {
