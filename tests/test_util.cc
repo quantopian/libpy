@@ -15,7 +15,7 @@ TEST(searchsorted_left, all) {
     EXPECT_EQ(py::util::searchsorted_l(vec, 3), 2);
 
     // needle greater than largest value in container.
-    EXPECT_EQ(py::util::searchsorted_l(vec, 42), vec.size());
+    EXPECT_EQ(py::util::searchsorted_l(vec, 42), static_cast<std::int64_t>(vec.size()));
 
     // needle less than smallest value in container.
     EXPECT_EQ(py::util::searchsorted_l(vec, -1), 0);
@@ -37,13 +37,13 @@ TEST(searchsorted_right, all) {
     EXPECT_EQ(py::util::searchsorted_r(vec, 3), 3);
 
     // needle greater than largest value in container.
-    EXPECT_EQ(py::util::searchsorted_r(vec, 42), vec.size());
+    EXPECT_EQ(py::util::searchsorted_r(vec, 42), static_cast<std::int64_t>(vec.size()));
 
     // needle less than smallest value in container.
     EXPECT_EQ(py::util::searchsorted_r(vec, -1), 0);
 
     // needle equal to largest value in container.
-    EXPECT_EQ(py::util::searchsorted_r(vec, 6), vec.size());
+    EXPECT_EQ(py::util::searchsorted_r(vec, 6), static_cast<std::int64_t>(vec.size()));
 
     // needle equal to smallest value in container.
     EXPECT_EQ(py::util::searchsorted_r(vec, 1), 1);
