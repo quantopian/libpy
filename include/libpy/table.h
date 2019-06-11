@@ -499,7 +499,7 @@ public:
     using iterator_category = std::random_access_iterator_tag;
 
     // allow casts from `iterator` to `const_iterator` on `table` and `table_view`
-    operator iterator<const_column<columns>...> () const {
+    operator iterator<const_column<columns>...>() const {
         return std::apply(
             [this](const auto&... cs) {
                 return iterator<const_column<columns>...>{std::make_tuple(cs.freeze()...),
@@ -847,7 +847,6 @@ private:
     }
 
 public:
-
     /** Append a row of data to the table.
 
         @param args Arguments to forward to the `row_type` constructor.
@@ -859,7 +858,6 @@ public:
     }
 
 private:
-
     /** Optimization for the case where we know the iterator is over a like-shaped table
         or table view.
 
@@ -914,7 +912,6 @@ private:
         }
         return insert(is, pos, intermediate.begin(), intermediate.end());
     }
-
 
 public:
     /** Inserts elements from range `[first, last)` before `pos`.

@@ -3,6 +3,10 @@
 
 PYTHON ?= python
 
+MAJOR_VERSION := 1
+MINOR_VERSION := 0
+MICRO_VERSION := 0
+
 CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
 GTEST_BREAK ?= 1
@@ -12,6 +16,11 @@ MAX_ERRORS ?= 15
 # This uses = instead of := so that you we can conditionally change OPTLEVEL below.
 CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL) -Wno-register -fmax-errors=$(MAX_ERRORS)
 LDFLAGS := $(shell $(PYTHON)-config --ldflags)
+
+ifneq ($(OPTLEVEL),0)
+	CXXFLAGS += -flto
+	LDFLAGS += -flto
+endif
 
 # Set this to 1 if you want to build with gcov support
 COVERAGE ?= 0
@@ -25,7 +34,8 @@ INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) \
 	$(shell $(PYTHON)-config --includes) \
 	-I $(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
 LIBRARY := py
-
+SHORT_SONAME := lib$(LIBRARY).so
+SONAME := $(SHORT_SONAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(MICRO_VERSION)
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
 	SONAME_FLAG := install_name
@@ -148,7 +158,7 @@ tests/%.o: tests/%.cc .compiler_flags
 
 $(TESTRUNNER): gtest.a $(TEST_OBJECTS) $(SONAME)
 	$(CXX) -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-		-lpthread -L. $(LDFLAGS)
+		-lpthread -L. -l$(LIBRARY) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .compiler_flags
 	$(CXX) $(CXXFLAGS) -I $(GTEST_DIR) -I $(GTEST_DIR)/include -c \
