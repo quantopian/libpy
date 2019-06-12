@@ -14,7 +14,8 @@ GTEST_BREAK ?= 1
 OPTLEVEL ?= 3
 MAX_ERRORS ?= 15
 # This uses = instead of := so that you we can conditionally change OPTLEVEL below.
-CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -Wall -Wextra -g -O$(OPTLEVEL) -Wno-register -fmax-errors=$(MAX_ERRORS)
+CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 \
+	-Wall -Wextra -g -O$(OPTLEVEL) -Wno-register -fmax-errors=$(MAX_ERRORS)
 LDFLAGS := $(shell $(PYTHON)-config --ldflags)
 
 ifneq ($(OPTLEVEL),0)
@@ -33,8 +34,10 @@ INCLUDE_DIRS := include/
 INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) \
 	$(shell $(PYTHON)-config --includes) \
 	-I $(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
+
+SO_SUFFIX := $(shell $(PYTHON) etc/ext_suffix.py)
 LIBRARY := py
-SHORT_SONAME := lib$(LIBRARY).so
+SHORT_SONAME := lib$(LIBRARY)$(SO_SUFFIX)
 SONAME := $(SHORT_SONAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(MICRO_VERSION)
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
@@ -158,7 +161,7 @@ tests/%.o: tests/%.cc .compiler_flags
 
 $(TESTRUNNER): gtest.a $(TEST_OBJECTS) $(SONAME)
 	$(CXX) -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-		-lpthread -L. -l$(LIBRARY) $(LDFLAGS)
+		-lpthread -L. -l:$(SHORT_SONAME) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .compiler_flags
 	$(CXX) $(CXXFLAGS) -I $(GTEST_DIR) -I $(GTEST_DIR)/include -c \
