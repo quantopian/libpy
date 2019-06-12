@@ -106,8 +106,6 @@ struct dense_hash_set : public google::dense_hash_set<Key, HashFcn, EqualKey, Al
 private:
     using base = google::dense_hash_set<Key, HashFcn, EqualKey, Alloc>;
 
-    using base::dense_hash_set;
-
 public:
     dense_hash_set() = delete;  // User must give a missing value.
 
