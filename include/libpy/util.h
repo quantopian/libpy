@@ -81,7 +81,7 @@ inline __attribute__((always_inline)) void do_not_optimize(T& value) {
 }
 
 /** Find lower bound index for needle within contianer.
-*/
+ */
 template<typename C, typename T>
 std::int64_t searchsorted_l(const C& container, const T& needle) {
     auto begin = container.begin();
@@ -89,10 +89,43 @@ std::int64_t searchsorted_l(const C& container, const T& needle) {
 }
 
 /** Find upper bound index for needle within container.
-*/
+ */
 template<typename C, typename T>
 std::int64_t searchsorted_r(const C& container, const T& needle) {
     auto begin = container.begin();
     return std::upper_bound(begin, container.end(), needle) - begin;
+}
+
+/** Call `f` with value, start and stop (exclusive) indices for each contiguous region in
+    `it` of equal value.
+ */
+template<typename I, typename F>
+void apply_to_groups(I begin, I end, F&& f) {
+    if (begin == end) {
+        return;
+    }
+
+    std::size_t start_ix = 0;
+    auto previous = *begin;
+    ++begin;
+
+    std::size_t ix = 1;
+    for (; begin != end; ++begin, ++ix) {
+        auto value = *begin;
+        if (value == previous) {
+            continue;
+        }
+
+        f(previous, start_ix, ix);
+        start_ix = ix;
+        previous = value;
+    }
+
+    f(previous, start_ix, ix);
+}
+
+template<typename R, typename F>
+void apply_to_groups(R&& range, F&& f) {
+    apply_to_groups(range.begin(), range.end(), f);
 }
 }  // namespace py::util
