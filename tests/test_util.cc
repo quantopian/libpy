@@ -85,6 +85,15 @@ protected:
                                                 std::make_tuple(2, 2, 5),
                                                 std::make_tuple(3, 5, 6),
                                                 std::make_tuple(4, 6, 8)}));
+
+        // case 7: non-sorted sequence with multiple unique values
+        test_cases.emplace_back(std::vector<std::int64_t>({1, 1, 3, 4, 4, 7, 2, 2, 1}),
+                                std::vector<t>({std::make_tuple(1, 0, 2),
+                                                std::make_tuple(3, 2, 3),
+                                                std::make_tuple(4, 3, 5),
+                                                std::make_tuple(7, 5, 6),
+                                                std::make_tuple(2, 6, 8),
+                                                std::make_tuple(1, 8, 9)}));
     }
 };
 
