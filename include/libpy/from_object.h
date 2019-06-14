@@ -11,6 +11,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <Python.h>
@@ -353,6 +354,15 @@ public:
         }
 
         return fill_tuple(tup, std::index_sequence_for<Ts...>{});
+    }
+};
+
+template<typename T, typename U>
+struct from_object<std::pair<T, U>> {
+public:
+    static std::pair<T, U> f(PyObject* tup) {
+        std::tuple<T, U> tmp = from_object<std::tuple<T, U>>(tup);
+        return std::make_pair(std::get<0>(tmp), std::get<1>(tmp));
     }
 };
 
