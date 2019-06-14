@@ -171,7 +171,7 @@ protected:
 private:
     /** Mark the end of slots.
      */
-    void finilize_slots() {
+    void finalize_slots() {
         m_slots.push_back(PyType_Slot{0, nullptr});
     }
 
@@ -856,7 +856,7 @@ public:
         auto& storage = detail::autoclass_storage_cache.emplace_back(
             detail::autoclass_storage{std::move(m_methods), std::move(m_name)});
         add_slot(Py_tp_methods, storage.methods.data());
-        finilize_slots();
+        finalize_slots();
 
         m_spec.name = storage.name.data();
         m_spec.slots = m_slots.data();
