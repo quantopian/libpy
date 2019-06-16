@@ -11,28 +11,17 @@
 #include "libpy/automethod.h"
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
+#include "libpy/detail/autoclass_object.h"
 
 namespace py {
 template<typename T>
 class autoclass {
 public:
-    /** The actual type of the Python objects that box a `T`.
-     */
-    struct object {
-        PyObject base;
-        T cxx_ob;
-    };
+    using object = detail::autoclass_object<T>;
 
-    static T& unbox(PyObject* self) {
-        return reinterpret_cast<object*>(self)->cxx_ob;
-    }
-
-    static T& unbox(const scoped_ref<>& self) {
-        return unbox(self.get());
-    }
-
-    static T& unbox(const scoped_ref<object>& self) {
-        return unbox(reinterpret_cast<PyObject*>(self.get()));
+    template<typename U>
+    static T& unbox(const U& ptr) {
+        return object::unbox(ptr);
     }
 
 private:
@@ -41,6 +30,10 @@ private:
     std::vector<PyType_Slot> m_slots;
     scoped_ref<> m_type = nullptr;
     std::vector<PyMethodDef> m_methods;
+
+    bool have_gc() const {
+        return m_spec.flags & Py_TPFLAGS_HAVE_GC;
+    }
 
     /** Helper for adapting a member function of `T` into a Python method.
      */
@@ -111,36 +104,6 @@ private:
     struct member_function<R(const T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
-    /** Helper for adapting a function which constructs a `T` into a Python `__new__`
-        implementation.
-     */
-    template<typename F, auto impl>
-    struct new_impl;
-
-    template<typename R, typename... Args, auto impl>
-    struct new_impl<R(Args...), impl> {
-        static PyObject* f(PyTypeObject* cls, Args... args) {
-            py::scoped_ref self(PyObject_New(object, cls));
-            if (!self) {
-                return nullptr;
-            }
-            new (&self->cxx_ob) T(impl(std::forward<Args>(args)...));
-            return reinterpret_cast<PyObject*>(std::move(self).escape());
-        }
-    };
-
-    /** Function which will be used to expose one of `T`'s constructors as the `__new__`.
-     */
-    template<typename... ConstructorArgs>
-    static PyObject* autonew_impl(PyTypeObject* cls, ConstructorArgs... args) {
-        py::scoped_ref self(PyObject_New(object, cls));
-        if (!self) {
-            return nullptr;
-        }
-        new (&self->cxx_ob) T(std::forward<ConstructorArgs>(args)...);
-        return reinterpret_cast<PyObject*>(std::move(self).escape());
-    }
-
     /** Assert that `m_type` isn't yet initialized. Many operations like adding methods
         will not have any affect after the type is initialized.
 
@@ -176,7 +139,20 @@ private:
     }
 
 public:
-    autoclass(const std::string_view& name, int extra_flags = 0u)
+    /** Look up an already created type.
+
+        @return The already created type, or `nullptr` if the type wasn't yet created.
+     */
+    static py::scoped_ref<> lookup_type() {
+        auto type_search = detail::autoclass_type_cache.find(typeid(T));
+        if (type_search != detail::autoclass_type_cache.end()) {
+            return type_search->second;
+        }
+        return nullptr;
+
+    }
+
+    autoclass(const std::string_view& name, int extra_flags = 0)
         : m_name(name),
           m_spec({nullptr,
                   static_cast<int>(sizeof(object)),
@@ -185,17 +161,27 @@ public:
                   nullptr}) {
         auto type_search = detail::autoclass_type_cache.find(typeid(T));
         if (type_search != detail::autoclass_type_cache.end()) {
-            // the type was already constructed
-            m_type = type_search->second;
+            throw std::runtime_error{"type was already created"};
+        }
+
+        void (*dealloc)(PyObject*);
+        if (have_gc()) {
+            dealloc = [](PyObject* self) {
+                PyObject_GC_UnTrack(self);
+                unbox(self).~T();
+                PyObject_GC_Del(self);
+            };
         }
         else {
-            void (*dealloc)(PyObject*) = [](PyObject* self) {
-                reinterpret_cast<object*>(self)->cxx_ob.~T();
+            dealloc = [](PyObject* self) {
+                unbox(self).~T();
                 PyObject_Del(self);
             };
-            add_slot(Py_tp_dealloc, dealloc);
         }
+        add_slot(Py_tp_dealloc, dealloc);
     }
+
+    autoclass(int extra_flags = 0) : autoclass(util::type_name<T>().get(), extra_flags) {}
 
     /** Add a docstring to this class.
 
@@ -207,6 +193,61 @@ public:
         return add_slot(Py_tp_doc, doc);
     }
 
+private:
+
+        /** Helper for adapting a function which constructs a `T` into a Python `__new__`
+        implementation.
+     */
+    template<bool have_gc, typename F, auto impl>
+    struct free_func_new_impl;
+
+    template<bool have_gc, typename R, typename... Args, auto impl>
+    struct free_func_new_impl<have_gc, R(Args...), impl> {
+        static PyObject* f(PyTypeObject* cls, Args... args) {
+            py::scoped_ref<object> self;
+            if (have_gc) {
+                self = py::scoped_ref(PyObject_GC_New(object, cls));
+            }
+            else {
+                self = py::scoped_ref(PyObject_New(object, cls));
+            }
+            if (!self) {
+                return nullptr;
+            }
+            new (&self->cxx_ob) T(impl(std::forward<Args>(args)...));
+
+            if (have_gc) {
+                PyObject_GC_Track(self.get());
+            }
+            return reinterpret_cast<PyObject*>(std::move(self).escape());
+        }
+    };
+
+    /** Function which will be used to expose one of `T`'s constructors as the `__new__`.
+     */
+    template<bool have_gc, typename... ConstructorArgs>
+    static PyObject* constructor_new_impl(PyTypeObject* cls, ConstructorArgs... args) {
+        py::scoped_ref<object> self;
+        if (have_gc) {
+            self = py::scoped_ref(PyObject_GC_New(object, cls));
+        }
+        else {
+            self = py::scoped_ref(PyObject_New(object, cls));
+        }
+
+        if (!self) {
+            return nullptr;
+        }
+        new (&self->cxx_ob) T(std::forward<ConstructorArgs>(args)...);
+
+        if (have_gc) {
+            PyObject_GC_Track(self.get());
+        }
+        return reinterpret_cast<PyObject*>(std::move(self).escape());
+    }
+
+public:
+
     /** Add a `__new__` function to this class.
 
         @tparam impl A function which returns a value which can be used to construct a
@@ -216,14 +257,39 @@ public:
     template<auto impl>
     autoclass& new_() {
         require_uninitialized("cannot add __new__ after the class has been created");
-        return add_slot(Py_tp_new, wrap_new<new_impl<decltype(impl), impl>::f>);
+
+        PyObject* (*new_)(PyTypeObject*, PyObject*, PyObject*);
+        if (m_spec.flags & Py_TPFLAGS_HAVE_GC) {
+            new_ = wrap_new<free_func_new_impl<true, decltype(impl), impl>::f>;
+        }
+        else {
+            new_ = wrap_new<free_func_new_impl<false, decltype(impl), impl>::f>;
+        }
+        return add_slot(Py_tp_new, new_);
+    }
+
+    /** Add a `__new__` function to this class by adapting one of the constructors of `T`.
+
+        @tparam ConstructorArgs The C++ signature of the constructor to use.
+        @return *this.
+     */
+    template<typename... ConstructorArgs>
+    autoclass& new_() {
+        require_uninitialized("cannot add __new__ after the class has been created");
+
+        PyObject* (*new_)(PyTypeObject*, PyObject*, PyObject*);
+        if (have_gc()) {
+            new_ = wrap_new<constructor_new_impl<true, ConstructorArgs...>>;
+        }
+        else {
+            new_ = wrap_new<constructor_new_impl<false, ConstructorArgs...>>;
+        }
+        return add_slot(Py_tp_new, new_);
     }
 
 private:
-    template<typename U,
-             typename =
-                 std::void_t<decltype(static_cast<Py_ssize_t>(std::declval<U>().size()))>>
-    lenfunc get_length_func(int) {
+    template<typename U>
+    lenfunc get_length_func() {
         return [](PyObject* self) -> Py_ssize_t {
             try {
                 return static_cast<Py_ssize_t>(unbox(self).size());
@@ -235,28 +301,24 @@ private:
         };
     }
 
+    template<typename U,
+             typename =
+                 std::void_t<decltype(static_cast<Py_ssize_t>(std::declval<U>().size()))>>
+    lenfunc maybe_get_length_func(int) {
+        return get_length_func<U>();
+    }
+
     template<typename>
-    lenfunc get_length_func(long) {
+    lenfunc maybe_get_length_func(long) {
         return nullptr;
     }
 
 public:
     /** Add a `__len__` method from `T::size()`
      */
-    autoclass& size() {
+    autoclass& len() {
         require_uninitialized("cannot add size method after the class has been created");
-        return add_slot(Py_mp_length, get_length_func<T>(0));
-    }
-
-    /** Add a `__new__` function to this class by adapting one of the constructors of `T`.
-
-        @tparam ConstructorArgs The C++ signature of the constructor to use.
-        @return *this.
-     */
-    template<typename... ConstructorArgs>
-    autoclass& new_() {
-        require_uninitialized("cannot add __new__ after the class has been created");
-        return add_slot(Py_tp_new, wrap_new<autonew_impl<ConstructorArgs...>>);
+        return add_slot(Py_mp_length, get_length_func<T>());
     }
 
 private:
@@ -343,13 +405,14 @@ private:
         return [](PyObject* self, PyObject* other) -> PyObject* {                        \
             try {                                                                        \
                 if (meta::element_of<T, valid_rhs> && Py_TYPE(self) == Py_TYPE(other)) { \
-                    return py::to_object(unbox(self) op unbox(other)).escape();          \
+                    return py::to_object(unbox(self) op unbox(other))    \
+                        .escape();                                                       \
                 }                                                                        \
                 else {                                                                   \
                     using rhs_without_T = meta::set_diff<valid_rhs, std::tuple<T>>;      \
                     return search_binop_implementations<rhs_without_T>(                  \
                         [](auto& a, const auto& b) { return a op b; },                   \
-                        unbox(self),                                                     \
+                        unbox(self),                                             \
                         other);                                                          \
                 }                                                                        \
             }                                                                            \
@@ -477,7 +540,7 @@ private:
     unaryfunc get_##name##_func(int) {                                                   \
         return [](PyObject* self) -> PyObject* {                                         \
             try {                                                                        \
-                return py::to_object(op unbox(self)).escape();                           \
+                return py::to_object(op unbox(self)).escape();                   \
             }                                                                            \
             catch (const std::exception& e) {                                            \
                 return raise_from_cxx_exception(e);                                      \
@@ -518,7 +581,7 @@ private:
     unaryfunc get_convert_##name##_func(int) {                                           \
         return [](PyObject* self) -> PyObject* {                                         \
             try {                                                                        \
-                return py::to_object(static_cast<type>(unbox(self))).escape();           \
+                return py::to_object(static_cast<type>(unbox(self))).escape();   \
             }                                                                            \
             catch (const std::exception& e) {                                            \
                 return raise_from_cxx_exception(e);                                      \
@@ -570,24 +633,18 @@ public:
     }
 
 private:
-    template<typename U,
-             typename KeyType,
-             typename = std::void_t<decltype(std::declval<U>()[std::declval<KeyType>()])>>
-    binaryfunc get_getitem_func(int) {
+    template<typename U, typename KeyType>
+    binaryfunc get_getitem_func() {
         return [](PyObject* self, PyObject* key) -> PyObject* {
             try {
-                return py::to_object(unbox(self)[from_object<const KeyType&>(key)])
+                return py::to_object(
+                           unbox(self)[from_object<const KeyType&>(key)])
                     .escape();
             }
             catch (std::exception& e) {
                 return raise_from_cxx_exception(e);
             }
         };
-    }
-
-    template<typename U, typename KeyType>
-    binaryfunc get_getitem_func(long) {
-        return nullptr;
     }
 
     template<typename U,
@@ -624,9 +681,10 @@ public:
      */
     template<typename KeyType, typename ValueType = void>
     autoclass& mapping() {
-        add_slot(Py_mp_subscript, get_getitem_func<T, KeyType>(0));
+        add_slot(Py_mp_subscript, get_getitem_func<T, KeyType>());
         add_slot(Py_mp_ass_subscript, get_setitem_func<T, KeyType, ValueType>(0));
-        return size();
+        add_slot(Py_mp_length, maybe_get_length_func<T>(0));
+        return *this;
     }
 
     /** Add a method to this class.
@@ -648,17 +706,19 @@ public:
     }
 
 private:
-    template<typename U,
-             typename = std::void_t<decltype(std::declval<U>().begin(),
-                                             std::declval<U>().end())>>
-    getiterfunc get_iter_func(int) {
+    template<typename U>
+    getiterfunc get_iter_func() {
         // new-style ranges allow for begin and end to produce different types
-        using begin_type = std::remove_reference_t<decltype(std::declval<T>().begin())>;
-        using end_type = std::remove_reference_t<decltype(std::declval<T>().end())>;
+        using begin_type = decltype(std::declval<T>().begin());
+        using end_type = decltype(std::declval<T>().end());
 
         struct iter {
+            scoped_ref<> iterable;
             begin_type it;
             end_type end;
+
+            iter(const scoped_ref<>& iterable, begin_type it, end_type end)
+                : iterable(iterable), it(it), end(end) {}
         };
 
         auto iternext = [](PyObject* self) -> PyObject* {
@@ -676,12 +736,18 @@ private:
             }
         };
 
+        auto traverse = [](PyObject* self, visitproc visit, void* arg) -> int {
+            Py_VISIT(autoclass<iter>::unbox(self).iterable.get());
+            return 0;
+        };
+
         std::string iter_name = util::type_name<T>().get();
         iter_name += "::iterator";
         // create the iterator class and put it in the cache
-        if (!autoclass<iter>(iter_name.data())
+        if (!autoclass<iter>(iter_name, Py_TPFLAGS_HAVE_GC)
                  .add_slot(Py_tp_iternext, static_cast<iternextfunc>(iternext))
                  .add_slot(Py_tp_iter, &PyObject_SelfIter)
+                 .add_slot(Py_tp_traverse, &traverse)
                  .type()) {
             throw py::exception{};
         }
@@ -695,15 +761,11 @@ private:
                     return nullptr;
                 }
                 auto* cls = reinterpret_cast<PyTypeObject*>(cls_search->second.get());
-                using object = typename autoclass<iter>::object;
-                py::scoped_ref it(PyObject_New(object, cls));
-                if (!it) {
-                    return nullptr;
-                }
-                iter& unboxed = autoclass<iter>::unbox(it);
-                new (&unboxed.it) begin_type(unbox(self).begin());
-                new (&unboxed.end) end_type(unbox(self).end());
-                return reinterpret_cast<PyObject*>(std::move(it).escape());
+
+                Py_INCREF(self);
+                py::scoped_ref self_ref(self);
+                return autoclass<iter>::template constructor_new_impl<true>(
+                    cls, self_ref, unbox(self).begin(), unbox(self).end());
             }
             catch (const std::exception& e) {
                 return raise_from_cxx_exception(e);
@@ -711,25 +773,20 @@ private:
         };
     }
 
-    template<typename>
-    getiterfunc get_iter_func(long) {
-        return nullptr;
-    }
-
 public:
     /** Add a `__iter__` which produces objects of a further `autoclass` generated type
         that holds onto the iterator-sentinel pair for this type.
     */
-    autoclass& range() {
+    autoclass& iter() {
         require_uninitialized(
             "cannot add iteration methods after class has been created");
 
-        return add_slot(Py_tp_iter, get_iter_func<T>(0));
+        return add_slot(Py_tp_iter, get_iter_func<T>());
     }
 
 private:
-    template<typename U, typename = std::hash<U>>
-    hashfunc get_hash_func(int) {
+    template<typename U>
+    hashfunc get_hash_func() {
         return [](PyObject* self) -> Py_hash_t {
             try {
                 Py_hash_t hash_value = std::hash<U>{}(unbox(self));
@@ -749,18 +806,13 @@ private:
         };
     }
 
-    template<typename>
-    hashfunc get_hash_func(long) {
-        return nullptr;
-    }
-
 public:
     /** Add a `__hash__` which uses `std::hash<T>::operator()`.
      */
     autoclass& hash() {
         require_uninitialized("cannot add a hash method after class has been created");
 
-        return add_slot(Py_tp_hash, get_hash_func<T>(0));
+        return add_slot(Py_tp_hash, get_hash_func<T>());
     }
 
 private:
@@ -776,8 +828,8 @@ private:
         }
     };
 
-    template<typename U, typename Args, typename = typename invoke_unpack<U, Args>::type>
-    ternaryfunc get_call_func(int) {
+    template<typename U, typename Args>
+    ternaryfunc get_call_func() {
         return [](PyObject* self, PyObject* args, PyObject* kwargs) -> PyObject* {
             if (kwargs && PyDict_Size(kwargs)) {
                 raise(PyExc_TypeError)
@@ -788,10 +840,6 @@ private:
         };
     }
 
-    template<typename, typename>
-    ternaryfunc get_call_func(long) {
-        return nullptr;
-    }
 
 public:
     /** Add a `__call__` method which defers to `T::operator()`.
@@ -804,14 +852,12 @@ public:
     autoclass& callable() {
         require_uninitialized("cannot add a call method after class has been created");
 
-        return add_slot(Py_tp_call, get_call_func<T, std::tuple<Args...>>(0));
+        return add_slot(Py_tp_call, get_call_func<T, std::tuple<Args...>>());
     }
 
 private:
-    template<typename U,
-             typename = std::void_t<decltype(std::declval<std::ostream&>()
-                                             << std::declval<U>())>>
-    reprfunc get_repr_func(int) {
+    template<typename U>
+    reprfunc get_repr_func() {
         return [](PyObject* self) -> PyObject* {
             try {
                 std::stringstream s;
@@ -831,18 +877,13 @@ private:
         };
     }
 
-    template<typename>
-    reprfunc get_repr_func(long) {
-        return nullptr;
-    }
-
 public:
     /** Add a `__repr__` method which uses `operator<<(std::ostrea&, T)`.
      */
     autoclass& repr() {
         require_uninitialized("cannot add a repr method after class has been created");
 
-        return add_slot(Py_tp_repr, get_repr_func<T>(0));
+        return add_slot(Py_tp_repr, get_repr_func<T>());
     }
 
     /** Get a reference to the Python type that represents a boxed `T`.
@@ -883,14 +924,22 @@ public:
         }  // namespace py::dispatch
         ```
      */
-    template<PyObject* cls>
     class to_object {
-        static PyObject* f(const T& value) {
-            return autonew_impl(reinterpret_cast<PyTypeObject*>(cls), value);
-        }
+        template<typename U>
+        static PyObject* f(U&& value) {
+            py::scoped_ref<> cls = lookup_type();
+            if (!cls) {
+                py::raise(PyExc_RuntimeError) << "autoclass type wasn't initialized yet";
+                return nullptr;
+            }
+            PyTypeObject* cls_ob = reinterpret_cast<PyTypeObject*>(cls);
+            if (cls_ob->tp_flags & Py_TPFLAGS_HAVE_GC) {
+                return constructor_new_impl<true>(cls_ob, std::forward<U>(value));
+            }
+            else {
+                return constructor_new_impl<false>(cls_ob, std::forward<U>(value));
+            }
 
-        static PyObject* f(T&& value) {
-            return autonew_impl(reinterpret_cast<PyTypeObject*>(cls), std::move(value));
         }
     };
 };

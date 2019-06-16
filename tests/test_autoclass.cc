@@ -421,7 +421,7 @@ TEST_F(autoclass, mapping_throws) {
     PyErr_Clear();
 }
 
-TEST_F(autoclass, size) {
+TEST_F(autoclass, len) {
     auto check = [](const py::scoped_ref<>& cls) {
         ASSERT_TRUE(cls);
         py::scoped_ref inst = py::call_function(cls);
@@ -439,13 +439,17 @@ TEST_F(autoclass, size) {
             }
         };
 
-        check(py::autoclass<C>("C").new_<>().size().type());
+        check(py::autoclass<C>("C").new_<>().len().type());
     }
 
     {
         struct C {
             std::size_t size() const {
                 return 10;
+            }
+
+            int operator[](std::size_t) const {
+                return 0;
             }
         };
 
@@ -454,14 +458,14 @@ TEST_F(autoclass, size) {
     }
 }
 
-TEST_F(autoclass, size_throws) {
+TEST_F(autoclass, len_throws) {
     struct C {
         [[noreturn]] std::size_t size() const {
             throw std::runtime_error{"idk man"};
         }
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C").new_<>().size().type();
+    py::scoped_ref cls = py::autoclass<C>("C").new_<>().len().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);
@@ -506,10 +510,10 @@ TEST_F(autoclass, from_object) {
     }
 }
 
-TEST_F(autoclass, range) {
+TEST_F(autoclass, iter) {
     using T = std::vector<int>;
 
-    py::scoped_ref cls = py::autoclass<T>("T").new_<int>().range().type();
+    py::scoped_ref cls = py::autoclass<T>("T").new_<int>().iter().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls, 5);
@@ -519,6 +523,13 @@ TEST_F(autoclass, range) {
     T& unboxed = py::autoclass<T>::unbox(inst);
     ASSERT_EQ(unboxed.size(), 5ul);
     std::iota(unboxed.begin(), unboxed.end(), 0);
+
+    Py_ssize_t starting_ref = Py_REFCNT(inst.get());
+    {
+        py::scoped_ref it(PyObject_GetIter(inst.get()));
+        EXPECT_EQ(Py_REFCNT(inst.get()), starting_ref + 1);
+    }
+    EXPECT_EQ(Py_REFCNT(inst.get()), starting_ref);
 
     py::scoped_ref fast_seq(PySequence_Fast(inst.get(), "expected inst to be iterable"));
     ASSERT_TRUE(fast_seq);
@@ -530,7 +541,7 @@ TEST_F(autoclass, range) {
     }
 }
 
-TEST_F(autoclass, range_throws) {
+TEST_F(autoclass, iter_throws) {
     struct C {
         struct iterator {
             int ix;
@@ -558,7 +569,7 @@ TEST_F(autoclass, range_throws) {
         }
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C").new_<>().range().type();
+    py::scoped_ref cls = py::autoclass<C>("C").new_<>().iter().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);

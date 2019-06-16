@@ -105,7 +105,6 @@ struct hash<py::object_map_key> {
         }
 
         out_type r = PyObject_Hash(ob.get());
-        ;
         if (r == -1) {
             throw py::exception{};
         }
