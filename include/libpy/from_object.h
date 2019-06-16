@@ -18,6 +18,7 @@
 
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
+#include "libpy/detail/autoclass_object.h"
 #include "libpy/dict_range.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
@@ -137,13 +138,9 @@ public:
                 throw invalid_conversion::make<T&>(ob);
             }
 
-            struct object {
-                PyObject base;
-                T cxx_ob;
-            };
             // NOTE: the parentheses change the behavior of `decltype(auto)` to make this
             // resolve to a return type of `T&` instead of `T`
-            return (reinterpret_cast<object*>(ob)->cxx_ob);
+            return (py::detail::autoclass_object<T>::unbox(ob));
         }
     }
 };

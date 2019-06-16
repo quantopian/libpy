@@ -23,13 +23,6 @@ ifneq ($(OPTLEVEL),0)
 	LDFLAGS += -flto
 endif
 
-# Set this to 1 if you want to build with gcov support
-COVERAGE ?= 0
-ifneq ($(COVERAGE),0)
-	CXXFLAGS += -fprofile-arcs -ftest-coverage
-	LDFLAGS += -fprofile-arcs -lgcov
-endif
-
 INCLUDE_DIRS := include/
 INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) \
 	$(shell $(PYTHON)-config --includes) \
@@ -68,24 +61,9 @@ ifneq ($(SANITIZE_UNDEFINED),0)
 	LDFLAGS += -lubsan
 endif
 
-# Coverage
-GCOV := gcov-7
-# Set this to 1 if you want to build with gcov support
-COVERAGE ?= 0
-ifneq ($(COVERAGE),0)
-	CXXFLAGS += -fprofile-arcs -ftest-coverage
-	LDFLAGS += -fprofile-arcs -lgcov
-endif
-
 SOURCES := $(wildcard src/*.cc)
 OBJECTS := $(SOURCES:.cc=.o)
 DFILES :=  $(SOURCES:.cc=.d)
-COVERAGE_FILES := $(SOURCES:.cc=.gcda) $(SOURCES:.cc=gcno)
-
-EXAMPLE_SOURCES := $(wildcard examples/*.cc)
-EXAMPLE_OBJECTS := $(EXAMPLE_SOURCES:.cc=.o)
-EXAMPLE_DFILES :=  $(EXAMPLE_SOURCES:.cc=.d)
-EXAMPLES := $(EXAMPLE_SOURCES:.cc=)
 
 GTEST_OUTPUT ?=
 GTEST_ROOT:= submodules/googletest
@@ -103,7 +81,7 @@ TEST_HEADERS := $(wildcard tests/*.h) $(GTEST_HEADERS)
 TEST_INCLUDE := -I tests -I $(GTEST_DIR)/include
 TESTRUNNER := tests/run
 
-ALL_SOURCES := $(SOURCES) $(EXAMPLE_SOURCES) $(TEST_SOURCES)
+ALL_SOURCES := $(SOURCES) $(TEST_SOURCES)
 ALL_HEADERS := include/libpy/**.h
 
 ALL_FLAGS := 'CFLAGS=$(CFLAGS) CXXFLAGS=$(CXXFLAGS) LDFLAGS=$(LDFLAGS)'
@@ -123,24 +101,14 @@ force:
 .compiler_flags: force
 	@echo '$(ALL_FLAGS)' | cmp -s - $@ || echo '$(ALL_FLAGS)' > $@
 
-$(SONAME): $(OBJECTS) $(HEADERS)
+$(SONAME): $(OBJECTS)
 	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME) \
-		-o $(SONAME) $(LDFLAGS)
+		-o $@ $(LDFLAGS)
 	@rm -f $(SHORT_SONAME)
 	ln -s $(SONAME) $(SHORT_SONAME)
 
 src/%.o: src/%.cc .compiler_flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@
-
-examples/%.o: examples/%.cc
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@
-
-examples/%: examples/%.o $(SONAME)
-	$(CXX) -o $@ $< -L. -l$(LIBRARY) $(LDFLAGS)
-
-.PHONY: example-%
-example-%: examples/%
-	LD_LIBRARY_PATH=. $<
 
 .PHONY: test
 test: $(TESTRUNNER)
@@ -181,22 +149,12 @@ tidy:
 format:
 	@$(CLANG_FORMAT) -i $(ALL_SOURCES) $(ALL_HEADERS)
 
-.PHONY: coverage
-coverage:
-	@COVERAGE=1 $(MAKE) __real-coverage
-
-
-.PHONY: __real-coverage
-__real-coverage: test
-	@GCOV=$(GCOV) ./etc/coverage-report src/ include/libpy/ tests/
 
 .PHONY: clean
 clean:
 	@rm -f $(SONAME) $(SHORT_SONAME) $(OBJECTS) $(DFILES) \
-		$(EXAMPLES) $(EXAMPLE_OBJECTS) $(EXAMPLE_DFILES) \
 		$(TESTRUNNER) $(TEST_OBJECTS) $(TEST_DFILES) \
-		gtest.o gtest.a gtest.gcda gtest.gcno \
-		$(COVERAGE_FILES)
+		gtest.o gtest.a
 
 -include $(DFILES) $(TEST_DFILES)
 
