@@ -87,7 +87,7 @@ ALL_HEADERS := include/libpy/**.h
 ALL_FLAGS := 'CFLAGS=$(CFLAGS) CXXFLAGS=$(CXXFLAGS) LDFLAGS=$(LDFLAGS)'
 
 .PHONY: all
-all: $(SONAME)
+all: $(SHORT_SONAME)
 
 .PHONY: local-install
 local-install: $(SONAME)
@@ -105,6 +105,8 @@ $(SONAME): $(OBJECTS)
 	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME) \
 		-o $@ $(LDFLAGS)
 	@rm -f $(SHORT_SONAME)
+
+$(SHORT_SONAME): $(SONAME)
 	ln -s $(SONAME) $(SHORT_SONAME)
 
 src/%.o: src/%.cc .compiler_flags
@@ -129,7 +131,7 @@ tests/%.o: tests/%.cc .compiler_flags
 
 $(TESTRUNNER): gtest.a $(TEST_OBJECTS) $(SONAME)
 	$(CXX) -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-		-lpthread -L. -l:$(SHORT_SONAME) $(LDFLAGS)
+		-lpthread -L. $(SONAME) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .compiler_flags
 	$(CXX) $(CXXFLAGS) -I $(GTEST_DIR) -I $(GTEST_DIR)/include -c \
