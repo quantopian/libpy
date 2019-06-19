@@ -254,12 +254,12 @@ DEFINE_BINOP(!=, ne)
             -> decltype(op value) {                                                      \
             return op value;                                                             \
         }                                                                                \
-    };                                                                                   \
+    };
 
 DEFINE_UNOP(-, neg)
 DEFINE_UNOP(+, pos)
 DEFINE_UNOP(~, inv)
 
 #undef DEFINE_UNOP
-}  // namespace func
+}  // namespace op
 }  // namespace py::meta

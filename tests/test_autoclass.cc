@@ -50,7 +50,7 @@ TEST_F(autoclass, smoke) {
         }
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C")
+    py::scoped_ref cls = py::autoclass<C>()
                              .new_<int, float>()
                              .def<&C::a>("a")
                              .def<&C::b>("b")
@@ -93,6 +93,50 @@ TEST_F(autoclass, smoke) {
     }
 }
 
+TEST_F(autoclass, name) {
+    {
+        class C {};
+
+        py::scoped_ref cls = py::autoclass<C>().type();
+        ASSERT_TRUE(cls);
+
+        const char* const tp_name = reinterpret_cast<PyTypeObject*>(cls.get())->tp_name;
+        EXPECT_STREQ(tp_name, py::util::type_name<C>().get());
+    }
+
+    {
+        class C {};
+
+        py::scoped_ref cls = py::autoclass<C>("custom_name").type();
+        ASSERT_TRUE(cls);
+
+        const char* const tp_name = reinterpret_cast<PyTypeObject*>(cls.get())->tp_name;
+        EXPECT_STREQ(tp_name, "custom_name");
+    }
+}
+
+TEST_F(autoclass, doc) {
+    {
+        class C {};
+
+        py::scoped_ref cls = py::autoclass<C>().type();
+        ASSERT_TRUE(cls);
+
+        const char* const tp_doc = reinterpret_cast<PyTypeObject*>(cls.get())->tp_doc;
+        EXPECT_EQ(tp_doc, nullptr);
+    }
+
+    {
+        class C {};
+
+        py::scoped_ref cls = py::autoclass<C>().doc("custom doc").type();
+        ASSERT_TRUE(cls);
+
+        const char* const tp_doc = reinterpret_cast<PyTypeObject*>(cls.get())->tp_doc;
+        EXPECT_STREQ(tp_doc, "custom doc");
+    }
+}
+
 #define TEST_AUTOCLASS_BINARY_OPERATOR(op, name, activate, pyfunc)                       \
     TEST_F(autoclass, operator_##name) {                                                 \
         struct C {                                                                       \
@@ -111,8 +155,7 @@ TEST_F(autoclass, smoke) {
                 return value op other;                                                   \
             }                                                                            \
         };                                                                               \
-        py::scoped_ref cls =                                                             \
-            py::autoclass<C>("C").new_<int>().activate<C, int>().type();                 \
+        py::scoped_ref cls = py::autoclass<C>().new_<int>().activate<C, int>().type();   \
         ASSERT_TRUE(cls);                                                                \
                                                                                          \
         py::scoped_ref lhs = py::call_function(cls, 10);                                 \
@@ -200,7 +243,7 @@ TEST_AUTOCLASS_BINARY_OPERATOR(!=, ne, comparisons, [](PyObject* lhs, PyObject* 
                 return op value;                                                         \
             }                                                                            \
         };                                                                               \
-        py::scoped_ref cls = py::autoclass<C>("C").new_<int>().unary().type();           \
+        py::scoped_ref cls = py::autoclass<C>().new_<int>().unary().type();              \
         ASSERT_TRUE(cls);                                                                \
                                                                                          \
         {                                                                                \
@@ -249,7 +292,7 @@ void test_type_conversion(const char* method_name) {
         }
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C").template new_<int>().conversions().type();
+    py::scoped_ref cls = py::autoclass<C>().template new_<int>().conversions().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls, 10);
@@ -336,7 +379,7 @@ TEST_F(autoclass, mapping_setitem) {
         using key_type = typename M::key_type;
         using value_type = typename M::mapped_type;
 
-        py::scoped_ref cls = py::autoclass<M>("M")
+        py::scoped_ref cls = py::autoclass<M>()
                                  .template new_<>()
                                  .template mapping<key_type, value_type>()
                                  .type();
@@ -397,8 +440,7 @@ TEST_F(autoclass, mapping_throws) {
         }
     };
 
-    py::scoped_ref cls =
-        py::autoclass<M>("M").new_<>().mapping<std::size_t, int>().type();
+    py::scoped_ref cls = py::autoclass<M>().new_<>().mapping<std::size_t, int>().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);
@@ -439,7 +481,7 @@ TEST_F(autoclass, len) {
             }
         };
 
-        check(py::autoclass<C>("C").new_<>().len().type());
+        check(py::autoclass<C>().new_<>().len().type());
     }
 
     {
@@ -454,7 +496,7 @@ TEST_F(autoclass, len) {
         };
 
         // mapping also gives size, if present
-        check(py::autoclass<C>("C").new_<>().mapping<std::size_t>().type());
+        check(py::autoclass<C>().new_<>().mapping<std::size_t>().type());
     }
 }
 
@@ -465,7 +507,7 @@ TEST_F(autoclass, len_throws) {
         }
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C").new_<>().len().type();
+    py::scoped_ref cls = py::autoclass<C>().new_<>().len().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);
@@ -486,7 +528,7 @@ TEST_F(autoclass, from_object) {
         C(int data) : data(data) {}
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C").new_<int>().type();
+    py::scoped_ref cls = py::autoclass<C>().new_<int>().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls, 5);
@@ -513,7 +555,7 @@ TEST_F(autoclass, from_object) {
 TEST_F(autoclass, iter) {
     using T = std::vector<int>;
 
-    py::scoped_ref cls = py::autoclass<T>("T").new_<int>().iter().type();
+    py::scoped_ref cls = py::autoclass<T>().new_<int>().iter().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls, 5);
@@ -569,7 +611,7 @@ TEST_F(autoclass, iter_throws) {
         }
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C").new_<>().iter().type();
+    py::scoped_ref cls = py::autoclass<C>().new_<>().iter().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);
@@ -593,8 +635,7 @@ TEST_F(autoclass, callable) {
         }
     };
 
-    py::scoped_ref cls =
-        py::autoclass<C>("C").new_<double>().callable<int, double>().type();
+    py::scoped_ref cls = py::autoclass<C>().new_<double>().callable<int, double>().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls, 1.0);
@@ -615,7 +656,7 @@ TEST_F(autoclass, callable_throws) {
         }
     };
 
-    py::scoped_ref cls = py::autoclass<C>("C").new_<>().callable<>().type();
+    py::scoped_ref cls = py::autoclass<C>().new_<>().callable<>().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);
@@ -629,8 +670,7 @@ TEST_F(autoclass, callable_throws) {
 }
 
 TEST_F(autoclass, hash) {
-    py::scoped_ref cls =
-        py::autoclass<std::string>("string").new_<std::string>().hash().type();
+    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().hash().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls, "ayy lmao");
@@ -659,7 +699,7 @@ struct hash<test_autoclass::broken_hash_type> {
 
 namespace test_autoclass {
 TEST_F(autoclass, hash_throws) {
-    py::scoped_ref cls = py::autoclass<broken_hash_type>("bht").new_<>().hash().type();
+    py::scoped_ref cls = py::autoclass<broken_hash_type>().new_<>().hash().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);
@@ -689,7 +729,7 @@ namespace test_autoclass {
 // Python uses -1 as an error sentinel in `tp_hash`, so we need to correct a non-failure
 // -1 from our type's hash function to a valid value.
 TEST_F(autoclass, hash_returns_negative_one) {
-    py::scoped_ref cls = py::autoclass<negative_one_hash>("noh").new_<>().hash().type();
+    py::scoped_ref cls = py::autoclass<negative_one_hash>().new_<>().hash().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls);
@@ -701,8 +741,7 @@ TEST_F(autoclass, hash_returns_negative_one) {
 }
 
 TEST_F(autoclass, repr) {
-    py::scoped_ref cls =
-        py::autoclass<std::string>("string").new_<std::string>().repr().type();
+    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().repr().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(cls, "ayy lmao");

@@ -3,6 +3,7 @@
 #include <Python.h>
 #if PY_MAJOR_VERSION != 2
 
+#include <forward_list>
 #include <sstream>
 #include <type_traits>
 #include <typeindex>
@@ -26,7 +27,7 @@ public:
     }
 
 private:
-    std::string m_name;
+    std::forward_list<std::string> m_strings;
     PyType_Spec m_spec;
     std::vector<PyType_Slot> m_slots;
     scoped_ref<> m_type = nullptr;
@@ -153,12 +154,11 @@ public:
             return type_search->second;
         }
         return nullptr;
-
     }
 
     autoclass(std::string name = util::type_name<T>().get(), int extra_flags = 0)
-        : m_name(std::move(name)),
-          m_spec({nullptr,
+        : m_strings({std::move(name)}),
+          m_spec({m_strings.front().data(),
                   static_cast<int>(sizeof(object)),
                   0,
                   static_cast<unsigned int>(Py_TPFLAGS_DEFAULT | extra_flags),
@@ -235,16 +235,17 @@ public:
         @param doc
         @return *this.
      */
-    autoclass& doc(const char* doc) {
+    autoclass& doc(std::string doc) {
         require_uninitialized("cannot add docstring after the class has been created");
-        return add_slot(Py_tp_doc, doc);
+
+        std::string& copied_doc = m_strings.emplace_front(std::move(doc));
+        return add_slot(Py_tp_doc, copied_doc.data());
     }
 
 private:
-
-        /** Helper for adapting a function which constructs a `T` into a Python `__new__`
+    /** Helper for adapting a function which constructs a `T` into a Python `__new__`
         implementation.
-     */
+    */
     template<bool have_gc, typename F, auto impl>
     struct free_func_new_impl;
 
@@ -294,7 +295,6 @@ private:
     }
 
 public:
-
     /** Add a `__new__` function to this class.
 
         @tparam impl A function which returns a value which can be used to construct a
@@ -500,10 +500,9 @@ private:
                     // (linear search).  If `other` is successfully converted, return
                     // `self + other`. If no conversion matches, return `NotImplemented`.
                     using rhs_without_T = meta::set_diff<valid_rhs, std::tuple<T>>;
-                    return search_binop_implementations<rhs_without_T>(
-                        op{},
-                        unbox(self),
-                        other);
+                    return search_binop_implementations<rhs_without_T>(op{},
+                                                                       unbox(self),
+                                                                       other);
                 }
             }
             catch (const std::exception& e) {
@@ -705,8 +704,7 @@ private:
     binaryfunc get_getitem_func() {
         return [](PyObject* self, PyObject* key) -> PyObject* {
             try {
-                return py::to_object(
-                           unbox(self)[from_object<const KeyType&>(key)])
+                return py::to_object(unbox(self)[from_object<const KeyType&>(key)])
                     .escape();
             }
             catch (std::exception& e) {
@@ -758,18 +756,41 @@ public:
     /** Add a method to this class.
 
         @tparam impl The implementation of the method to add. If `impl` is a
-       pointer to member function, it doesn't need to have the implicit
-       `PyObject* self` argument, it will just be called on the boxed value of
-       `self`.
+                pointer to member function, it doesn't need to have the implicit
+                `PyObject* self` argument, it will just be called on the boxed value of
+                `self`.
         @param name The name of the function as it will appear in Python.
-        @param doc The docstring for this function.
         @return *this.
      */
     template<auto impl>
-    autoclass& def(const char* name, const char* doc = nullptr) {
+    autoclass& def(std::string name) {
         require_uninitialized("cannot add methods after the class has been created");
+
+        std::string& name_copy = m_strings.emplace_front(std::move(name));
         m_methods.emplace_back(
-            automethod<member_function<decltype(impl), impl>::f>(name, doc));
+            automethod<member_function<decltype(impl), impl>::f>(name_copy.data()));
+        return *this;
+    }
+
+    /** Add a method to this class.
+
+        @tparam impl The implementation of the method to add. If `impl` is a
+                pointer to member function, it doesn't need to have the implicit
+                `PyObject* self` argument, it will just be called on the boxed value of
+                `self`.
+        @param name The name of the function as it will appear in Python.
+        @param doc The docstring of the function as it will appear in Python.
+        @return *this.
+     */
+    template<auto impl>
+    autoclass& def(std::string name, std::string doc) {
+        require_uninitialized("cannot add methods after the class has been created");
+
+        std::string& name_copy = m_strings.emplace_front(std::move(name));
+        std::string& doc_copy = m_strings.emplace_front(std::move(doc));
+        m_methods.emplace_back(
+            automethod<member_function<decltype(impl), impl>::f>(name_copy.data(),
+                                                                 doc_copy.data()));
         return *this;
     }
 
@@ -809,8 +830,11 @@ private:
             }
         };
 
+        std::string iter_name(m_spec.name);
+        iter_name += "::iterator";
+
         // create the iterator class and put it in the cache
-        if (!autoclass<iter>(m_name + "::iterator", Py_TPFLAGS_HAVE_GC)
+        if (!autoclass<iter>(std::move(iter_name), Py_TPFLAGS_HAVE_GC)
                  .add_slot(Py_tp_iternext, static_cast<iternextfunc>(iternext))
                  .add_slot(Py_tp_iter, &PyObject_SelfIter)
                  .template traverse<&iter::traverse>()
@@ -906,7 +930,6 @@ private:
         };
     }
 
-
 public:
     /** Add a `__call__` method which defers to `T::operator()`.
 
@@ -976,12 +999,11 @@ public:
         }
 
         m_methods.emplace_back(end_method_list);
-        auto& storage = detail::autoclass_storage_cache.emplace_back(
-            detail::autoclass_storage{std::move(m_methods), std::move(m_name)});
+        auto& storage = detail::autoclass_storage_cache.emplace_front(
+            detail::autoclass_storage{std::move(m_methods), std::move(m_strings)});
         add_slot(Py_tp_methods, storage.methods.data());
         finalize_slots();
 
-        m_spec.name = storage.name.data();
         m_spec.slots = m_slots.data();
         m_type = scoped_ref(PyType_FromSpec(&m_spec));
         if (!m_type) {
@@ -1021,7 +1043,6 @@ public:
             else {
                 return constructor_new_impl<false>(cls_ob, std::forward<U>(value));
             }
-
         }
     };
 };
