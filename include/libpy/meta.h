@@ -200,4 +200,66 @@ struct set_diff_impl<std::tuple<As...>, B> {
  */
 template<typename A, typename B>
 using set_diff = typename detail::set_diff_impl<A, B>::type;
+
+/** A collection of function objects that implement simple operators.
+
+    These are useful for metaprogramming contexts where you want generic operators as
+    function objects for higher order templates and functions.
+ */
+namespace op {
+/** Define a new operator function type named `name` that implements the `op` binary
+    operator.
+
+    # Example
+
+    ```
+    DEFINE_BINOP(+, add)
+    ```
+
+    Creates a struct named `add` that implements `operator()` to forward to `lhs + rhs`.
+ */
+#define DEFINE_BINOP(op, name)                                                           \
+    struct name {                                                                        \
+        template<typename LHS, typename RHS>                                             \
+        constexpr decltype(auto) operator()(LHS&& lhs,                                   \
+                                            RHS&& rhs) noexcept(noexcept(lhs op rhs))    \
+            -> decltype(lhs op rhs) {                                                    \
+            return lhs op rhs;                                                           \
+        }                                                                                \
+    };
+
+DEFINE_BINOP(+, add)
+DEFINE_BINOP(-, sub)
+DEFINE_BINOP(*, mul)
+DEFINE_BINOP(%, rem)
+DEFINE_BINOP(/, div)
+DEFINE_BINOP(<<, lshift)
+DEFINE_BINOP(>>, rshift)
+DEFINE_BINOP(&, and_)
+DEFINE_BINOP(^, xor_)
+DEFINE_BINOP(|, or_)
+DEFINE_BINOP(>, gt)
+DEFINE_BINOP(>=, ge)
+DEFINE_BINOP(==, eq)
+DEFINE_BINOP(<=, le)
+DEFINE_BINOP(<, lt)
+DEFINE_BINOP(!=, ne)
+
+#undef DEFINE_BINOP
+
+#define DEFINE_UNOP(op, name)                                                            \
+    struct name {                                                                        \
+        template<typename T>                                                             \
+        constexpr decltype(auto) operator()(T&& value) noexcept(noexcept(op value))      \
+            -> decltype(op value) {                                                      \
+            return op value;                                                             \
+        }                                                                                \
+    };                                                                                   \
+
+DEFINE_UNOP(-, neg)
+DEFINE_UNOP(+, pos)
+DEFINE_UNOP(~, inv)
+
+#undef DEFINE_UNOP
+}  // namespace func
 }  // namespace py::meta
