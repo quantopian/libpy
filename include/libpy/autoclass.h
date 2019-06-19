@@ -1019,12 +1019,9 @@ public:
         ### Usage
 
         ```
-        using C = ...;
-        py::scoped_ref cls = py::autoclass<C>.type();
-
         namespace py::dispatch {
         template<>
-        struct to_object<C> : public py::autoclass<C>::to_object<cls.get()> {};
+        struct to_object<C> : public py::autoclass<C>::to_object {};
         }  // namespace py::dispatch
         ```
      */
