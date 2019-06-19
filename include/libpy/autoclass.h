@@ -32,6 +32,9 @@ private:
     scoped_ref<> m_type = nullptr;
     std::vector<PyMethodDef> m_methods;
 
+    /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we implement
+        at least `Py_tp_traverse`, and will use `PyObject_GC_New` and `PyObject_GC_Del`.
+     */
     bool have_gc() const {
         return m_spec.flags & Py_TPFLAGS_HAVE_GC;
     }
@@ -153,8 +156,8 @@ public:
 
     }
 
-    autoclass(const std::string_view& name, int extra_flags = 0)
-        : m_name(name),
+    autoclass(std::string name = util::type_name<T>().get(), int extra_flags = 0)
+        : m_name(std::move(name)),
           m_spec({nullptr,
                   static_cast<int>(sizeof(object)),
                   0,
@@ -182,7 +185,50 @@ public:
         add_slot(Py_tp_dealloc, dealloc);
     }
 
-    autoclass(int extra_flags = 0) : autoclass(util::type_name<T>().get(), extra_flags) {}
+    /** Add a `tp_traverse` field to this type. This is only allowed, but required if
+        `extra_flags & Py_TPFLAGS_HAVE_GC`.
+
+        @tparam impl The implementation of the traverse function. This should either be an
+                     `int(T&, visitproc, void*)` or `int (T::*)(visitproc, void*)`.
+     */
+    template<auto impl>
+    autoclass& traverse() {
+        require_uninitialized(
+            "cannot add traverse method after the class has been created");
+
+        if (!have_gc()) {
+            throw py::exception(PyExc_TypeError,
+                                "cannot add a traverse method without passing "
+                                "Py_TPFLAGS_HAVE_GC to extra_flags");
+        }
+
+        // bind the result of `member_function` to a `traverseproc` to ensure we have
+        // a properly typed function before casting to `void*`.
+        traverseproc p = member_function<decltype(impl), impl>::f;
+        return add_slot(Py_tp_traverse, p);
+    }
+
+    /** Add a `tp_clear` field to this type. This is only allowed if
+        `extra_flags & Py_TPFLAGS_HAVE_GC`.
+
+        @tparam impl The implementation of the clear function. This should either be an
+                     `int(T&)` or `int (T::*)()`.
+     */
+    template<auto impl>
+    autoclass& clear() {
+        require_uninitialized("cannot add clear method after the class has been created");
+
+        if (!have_gc()) {
+            throw py::exception(PyExc_TypeError,
+                                "cannot add a clear method without passing "
+                                "Py_TPFLAGS_HAVE_GC to extra_flags");
+        }
+
+        // bind the result of `member_function` to an `inquiry` to ensure we have
+        // a properly typed function before casting to `void*`.
+        inquiry p = member_function<decltype(impl), impl>::f;
+        return add_slot(Py_tp_clear, p);
+    }
 
     /** Add a docstring to this class.
 
@@ -913,6 +959,22 @@ public:
     scoped_ref<> type() {
         if (m_type) {
             return m_type;
+        }
+
+        if (have_gc()) {
+            bool have_traverse = false;
+            for (PyType_Slot& sl : m_slots) {
+                if (sl.slot == Py_tp_traverse) {
+                    have_traverse = true;
+                    break;
+                }
+            }
+
+            if (!have_traverse) {
+                throw py::exception(PyExc_ValueError,
+                                    "if (flags & Py_TPFLAGS_HAVE_GC), a Py_tp_traverse "
+                                    "slot must be added");
+            }
         }
 
         m_methods.emplace_back(end_method_list);
