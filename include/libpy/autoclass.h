@@ -12,6 +12,7 @@
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
+#include "libpy/meta.h"
 
 namespace py {
 template<typename T>
@@ -322,21 +323,31 @@ public:
     }
 
 private:
+    /** Template to filter `RHS` down to only the valid types which may appear on the RHS
+        of some binary operator.
+
+        @tparam F A template that encodes the operator to check. This should be one of
+                  `test_binop<op>::template check`
+        @tparam RHS The candidate RHS types as a `std::tuple`.
+    */
     template<template<typename, typename> typename F, typename RHS>
     struct valid_rhs_types;
 
+    // Partial specialization for non-empty tuples.
     template<template<typename, typename> typename F, typename Head, typename... Tail>
     struct valid_rhs_types<F, std::tuple<Head, Tail...>> {
     private:
         using rest = std::tuple<Tail...>;
 
     public:
+        // put `Head` in the output tuple if there is a path to `Head` from `PyObject*`.
         using type = std::conditional_t<
             (std::is_same_v<Head, T> || py::has_from_object<Head>) &&F<T, Head>::value,
             meta::type_cat<std::tuple<Head>, typename valid_rhs_types<F, rest>::type>,
             typename valid_rhs_types<F, rest>::type>;
     };
 
+    // Base-case: empty list of types
     template<template<typename, typename> typename F>
     struct valid_rhs_types<F, std::tuple<>> {
         using type = std::tuple<>;
@@ -372,6 +383,24 @@ private:
         }
     };
 
+    /** Check all possible implementations of `f(lhs, rhs)`, where `rhs` is a `PyObject*`
+        and needs to be converted to a C++ value.
+
+        If `other` cannot be converted to any type in `RHS`, return `NotImplemented`.
+
+        @tparam RHS A `std::tuple` of all of the possible C++ types for `RHS` to be
+                    converted to.
+        @tparam F The binary function to search.
+        @tparam LHS Set to `T`, but lazily to be SFINAE friendly.
+        @param f The binary function to search.
+        @param lhs The lhs argument to `f`.
+        @param rhs The rhs argument to `f` as a `PyObject*`.
+        @return The Python result of `f(lhs, rhs)`.
+
+        @note RHS appears first in the template argument list because it must be
+              explicitly provided, where `F` and `LHS` are meant to be inferred from the
+              parameters.
+     */
     template<typename RHS, typename F, typename LHS>
     static PyObject* search_binop_implementations(F&& f, LHS& lhs, PyObject* rhs) {
         return search_binop_implementations_helper<F, LHS, RHS>::f(std::forward<F>(f),
@@ -379,89 +408,88 @@ private:
                                                                    rhs);
     }
 
-#define DEFINE_GET_BINOP(op, name)                                                       \
-    template<typename L, typename R>                                                     \
-    struct test_binop_##name {                                                           \
-    private:                                                                             \
-        template<typename LHS, typename RHS>                                             \
-        static decltype(std::declval<LHS>() op std::declval<RHS>(), std::true_type{})    \
-        valid(int);                                                                      \
-                                                                                         \
-        template<typename, typename>                                                     \
-        static std::false_type valid(long);                                              \
-                                                                                         \
-    public:                                                                              \
-        static constexpr bool value =                                                    \
-            std::is_same_v<decltype(valid<L, R>(0)), std::true_type>;                    \
-    };                                                                                   \
-                                                                                         \
-    template<typename U,                                                                 \
-             typename RHS,                                                               \
-             typename = std::enable_if_t<!std::is_same_v<                                \
-                 std::tuple<>,                                                           \
-                 typename valid_rhs_types<test_binop_##name, RHS>::type>>>               \
-    static constexpr auto get_##name##_func_impl(int) {                                  \
-        using valid_rhs = typename valid_rhs_types<test_binop_##name, RHS>::type;        \
-        return [](PyObject* self, PyObject* other) -> PyObject* {                        \
-            try {                                                                        \
-                if (meta::element_of<T, valid_rhs> && Py_TYPE(self) == Py_TYPE(other)) { \
-                    return py::to_object(unbox(self) op unbox(other))    \
-                        .escape();                                                       \
-                }                                                                        \
-                else {                                                                   \
-                    using rhs_without_T = meta::set_diff<valid_rhs, std::tuple<T>>;      \
-                    return search_binop_implementations<rhs_without_T>(                  \
-                        [](auto& a, const auto& b) { return a op b; },                   \
-                        unbox(self),                                             \
-                        other);                                                          \
-                }                                                                        \
-            }                                                                            \
-            catch (const std::exception& e) {                                            \
-                return raise_from_cxx_exception(e);                                      \
-            }                                                                            \
-        };                                                                               \
-    }                                                                                    \
-                                                                                         \
-    template<typename, typename>                                                         \
-    static constexpr binaryfunc get_##name##_func_impl(long) {                           \
-        return nullptr;                                                                  \
-    }                                                                                    \
-                                                                                         \
-    template<typename LHS, typename RHS>                                                 \
-    static constexpr binaryfunc name##_arith_func = get_##name##_func_impl<LHS, RHS>(0); \
-                                                                                         \
-    template<typename LHS, typename RHS>                                                 \
-    static constexpr auto get_##name##_cmp_func() {                                      \
-        auto out = get_##name##_func_impl<LHS, RHS>(0);                                  \
-        if constexpr (std::is_same_v<decltype(out), binaryfunc>) {                       \
-            return [](PyObject*, PyObject*) { Py_RETURN_NOTIMPLEMENTED; };               \
-        }                                                                                \
-        else {                                                                           \
-            return out;                                                                  \
-        }                                                                                \
-    }                                                                                    \
-                                                                                         \
-    template<typename LHS, typename RHS>                                                 \
-    static constexpr auto name##_cmp_func = get_##name##_cmp_func<LHS, RHS>();
+    /** Curried metafunction to check if `op` will be callable with values of type `L`
+        and `R`.
+     */
+    template<typename op>
+    struct test_binop {
+        /** The binary metafunction which checks if `op` is callable with values of type
+            `L` and `R`.
+         */
+        template<typename L, typename R>
+        struct check {
+        private:
+            template<typename LHS, typename RHS>
+            static decltype(op{}(std::declval<LHS>(), std::declval<RHS>()),
+                            std::true_type{})
+            valid(int);
 
-    DEFINE_GET_BINOP(+, add)
-    DEFINE_GET_BINOP(-, sub)
-    DEFINE_GET_BINOP(*, mul)
-    DEFINE_GET_BINOP(%, rem)
-    DEFINE_GET_BINOP(/, floor_divide)
-    DEFINE_GET_BINOP(<<, lshift)
-    DEFINE_GET_BINOP(>>, rshift)
-    DEFINE_GET_BINOP(&, and)
-    DEFINE_GET_BINOP(^, xor)
-    DEFINE_GET_BINOP(|, or)
-    DEFINE_GET_BINOP(>, gt)
-    DEFINE_GET_BINOP(>=, ge)
-    DEFINE_GET_BINOP(==, eq)
-    DEFINE_GET_BINOP(<=, le)
-    DEFINE_GET_BINOP(<, lt)
-    DEFINE_GET_BINOP(!=, ne)
+            template<typename, typename>
+            static std::false_type valid(long);
 
-#undef DEFINE_GET_BINOP
+        public:
+            static constexpr bool value =
+                std::is_same_v<decltype(valid<L, R>(0)), std::true_type>;
+        };
+    };
+
+    template<typename U,
+             typename op,
+             typename RHS,
+             // enabled iff there is at least one value RHS type
+             typename = std::enable_if_t<!std::is_same_v<
+                 std::tuple<>,
+                 typename valid_rhs_types<test_binop<op>::template check, RHS>::type>>>
+    static constexpr auto get_binop_func_impl(int) {
+        using valid_rhs =
+            typename valid_rhs_types<test_binop<op>::template check, RHS>::type;
+        return [](PyObject* self, PyObject* other) -> PyObject* {
+            try {
+                if (meta::element_of<T, valid_rhs> && Py_TYPE(self) == Py_TYPE(other)) {
+                    // rhs is an exact match of `T`, and `T` is a valid RHS
+                    return py::to_object(op{}(unbox(self), unbox(other))).escape();
+                }
+                else {
+                    // Try to convert `other` into each C++ type in `rhs_without_T`
+                    // (linear search).  If `other` is successfully converted, return
+                    // `self + other`. If no conversion matches, return `NotImplemented`.
+                    using rhs_without_T = meta::set_diff<valid_rhs, std::tuple<T>>;
+                    return search_binop_implementations<rhs_without_T>(
+                        op{},
+                        unbox(self),
+                        other);
+                }
+            }
+            catch (const std::exception& e) {
+                return raise_from_cxx_exception(e);
+            }
+        };
+    }
+
+    template<typename, typename, typename>
+    static constexpr binaryfunc get_binop_func_impl(long) {
+        return nullptr;
+    }
+
+    template<typename LHS, typename op, typename RHS>
+    static constexpr binaryfunc arith_func = get_binop_func_impl<LHS, op, RHS>(0);
+
+    /** Look up a binary function as a comparison implementation to be used in
+        richcompare.
+     */
+    template<typename LHS, typename op, typename RHS>
+    static constexpr auto get_cmp_func() {
+        auto out = get_binop_func_impl<LHS, op, RHS>(0);
+        if constexpr (std::is_same_v<decltype(out), binaryfunc>) {
+            return [](PyObject*, PyObject*) { Py_RETURN_NOTIMPLEMENTED; };
+        }
+        else {
+            return out;
+        }
+    }
+
+    template<typename LHS, typename op, typename RHS>
+    static constexpr auto cmp_func = get_cmp_func<LHS, op, RHS>();
 
 public:
     /** Add all of the number methods by inferring them from `T`'s
@@ -476,16 +504,16 @@ public:
 
         using RHS = std::tuple<BinOpRHSTypes...>;
 
-        add_slot(Py_nb_add, add_arith_func<T, RHS>);
-        add_slot(Py_nb_subtract, sub_arith_func<T, RHS>);
-        add_slot(Py_nb_multiply, mul_arith_func<T, RHS>);
-        add_slot(Py_nb_remainder, rem_arith_func<T, RHS>);
-        add_slot(Py_nb_floor_divide, floor_divide_arith_func<T, RHS>);
-        add_slot(Py_nb_lshift, lshift_arith_func<T, RHS>);
-        add_slot(Py_nb_rshift, rshift_arith_func<T, RHS>);
-        add_slot(Py_nb_and, and_arith_func<T, RHS>);
-        add_slot(Py_nb_xor, xor_arith_func<T, RHS>);
-        add_slot(Py_nb_or, or_arith_func<T, RHS>);
+        add_slot(Py_nb_add, arith_func<T, meta::op::add, RHS>);
+        add_slot(Py_nb_subtract, arith_func<T, meta::op::sub, RHS>);
+        add_slot(Py_nb_multiply, arith_func<T, meta::op::mul, RHS>);
+        add_slot(Py_nb_remainder, arith_func<T, meta::op::rem, RHS>);
+        add_slot(Py_nb_floor_divide, arith_func<T, meta::op::div, RHS>);
+        add_slot(Py_nb_lshift, arith_func<T, meta::op::lshift, RHS>);
+        add_slot(Py_nb_rshift, arith_func<T, meta::op::rshift, RHS>);
+        add_slot(Py_nb_and, arith_func<T, meta::op::and_, RHS>);
+        add_slot(Py_nb_xor, arith_func<T, meta::op::xor_, RHS>);
+        add_slot(Py_nb_or, arith_func<T, meta::op::or_, RHS>);
         return *this;
     }
 
@@ -495,17 +523,17 @@ private:
         try {
             switch (cmp) {
             case Py_LT:
-                return lt_cmp_func<T, RHS>(self, other);
+                return cmp_func<T, meta::op::lt, RHS>(self, other);
             case Py_LE:
-                return le_cmp_func<T, RHS>(self, other);
+                return cmp_func<T, meta::op::le, RHS>(self, other);
             case Py_EQ:
-                return eq_cmp_func<T, RHS>(self, other);
+                return cmp_func<T, meta::op::eq, RHS>(self, other);
             case Py_GE:
-                return ge_cmp_func<T, RHS>(self, other);
+                return cmp_func<T, meta::op::ge, RHS>(self, other);
             case Py_GT:
-                return gt_cmp_func<T, RHS>(self, other);
+                return cmp_func<T, meta::op::gt, RHS>(self, other);
             case Py_NE:
-                return ne_cmp_func<T, RHS>(self, other);
+                return cmp_func<T, meta::op::ne, RHS>(self, other);
             default:
                 raise(PyExc_SystemError) << "invalid richcompare op: " << cmp;
                 return nullptr;
@@ -535,29 +563,24 @@ public:
     }
 
 private:
-#define DEFINE_GET_UNOP(op, name)                                                        \
-    template<typename U, typename = std::void_t<decltype(op std::declval<U>())>>         \
-    unaryfunc get_##name##_func(int) {                                                   \
-        return [](PyObject* self) -> PyObject* {                                         \
-            try {                                                                        \
-                return py::to_object(op unbox(self)).escape();                   \
-            }                                                                            \
-            catch (const std::exception& e) {                                            \
-                return raise_from_cxx_exception(e);                                      \
-            }                                                                            \
-        };                                                                               \
-    }                                                                                    \
-                                                                                         \
-    template<typename>                                                                   \
-    static constexpr unaryfunc get_##name##_func(long) {                                 \
-        return nullptr;                                                                  \
+    template<typename U,
+             typename op,
+             typename = std::void_t<decltype(op{}(std::declval<U>()))>>
+    unaryfunc get_unop_func(int) {
+        return [](PyObject* self) -> PyObject* {
+            try {
+                return py::to_object(op{}(unbox(self))).escape();
+            }
+            catch (const std::exception& e) {
+                return raise_from_cxx_exception(e);
+            }
+        };
     }
 
-    DEFINE_GET_UNOP(-, neg)
-    DEFINE_GET_UNOP(+, pos)
-    DEFINE_GET_UNOP(~, inv)
-
-#undef DEFINE_GET_UNNOP
+    template<typename, typename>
+    static constexpr unaryfunc get_unop_func(long) {
+        return nullptr;
+    }
 
 public:
     /** Add unary operator methods `__neg__` and `__pos__`, and `__inv__` from the C++
@@ -568,42 +591,40 @@ public:
         require_uninitialized(
             "cannot add unary operator methods after the class has been created");
 
-        add_slot(Py_nb_negative, get_neg_func<T>(0));
-        add_slot(Py_nb_positive, get_pos_func<T>(0));
-        add_slot(Py_nb_invert, get_inv_func<T>(0));
+        add_slot(Py_nb_negative, get_unop_func<T, meta::op::neg>(0));
+        add_slot(Py_nb_positive, get_unop_func<T, meta::op::pos>(0));
+        add_slot(Py_nb_invert, get_unop_func<T, meta::op::inv>(0));
         return *this;
     }
 
 private:
-#define DEFINE_CONVERSION_OP(type, name)                                                 \
-    template<typename U,                                                                 \
-             typename = std::void_t<decltype(static_cast<type>(std::declval<U>()))>>     \
-    unaryfunc get_convert_##name##_func(int) {                                           \
-        return [](PyObject* self) -> PyObject* {                                         \
-            try {                                                                        \
-                return py::to_object(static_cast<type>(unbox(self))).escape();   \
-            }                                                                            \
-            catch (const std::exception& e) {                                            \
-                return raise_from_cxx_exception(e);                                      \
-            }                                                                            \
-        };                                                                               \
-    }                                                                                    \
-                                                                                         \
-    template<typename>                                                                   \
-    unaryfunc get_convert_##name##_func(long) {                                          \
-        return nullptr;                                                                  \
+    template<typename U,
+             typename type,
+             typename = std::void_t<decltype(static_cast<type>(std::declval<U>()))>>
+    unaryfunc get_convert_func(int) {
+        return [](PyObject* self) -> PyObject* {
+            try {
+                return py::to_object(static_cast<type>(unbox(self))).escape();
+            }
+            catch (const std::exception& e) {
+                return raise_from_cxx_exception(e);
+            }
+        };
     }
 
-    DEFINE_CONVERSION_OP(std::int64_t, int)
-    DEFINE_CONVERSION_OP(double, float)
-
-#undef DEFINE_CONVERSION_OP
+    template<typename, typename>
+    unaryfunc get_convert_func(long) {
+        return nullptr;
+    }
 
     template<typename U,
              typename = std::void_t<decltype(static_cast<bool>(std::declval<U>()))>>
     inquiry get_convert_bool_func(int) {
         return [](PyObject* self) -> int {
             try {
+                // `inquiry` returns an `int` because it is C, but really wants to be
+                // `std::optional<bool>`. Convert to bool first (because that's what we
+                // mean, not int), then convert that to int to get 0 or 1.
                 return static_cast<bool>(unbox(self));
             }
             catch (const std::exception& e) {
@@ -625,9 +646,10 @@ public:
     autoclass& conversions() {
         require_uninitialized(
             "cannot add conversion methods after the class has been created");
+
         // conversions
-        add_slot(Py_nb_int, get_convert_int_func<T>(0));
-        add_slot(Py_nb_float, get_convert_float_func<T>(0));
+        add_slot(Py_nb_int, get_convert_func<T, std::int64_t>(0));
+        add_slot(Py_nb_float, get_convert_func<T, double>(0));
         add_slot(Py_nb_bool, get_convert_bool_func<T>(0));
         return *this;
     }
