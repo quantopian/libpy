@@ -5,7 +5,7 @@
 #include <Python.h>
 #if PY_MAJOR_VERSION != 2
 
-#include <list>
+#include <forward_list>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -21,11 +21,11 @@ extern std::unordered_map<std::type_index, py::scoped_ref<>> autoclass_type_cach
 
 struct autoclass_storage {
     std::vector<PyMethodDef> methods;
-    std::string name;
+    std::forward_list<std::string> strings;
 };
 
-// Use a `std::list` to have reference stability on insert.
-extern std::list<autoclass_storage> autoclass_storage_cache;
+// Use a `std::forward_list` to have reference stability on insert.
+extern std::forward_list<autoclass_storage> autoclass_storage_cache;
 
 /** Clear the cached types from autoclass.
  */
