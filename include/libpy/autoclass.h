@@ -787,6 +787,11 @@ private:
 
             iter(const scoped_ref<>& iterable, begin_type it, end_type end)
                 : iterable(iterable), it(it), end(end) {}
+
+            int traverse(visitproc visit, void* arg) {
+                Py_VISIT(iterable.get());
+                return 0;
+            }
         };
 
         auto iternext = [](PyObject* self) -> PyObject* {
@@ -804,18 +809,11 @@ private:
             }
         };
 
-        auto traverse = [](PyObject* self, visitproc visit, void* arg) -> int {
-            Py_VISIT(autoclass<iter>::unbox(self).iterable.get());
-            return 0;
-        };
-
-        std::string iter_name = util::type_name<T>().get();
-        iter_name += "::iterator";
         // create the iterator class and put it in the cache
-        if (!autoclass<iter>(iter_name, Py_TPFLAGS_HAVE_GC)
+        if (!autoclass<iter>(m_name + "::iterator", Py_TPFLAGS_HAVE_GC)
                  .add_slot(Py_tp_iternext, static_cast<iternextfunc>(iternext))
                  .add_slot(Py_tp_iter, &PyObject_SelfIter)
-                 .add_slot(Py_tp_traverse, &traverse)
+                 .template traverse<&iter::traverse>()
                  .type()) {
             throw py::exception{};
         }
