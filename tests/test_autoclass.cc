@@ -19,8 +19,13 @@ using namespace std::literals;
 
 class autoclass : public with_python_interpreter {
     void TearDown() override {
+        // Types basically always participate in a cycle because the method descriptors.
+        // Run the collector until there is no more garbage.
+        while (PyGC_Collect())
+            ;
+        EXPECT_EQ(py::detail::autoclass_type_cache.size(), 0ul);
+
         with_python_interpreter::TearDown();
-        py::detail::clear_autoclass_cache();
     }
 };
 
@@ -59,9 +64,9 @@ TEST_F(autoclass, smoke) {
                              .type();
     ASSERT_TRUE(cls);
 
-    py::scoped_ref inst = py::call_function(cls, 1, 2.5);
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), 1, 2.5);
     ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
     C& unboxed = py::autoclass<C>::unbox(inst);
 
     {
@@ -158,15 +163,15 @@ TEST_F(autoclass, doc) {
         py::scoped_ref cls = py::autoclass<C>().new_<int>().activate<C, int>().type();   \
         ASSERT_TRUE(cls);                                                                \
                                                                                          \
-        py::scoped_ref lhs = py::call_function(cls, 10);                                 \
+        py::scoped_ref lhs = py::call_function(static_cast<PyObject*>(cls), 10);         \
         ASSERT_TRUE(lhs);                                                                \
-        ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(lhs.get())), cls.get());           \
+        ASSERT_EQ(Py_TYPE(lhs.get()), cls.get());                                        \
         C& unboxed_lhs = py::autoclass<C>::unbox(lhs);                                   \
                                                                                          \
         {                                                                                \
-            py::scoped_ref rhs = py::call_function(cls, 7);                              \
+            py::scoped_ref rhs = py::call_function(static_cast<PyObject*>(cls), 7);      \
             ASSERT_TRUE(rhs);                                                            \
-            ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(rhs.get())), cls.get());       \
+            ASSERT_EQ(Py_TYPE(rhs.get()), cls.get());                                    \
             C& unboxed_rhs = py::autoclass<C>::unbox(rhs);                               \
             py::scoped_ref boxed_result(pyfunc(lhs.get(), rhs.get()));                   \
             ASSERT_TRUE(boxed_result);                                                   \
@@ -247,9 +252,9 @@ TEST_AUTOCLASS_BINARY_OPERATOR(!=, ne, comparisons, [](PyObject* lhs, PyObject* 
         ASSERT_TRUE(cls);                                                                \
                                                                                          \
         {                                                                                \
-            py::scoped_ref inst = py::call_function(cls, 10);                            \
+            py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), 10);    \
             ASSERT_TRUE(inst);                                                           \
-            ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());      \
+            ASSERT_EQ(Py_TYPE(inst.get()), cls.get());                                   \
                                                                                          \
             py::scoped_ref result(pyfunc(inst.get()));                                   \
             ASSERT_TRUE(result);                                                         \
@@ -259,9 +264,9 @@ TEST_AUTOCLASS_BINARY_OPERATOR(!=, ne, comparisons, [](PyObject* lhs, PyObject* 
         }                                                                                \
                                                                                          \
         {                                                                                \
-            py::scoped_ref inst = py::call_function(cls, -1);                            \
+            py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), -1);    \
             ASSERT_TRUE(inst);                                                           \
-            ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());      \
+            ASSERT_EQ(Py_TYPE(inst.get()), cls.get());                                   \
                                                                                          \
             py::scoped_ref result(pyfunc(inst.get()));                                   \
             EXPECT_FALSE(result);                                                        \
@@ -295,9 +300,9 @@ void test_type_conversion(const char* method_name) {
     py::scoped_ref cls = py::autoclass<C>().template new_<int>().conversions().type();
     ASSERT_TRUE(cls);
 
-    py::scoped_ref inst = py::call_function(cls, 10);
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), 10);
     ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
     C& unboxed = py::autoclass<C>::unbox(inst);
 
     if (should_throw) {
@@ -329,6 +334,226 @@ TEST_F(autoclass, bool_conversion) {
     test_type_conversion<bool, true>("__bool__");
 }
 
+TEST_F(autoclass, from_object) {
+    struct C {
+        int data;
+
+        C(int data) : data(data) {}
+    };
+
+    py::scoped_ref cls = py::autoclass<C>().new_<int>().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), 5);
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    {
+        const C& unboxed_ref = py::from_object<const C&>(inst);
+        EXPECT_EQ(unboxed_ref.data, 5);
+    }
+
+    {
+        C& unboxed_ref = py::from_object<C&>(inst);
+        EXPECT_EQ(unboxed_ref.data, 5);
+        unboxed_ref.data = 6;
+    }
+
+    {
+        const C& unboxed_ref = py::from_object<const C&>(inst);
+        EXPECT_EQ(unboxed_ref.data, 6);
+    }
+}
+
+TEST_F(autoclass, callable) {
+    struct C {
+        double value;
+
+        C(double value) : value(value) {}
+
+        double operator()(int a, double b) const {
+            return value + a + b;
+        }
+    };
+
+    py::scoped_ref cls = py::autoclass<C>().new_<double>().callable<int, double>().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), 1.0);
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    py::scoped_ref result = py::call_function(inst, 2, 3.5);
+    ASSERT_TRUE(result);
+
+    double unboxed_result = py::from_object<double>(result);
+    EXPECT_EQ(unboxed_result, C{1.0}(2, 3.5));
+}
+
+TEST_F(autoclass, callable_throws) {
+    struct C {
+        void operator()() const {
+            throw std::runtime_error{"lmao"};
+        }
+    };
+
+    py::scoped_ref cls = py::autoclass<C>().new_<>().callable<>().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    py::scoped_ref result = py::call_function(inst);
+    ASSERT_FALSE(result);
+    expect_pyerr_type_and_message(PyExc_RuntimeError, "a C++ exception was raised: lmao");
+    PyErr_Clear();
+}
+
+TEST_F(autoclass, hash) {
+    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().hash().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), "ayy lmao");
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    Py_hash_t result = PyObject_Hash(inst.get());
+    ASSERT_FALSE(PyErr_Occurred());
+
+    Py_hash_t expected = std::hash<std::string>{}("ayy lmao");
+    EXPECT_EQ(result, expected);
+}
+
+// used in `hash_throws` test
+struct broken_hash_type {};
+}  // namespace test_autoclass
+
+namespace std {
+template<>
+struct hash<test_autoclass::broken_hash_type> {
+    [[noreturn]] std::size_t operator()(test_autoclass::broken_hash_type) const {
+        throw std::runtime_error{"ayy"};
+    }
+};
+}  // namespace std
+
+namespace test_autoclass {
+TEST_F(autoclass, hash_throws) {
+    py::scoped_ref cls = py::autoclass<broken_hash_type>().new_<>().hash().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    Py_hash_t result = PyObject_Hash(inst.get());
+    EXPECT_EQ(result, -1);
+    expect_pyerr_type_and_message(PyExc_RuntimeError, "a C++ exception was raised: ayy");
+    PyErr_Clear();
+}
+
+// used in `hash_returns_negative_one` test
+struct negative_one_hash {};
+}  // namespace test_autoclass
+
+namespace std {
+template<>
+struct hash<test_autoclass::negative_one_hash> {
+    std::size_t operator()(test_autoclass::negative_one_hash) const {
+        return -1;
+    }
+};
+}  // namespace std
+
+namespace test_autoclass {
+// Python uses -1 as an error sentinel in `tp_hash`, so we need to correct a non-failure
+// -1 from our type's hash function to a valid value.
+TEST_F(autoclass, hash_returns_negative_one) {
+    py::scoped_ref cls = py::autoclass<negative_one_hash>().new_<>().hash().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    Py_hash_t result = PyObject_Hash(inst.get());
+    EXPECT_EQ(result, -2);
+}
+
+TEST_F(autoclass, repr) {
+    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().repr().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), "ayy lmao");
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    py::scoped_ref repr_ob(PyObject_Repr(inst.get()));
+    ASSERT_TRUE(repr_ob);
+
+    EXPECT_EQ(py::util::pystring_to_string_view(repr_ob), "ayy lmao"sv);
+}
+
+#if LIBPY_AUTOCLASS_UNSAFE_API
+TEST_F(autoclass, len) {
+    auto check = [](const py::scoped_ref<PyTypeObject>& cls) {
+        ASSERT_TRUE(cls);
+        py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
+        ASSERT_TRUE(inst);
+        ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+        Py_ssize_t size = PyObject_Length(inst.get());
+        EXPECT_EQ(size, 10);
+    };
+
+    {
+        struct C {
+            std::size_t size() const {
+                return 10;
+            }
+        };
+
+        check(py::autoclass<C>().new_<>().len().type());
+    }
+
+    {
+        struct C {
+            std::size_t size() const {
+                return 10;
+            }
+
+            int operator[](std::size_t) const {
+                return 0;
+            }
+        };
+
+        // mapping also gives size, if present
+        check(py::autoclass<C>().new_<>().mapping<std::size_t>().type());
+    }
+}
+
+TEST_F(autoclass, len_throws) {
+    struct C {
+        [[noreturn]] std::size_t size() const {
+            throw std::runtime_error{"idk man"};
+        }
+    };
+
+    py::scoped_ref cls = py::autoclass<C>().new_<>().len().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    Py_ssize_t size = PyObject_Length(inst.get());
+    EXPECT_EQ(size, -1);
+    expect_pyerr_type_and_message(PyExc_RuntimeError,
+                                  "a C++ exception was raised: idk man");
+    PyErr_Clear();
+}
+
 TEST_F(autoclass, mapping_getitem) {
     auto check = [](auto type) {
         using M = decltype(type);
@@ -339,9 +564,9 @@ TEST_F(autoclass, mapping_getitem) {
             py::autoclass<M>("M").template new_<>().template mapping<key_type>().type();
         ASSERT_TRUE(cls);
 
-        py::scoped_ref inst = py::call_function(cls);
+        py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
         ASSERT_TRUE(inst);
-        ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
+        ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
         M& unboxed = py::autoclass<M>::unbox(inst);
 
         key_type key_1 = 1;
@@ -385,9 +610,9 @@ TEST_F(autoclass, mapping_setitem) {
                                  .type();
         ASSERT_TRUE(cls);
 
-        py::scoped_ref inst = py::call_function(cls);
+        py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
         ASSERT_TRUE(inst);
-        ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
+        ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
         M& unboxed = py::autoclass<M>::unbox(inst);
 
         {
@@ -443,9 +668,9 @@ TEST_F(autoclass, mapping_throws) {
     py::scoped_ref cls = py::autoclass<M>().new_<>().mapping<std::size_t, int>().type();
     ASSERT_TRUE(cls);
 
-    py::scoped_ref inst = py::call_function(cls);
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
     ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
 
     py::scoped_ref key = py::to_object(10);
     ASSERT_TRUE(key);
@@ -463,104 +688,15 @@ TEST_F(autoclass, mapping_throws) {
     PyErr_Clear();
 }
 
-TEST_F(autoclass, len) {
-    auto check = [](const py::scoped_ref<>& cls) {
-        ASSERT_TRUE(cls);
-        py::scoped_ref inst = py::call_function(cls);
-        ASSERT_TRUE(inst);
-        ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-        Py_ssize_t size = PyObject_Length(inst.get());
-        EXPECT_EQ(size, 10);
-    };
-
-    {
-        struct C {
-            std::size_t size() const {
-                return 10;
-            }
-        };
-
-        check(py::autoclass<C>().new_<>().len().type());
-    }
-
-    {
-        struct C {
-            std::size_t size() const {
-                return 10;
-            }
-
-            int operator[](std::size_t) const {
-                return 0;
-            }
-        };
-
-        // mapping also gives size, if present
-        check(py::autoclass<C>().new_<>().mapping<std::size_t>().type());
-    }
-}
-
-TEST_F(autoclass, len_throws) {
-    struct C {
-        [[noreturn]] std::size_t size() const {
-            throw std::runtime_error{"idk man"};
-        }
-    };
-
-    py::scoped_ref cls = py::autoclass<C>().new_<>().len().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls);
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    Py_ssize_t size = PyObject_Length(inst.get());
-    EXPECT_EQ(size, -1);
-    expect_pyerr_type_and_message(PyExc_RuntimeError,
-                                  "a C++ exception was raised: idk man");
-    PyErr_Clear();
-}
-
-TEST_F(autoclass, from_object) {
-    struct C {
-        int data;
-
-        C(int data) : data(data) {}
-    };
-
-    py::scoped_ref cls = py::autoclass<C>().new_<int>().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls, 5);
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    {
-        const C& unboxed_ref = py::from_object<const C&>(inst);
-        EXPECT_EQ(unboxed_ref.data, 5);
-    }
-
-    {
-        C& unboxed_ref = py::from_object<C&>(inst);
-        EXPECT_EQ(unboxed_ref.data, 5);
-        unboxed_ref.data = 6;
-    }
-
-    {
-        const C& unboxed_ref = py::from_object<const C&>(inst);
-        EXPECT_EQ(unboxed_ref.data, 6);
-    }
-}
-
 TEST_F(autoclass, iter) {
     using T = std::vector<int>;
 
     py::scoped_ref cls = py::autoclass<T>().new_<int>().iter().type();
     ASSERT_TRUE(cls);
 
-    py::scoped_ref inst = py::call_function(cls, 5);
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), 5);
     ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
 
     T& unboxed = py::autoclass<T>::unbox(inst);
     ASSERT_EQ(unboxed.size(), 5ul);
@@ -614,144 +750,15 @@ TEST_F(autoclass, iter_throws) {
     py::scoped_ref cls = py::autoclass<C>().new_<>().iter().type();
     ASSERT_TRUE(cls);
 
-    py::scoped_ref inst = py::call_function(cls);
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
     ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
 
     py::scoped_ref fast_seq(PySequence_Fast(inst.get(), "expected inst to be iterable"));
     EXPECT_FALSE(fast_seq);
     expect_pyerr_type_and_message(PyExc_RuntimeError, "a C++ exception was raised: ayy");
     PyErr_Clear();
 }
-
-TEST_F(autoclass, callable) {
-    struct C {
-        double value;
-
-        C(double value) : value(value) {}
-
-        double operator()(int a, double b) const {
-            return value + a + b;
-        }
-    };
-
-    py::scoped_ref cls = py::autoclass<C>().new_<double>().callable<int, double>().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls, 1.0);
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    py::scoped_ref result = py::call_function(inst, 2, 3.5);
-    ASSERT_TRUE(result);
-
-    double unboxed_result = py::from_object<double>(result);
-    EXPECT_EQ(unboxed_result, C{1.0}(2, 3.5));
-}
-
-TEST_F(autoclass, callable_throws) {
-    struct C {
-        void operator()() const {
-            throw std::runtime_error{"lmao"};
-        }
-    };
-
-    py::scoped_ref cls = py::autoclass<C>().new_<>().callable<>().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls);
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    py::scoped_ref result = py::call_function(inst);
-    ASSERT_FALSE(result);
-    expect_pyerr_type_and_message(PyExc_RuntimeError, "a C++ exception was raised: lmao");
-    PyErr_Clear();
-}
-
-TEST_F(autoclass, hash) {
-    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().hash().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls, "ayy lmao");
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    Py_hash_t result = PyObject_Hash(inst.get());
-    ASSERT_FALSE(PyErr_Occurred());
-
-    Py_hash_t expected = std::hash<std::string>{}("ayy lmao");
-    EXPECT_EQ(result, expected);
-}
-
-// used in `hash_throws` test
-struct broken_hash_type {};
-}  // namespace test_autoclass
-
-namespace std {
-template<>
-struct hash<test_autoclass::broken_hash_type> {
-    [[noreturn]] std::size_t operator()(test_autoclass::broken_hash_type) const {
-        throw std::runtime_error{"ayy"};
-    }
-};
-}  // namespace std
-
-namespace test_autoclass {
-TEST_F(autoclass, hash_throws) {
-    py::scoped_ref cls = py::autoclass<broken_hash_type>().new_<>().hash().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls);
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    Py_hash_t result = PyObject_Hash(inst.get());
-    EXPECT_EQ(result, -1);
-    expect_pyerr_type_and_message(PyExc_RuntimeError, "a C++ exception was raised: ayy");
-    PyErr_Clear();
-}
-
-// used in `hash_returns_negative_one` test
-struct negative_one_hash {};
-}  // namespace test_autoclass
-
-namespace std {
-template<>
-struct hash<test_autoclass::negative_one_hash> {
-    std::size_t operator()(test_autoclass::negative_one_hash) const {
-        return -1;
-    }
-};
-}  // namespace std
-
-namespace test_autoclass {
-// Python uses -1 as an error sentinel in `tp_hash`, so we need to correct a non-failure
-// -1 from our type's hash function to a valid value.
-TEST_F(autoclass, hash_returns_negative_one) {
-    py::scoped_ref cls = py::autoclass<negative_one_hash>().new_<>().hash().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls);
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    Py_hash_t result = PyObject_Hash(inst.get());
-    EXPECT_EQ(result, -2);
-}
-
-TEST_F(autoclass, repr) {
-    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().repr().type();
-    ASSERT_TRUE(cls);
-
-    py::scoped_ref inst = py::call_function(cls, "ayy lmao");
-    ASSERT_TRUE(inst);
-    ASSERT_EQ(reinterpret_cast<PyObject*>(Py_TYPE(inst.get())), cls.get());
-
-    py::scoped_ref repr_ob(PyObject_Repr(inst.get()));
-    ASSERT_TRUE(repr_ob);
-
-    EXPECT_EQ(py::util::pystring_to_string_view(repr_ob), "ayy lmao"sv);
-}
+#endif
 }  // namespace test_autoclass
 #endif

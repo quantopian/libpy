@@ -6,12 +6,11 @@
 
 namespace py::detail {
 template<typename T>
-struct autoclass_object {
-    PyObject base;
-    T cxx_ob;
+struct autoclass_object : public PyObject {
+    T value;
 
     static T& unbox(PyObject* ob) {
-        return reinterpret_cast<autoclass_object*>(ob)->cxx_ob;
+        return static_cast<autoclass_object*>(ob)->value;
     }
 
     static T& unbox(const py::scoped_ref<>& self) {
@@ -19,7 +18,7 @@ struct autoclass_object {
     }
 
     static T& unbox(const py::scoped_ref<autoclass_object>& self) {
-        return unbox(reinterpret_cast<PyObject*>(self.get()));
+        return unbox(static_cast<PyObject*>(self));
     }
 
 };
