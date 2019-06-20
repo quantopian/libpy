@@ -14,10 +14,34 @@
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
 #include "libpy/meta.h"
+#include "libpy/scope_guard.h"
 
 namespace py {
 template<typename T>
 class autoclass {
+private:
+    /** Marker that statically asserts that the unsafe API is enabled.
+
+        Call this function first in any top-level function that is part of the unsafe API.
+     */
+    template<typename U = void>
+    static void unsafe_api() {
+        // We need to put this in a template-dependent scope so that the static_assert
+        // only fails if you call an unsafe API function. `is_samve_V<U, U>` will always
+        // return true, but it becomes a template-dependent scope because it depends on
+        // `U`. If `!LIBPY_AUTOCLASS_UNSAFE_API` we put a `!` in front of the result to
+        // negate it.
+        constexpr bool is_valid =
+#if !LIBPY_AUTOCLASS_UNSAFE_API
+            !
+#endif
+            std::is_same_v<U, U>;
+
+        static_assert(is_valid,
+                      "This function is only available in the unsafe API. This may be "
+                      "enabled by defining the LIBPY_AUTOCLASS_UNSAFE_API macro.");
+    }
+
 public:
     using object = detail::autoclass_object<T>;
 
@@ -27,11 +51,9 @@ public:
     }
 
 private:
-    std::forward_list<std::string> m_strings;
-    PyType_Spec m_spec;
     std::vector<PyType_Slot> m_slots;
-    scoped_ref<> m_type = nullptr;
-    std::vector<PyMethodDef> m_methods;
+    detail::autoclass_storage m_storage;
+    PyType_Spec m_spec;
 
     /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we implement
         at least `Py_tp_traverse`, and will use `PyObject_GC_New` and `PyObject_GC_Del`.
@@ -109,14 +131,14 @@ private:
     struct member_function<R(const T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
-    /** Assert that `m_type` isn't yet initialized. Many operations like adding methods
-        will not have any affect after the type is initialized.
+    /** Assert that `m_storage.type` isn't yet initialized. Many operations like adding
+       methods will not have any affect after the type is initialized.
 
         @param msg The error message to forward to the `ValueError` thrown if this
         assertion is violated.
      */
     void require_uninitialized(const char* msg) {
-        if (m_type) {
+        if (m_storage.type) {
             throw py::exception(PyExc_ValueError, msg);
         }
     }
@@ -148,17 +170,19 @@ public:
 
         @return The already created type, or `nullptr` if the type wasn't yet created.
      */
-    static py::scoped_ref<> lookup_type() {
+    static py::scoped_ref<PyTypeObject> lookup_type() {
         auto type_search = detail::autoclass_type_cache.find(typeid(T));
         if (type_search != detail::autoclass_type_cache.end()) {
-            return type_search->second;
+            PyTypeObject* type = type_search->second.type;
+            Py_INCREF(type);
+            return py::scoped_ref(type);
         }
         return nullptr;
     }
 
     autoclass(std::string name = util::type_name<T>().get(), int extra_flags = 0)
-        : m_strings({std::move(name)}),
-          m_spec({m_strings.front().data(),
+        : m_storage(std::move(name)),
+          m_spec({m_storage.strings.front().data(),
                   static_cast<int>(sizeof(object)),
                   0,
                   static_cast<unsigned int>(Py_TPFLAGS_DEFAULT | extra_flags),
@@ -238,7 +262,7 @@ public:
     autoclass& doc(std::string doc) {
         require_uninitialized("cannot add docstring after the class has been created");
 
-        std::string& copied_doc = m_strings.emplace_front(std::move(doc));
+        std::string& copied_doc = m_storage.strings.emplace_front(std::move(doc));
         return add_slot(Py_tp_doc, copied_doc.data());
     }
 
@@ -262,12 +286,12 @@ private:
             if (!self) {
                 return nullptr;
             }
-            new (&self->cxx_ob) T(impl(std::forward<Args>(args)...));
+            new (&unbox(self)) T(impl(std::forward<Args>(args)...));
 
             if (have_gc) {
                 PyObject_GC_Track(self.get());
             }
-            return reinterpret_cast<PyObject*>(std::move(self).escape());
+            return static_cast<PyObject*>(std::move(self).escape());
         }
     };
 
@@ -286,12 +310,12 @@ private:
         if (!self) {
             return nullptr;
         }
-        new (&self->cxx_ob) T(std::forward<ConstructorArgs>(args)...);
+        new (&unbox(self)) T(std::forward<ConstructorArgs>(args)...);
 
         if (have_gc) {
             PyObject_GC_Track(self.get());
         }
-        return reinterpret_cast<PyObject*>(std::move(self).escape());
+        return static_cast<PyObject*>(std::move(self).escape());
     }
 
 public:
@@ -364,6 +388,8 @@ public:
     /** Add a `__len__` method from `T::size()`
      */
     autoclass& len() {
+        // this isn't really unsafe, but it is just dumb without `iter()` or `mapping()`.
+        unsafe_api();
         require_uninitialized("cannot add size method after the class has been created");
         return add_slot(Py_mp_length, get_length_func<T>());
     }
@@ -372,8 +398,10 @@ private:
     /** Template to filter `RHS` down to only the valid types which may appear on the RHS
         of some binary operator.
 
-        @tparam F A template that encodes the operator to check. This should be one of
-                  `test_binop<op>::template check`
+        @tparam F A template that takes two types and provides a
+                  `static constexpr bool value` member which indicates whether `T op RHS`
+                  is valid. This should be obtained from:
+                  `test_binop<op>::template check`.
         @tparam RHS The candidate RHS types as a `std::tuple`.
     */
     template<template<typename, typename> typename F, typename RHS>
@@ -747,6 +775,9 @@ public:
      */
     template<typename KeyType, typename ValueType = void>
     autoclass& mapping() {
+        unsafe_api();
+        require_uninitialized("cannot add mapping methods after type has been created");
+
         add_slot(Py_mp_subscript, get_getitem_func<T, KeyType>());
         add_slot(Py_mp_ass_subscript, get_setitem_func<T, KeyType, ValueType>(0));
         add_slot(Py_mp_length, maybe_get_length_func<T>(0));
@@ -766,8 +797,8 @@ public:
     autoclass& def(std::string name) {
         require_uninitialized("cannot add methods after the class has been created");
 
-        std::string& name_copy = m_strings.emplace_front(std::move(name));
-        m_methods.emplace_back(
+        std::string& name_copy = m_storage.strings.emplace_front(std::move(name));
+        m_storage.methods.emplace_back(
             automethod<member_function<decltype(impl), impl>::f>(name_copy.data()));
         return *this;
     }
@@ -786,9 +817,9 @@ public:
     autoclass& def(std::string name, std::string doc) {
         require_uninitialized("cannot add methods after the class has been created");
 
-        std::string& name_copy = m_strings.emplace_front(std::move(name));
-        std::string& doc_copy = m_strings.emplace_front(std::move(doc));
-        m_methods.emplace_back(
+        std::string& name_copy = m_storage.strings.emplace_front(std::move(name));
+        std::string& doc_copy = m_storage.strings.emplace_front(std::move(doc));
+        m_storage.methods.emplace_back(
             automethod<member_function<decltype(impl), impl>::f>(name_copy.data(),
                                                                  doc_copy.data()));
         return *this;
@@ -844,18 +875,17 @@ private:
 
         return [](PyObject* self) -> PyObject* {
             try {
-                auto cls_search = detail::autoclass_type_cache.find(typeid(iter));
-                if (cls_search == detail::autoclass_type_cache.end()) {
+                py::scoped_ref<PyTypeObject> cls = autoclass<iter>::lookup_type();
+                if (!cls) {
                     py::raise(PyExc_RuntimeError)
                         << "no iterator type found for " << util::type_name<T>().get();
                     return nullptr;
                 }
-                auto* cls = reinterpret_cast<PyTypeObject*>(cls_search->second.get());
 
                 Py_INCREF(self);
                 py::scoped_ref self_ref(self);
                 return autoclass<iter>::template constructor_new_impl<true>(
-                    cls, self_ref, unbox(self).begin(), unbox(self).end());
+                    cls.get(), self_ref, unbox(self).begin(), unbox(self).end());
             }
             catch (const std::exception& e) {
                 return raise_from_cxx_exception(e);
@@ -868,6 +898,7 @@ public:
         that holds onto the iterator-sentinel pair for this type.
     */
     autoclass& iter() {
+        unsafe_api();
         require_uninitialized(
             "cannot add iteration methods after class has been created");
 
@@ -975,11 +1006,26 @@ public:
         return add_slot(Py_tp_repr, get_repr_func<T>());
     }
 
-    /** Get a reference to the Python type that represents a boxed `T`.
+private:
+    /** Helper function to be registered to a weakref that will clear `T` from the type
+        cache.
      */
-    scoped_ref<> type() {
-        if (m_type) {
-            return m_type;
+    static void cache_cleanup(PyObject*, PyObject*) {
+        detail::autoclass_type_cache.erase(typeid(T));
+    }
+
+public:
+    /** Get a reference to the Python type that represents a boxed `T`.
+
+        This function always returns a non-null pointer, but may throw an exception.
+
+        @note If an exception is thrown, the state of the `autoclass` object is
+              unspecified.
+     */
+    scoped_ref<PyTypeObject> type() {
+        if (m_storage.type) {
+            Py_INCREF(m_storage.type);
+            return scoped_ref(m_storage.type);
         }
 
         if (have_gc()) {
@@ -998,20 +1044,58 @@ public:
             }
         }
 
-        m_methods.emplace_back(end_method_list);
-        auto& storage = detail::autoclass_storage_cache.emplace_front(
-            detail::autoclass_storage{std::move(m_methods), std::move(m_strings)});
+        // cap off our methods
+        m_storage.methods.emplace_back(end_method_list);
+
+        // Move our type storage into this persistent storage. `m_storage.methods` has
+        // pointers into `m_storage.strings`, so we need to move the list as well to
+        // maintain these references.
+        detail::autoclass_storage& storage = detail::autoclass_type_cache
+                                                 .emplace(typeid(T), std::move(m_storage))
+                                                 .first->second;
+        // if we need to exit early, evict this cache entry
+        py::util::scope_guard release_type_cache(
+            [&] { detail::autoclass_type_cache.erase(typeid(T)); });
+
+        // Make the `Py_tp_methods` the newly created vector's data, not the original
+        // data.
         add_slot(Py_tp_methods, storage.methods.data());
         finalize_slots();
-
         m_spec.slots = m_slots.data();
-        m_type = scoped_ref(PyType_FromSpec(&m_spec));
-        if (!m_type) {
-            return nullptr;
+
+        py::scoped_ref type(reinterpret_cast<PyTypeObject*>(PyType_FromSpec(&m_spec)));
+        if (!type) {
+            throw py::exception{};
+        }
+        storage.type = type.get();  // borrowed reference held in the cache
+
+        // mark that we have initialized the type already so that
+        // `require_uninitialized()` can faild
+        m_storage.type = storage.type;
+
+        // Create a `PyCFunctionObject` that will call `cache_cleanup`.
+        // `PyCFunctionObject` has a pointer to the input `PyMethodDef` which is why
+        // we need to store the methoddef on the type cache storage itself.
+        storage.callback_method = automethod<cache_cleanup>("cache_cleanup");
+        py::scoped_ref callback_func(
+            PyCFunction_NewEx(&storage.callback_method, nullptr, nullptr));
+        if (!callback_func) {
+            throw py::exception{};
+        }
+        // Create a weakref that calls `callback_func` (A Python function) when `type`
+        // dies. This will take a reference to `callback_func`, and after we leave this
+        // scope, it will be the sole owner of that function.
+        storage.cleanup_wr = py::scoped_ref(
+            PyWeakref_NewRef(static_cast<PyObject*>(type), callback_func.get()));
+        if (!storage.cleanup_wr) {
+            throw py::exception{};
         }
 
-        detail::autoclass_type_cache[typeid(T)] = m_type;
-        return m_type;
+        // We didn't need to exit early, don't evict `T` from the type cache.
+        release_type_cache.dismiss();
+
+        // Return the only reference we have, `storage` has a borrowed reference.
+        return type;
     }
 
     /** Base class for registering a `to_object` handler for this type.
@@ -1024,21 +1108,20 @@ public:
         struct to_object<C> : public py::autoclass<C>::to_object {};
         }  // namespace py::dispatch
         ```
-     */
+         */
     class to_object {
         template<typename U>
         static PyObject* f(U&& value) {
-            py::scoped_ref<> cls = lookup_type();
+            py::scoped_ref<PyTypeObject> cls = lookup_type();
             if (!cls) {
                 py::raise(PyExc_RuntimeError) << "autoclass type wasn't initialized yet";
                 return nullptr;
             }
-            PyTypeObject* cls_ob = reinterpret_cast<PyTypeObject*>(cls);
-            if (cls_ob->tp_flags & Py_TPFLAGS_HAVE_GC) {
-                return constructor_new_impl<true>(cls_ob, std::forward<U>(value));
+            if (cls->tp_flags & Py_TPFLAGS_HAVE_GC) {
+                return constructor_new_impl<true>(cls.get(), std::forward<U>(value));
             }
             else {
-                return constructor_new_impl<false>(cls_ob, std::forward<U>(value));
+                return constructor_new_impl<false>(cls.get(), std::forward<U>(value));
             }
         }
     };

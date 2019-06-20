@@ -8,13 +8,6 @@
 #include "libpy/detail/autoclass_cache.h"
 
 namespace py::detail {
-std::unordered_map<std::type_index, py::scoped_ref<>> autoclass_type_cache{};
-
-std::forward_list<autoclass_storage> autoclass_storage_cache{};
-
-void clear_autoclass_cache() {
-    autoclass_type_cache.clear();
-    autoclass_storage_cache.clear();
-}
+std::unordered_map<std::type_index, autoclass_storage> autoclass_type_cache{};
 }  // namespace py::detail
 #endif
