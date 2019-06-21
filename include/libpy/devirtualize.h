@@ -78,7 +78,7 @@ public:
         std::size_t max_size = std::get<0>(std::make_tuple(array_collections...)).size();
         for (std::size_t ix = 0; ix < max_size; ++ix) {
             views<py::any_ref> items{array_collections[ix]...};
-            add_entry(items, ix);;
+            add_entry(items, ix);
         }
     }
 

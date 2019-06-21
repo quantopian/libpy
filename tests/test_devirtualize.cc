@@ -6,8 +6,8 @@
 #include "gtest/gtest.h"
 
 #include "libpy/devirtualize.h"
-#include "libpy/ndarray_view.h"
 #include "libpy/hash.h"
+#include "libpy/ndarray_view.h"
 
 namespace test_devirtualize {
 /** Hashable pair of `std::byte*`.
@@ -33,7 +33,7 @@ struct hash<test_devirtualize::byteptr_pair> {
         return py::hash_many(p.first, p.second);
     }
 };
-}
+}  // namespace std
 
 namespace test_devirtualize {
 TEST(devirtualize, for_each) {
