@@ -3,8 +3,8 @@
 #include <Python.h>
 
 #include "libpy/exception.h"
-#include "libpy/scoped_ref.h"
 #include "libpy/from_object.h"
+#include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
 
 namespace py {
@@ -104,7 +104,7 @@ struct hash<py::object_map_key> {
             return out_type{0};
         }
 
-        out_type r = PyObject_Hash(ob.get());;
+        out_type r = PyObject_Hash(ob.get());
         if (r == -1) {
             throw py::exception{};
         }
