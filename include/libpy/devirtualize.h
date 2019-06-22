@@ -111,7 +111,7 @@ public:
 
 private:
     template<typename F, typename E>
-    void for_each_helper(F&& f, const std::vector<E>& entries) {
+    void for_each_helper(F&& f, const std::vector<E>& entries) const {
         for (const auto& [views, ix] : entries) {
             std::apply(f, views);
         }
@@ -129,7 +129,7 @@ public:
                in `Ts`.
      */
     template<typename F>
-    void for_each(F&& f) {
+    void for_each(F&& f) const {
         std::apply(
             [&](const auto&... args) {
                 (for_each_helper(std::forward<F>(f), args), ...);
@@ -139,7 +139,7 @@ public:
 
 private:
     template<typename F, typename E>
-    void for_each_with_ix_helper(F&& f, const std::vector<E>& entries) {
+    void for_each_with_ix_helper(F&& f, const std::vector<E>& entries) const {
         for (const auto& [views, ix] : entries) {
             std::apply([&](const auto&... args) { f(ix, args...); }, views);
         }
@@ -157,7 +157,7 @@ public:
                candidate signature in `Ts`.
      */
     template<typename F>
-    void for_each_with_ix(F&& f) {
+    void for_each_with_ix(F&& f) const {
         std::apply(
             [&](const auto&... args) {
                 (for_each_with_ix_helper(std::forward<F>(f), args), ...);
