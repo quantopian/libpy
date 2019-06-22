@@ -98,7 +98,8 @@ TEST(devirtualize, binary_for_each) {
     std::vector<py::array_view<py::any_ref>> a_virt = {a0, b0, c0};
     std::vector<py::array_view<py::any_ref>> b_virt = {a1, b1, c1};
 
-    py::nwise_devirtualize<2, int, float> devirtualized{a_virt, b_virt};
+    py::nwise_devirtualize<std::tuple<int, int>, std::tuple<float, float>> devirtualized{
+        a_virt, b_virt};
 
     std::vector<std::array<std::byte*, 2>> int_seen;
     std::vector<std::array<std::byte*, 2>> expected_int_seen = {{a0_data, a1_data},
@@ -199,7 +200,8 @@ TEST(devirtualize, binary_for_each_with_ix) {
     std::vector<py::array_view<py::any_ref>> a_virt = {a0, b0, c0};
     std::vector<py::array_view<py::any_ref>> b_virt = {a1, b1, c1};
 
-    py::nwise_devirtualize<2, int, float> devirtualized{a_virt, b_virt};
+    py::nwise_devirtualize<std::tuple<int, int>, std::tuple<float, float>> devirtualized{
+        a_virt, b_virt};
 
     std::unordered_map<byteptr_pair, std::size_t> seen_ix;
     std::unordered_map<byteptr_pair, std::size_t> expected_ix = {
@@ -260,9 +262,59 @@ TEST(devirtualize, mismatched_size) {
     std::vector<py::array_view<py::any_ref>> a_virt = {a};
     std::vector<py::array_view<py::any_ref>> b_virt = {b, c};
 
-    EXPECT_THROW(({
-                     py::nwise_devirtualize<2, int> devirtualized{a_virt, b_virt};
-                 }),
-                 std::invalid_argument);
+    EXPECT_THROW(
+        ({
+            py::nwise_devirtualize<std::tuple<int, int>> devirtualized{a_virt, b_virt};
+        }),
+        std::invalid_argument);
+}
+
+TEST(devirtualize, inout) {
+    std::vector<int> a_in = {1};
+    std::vector<int> a_out = {-1};
+
+    std::vector<float> b_in = {1.5};
+    std::vector<float> b_out = {-1.5};
+
+    std::vector<int> c_in = {2};
+    std::vector<int> c_out = {-2};
+
+    std::vector<py::array_view<py::any_cref>> virtualized_in = {a_in, b_in, c_in};
+    std::vector<py::array_view<py::any_ref>> virtualized_out = {a_out, b_out, c_out};
+
+    py::nwise_devirtualize<std::tuple<const int, int>, std::tuple<const float, float>>
+        devirtualized{virtualized_in, virtualized_out};
+
+    devirtualized.for_each([](const auto& in, const auto& out) { out[0] = in[0]; });
+
+    EXPECT_EQ(a_out, a_in);
+    EXPECT_EQ(b_out, b_in);
+    EXPECT_EQ(c_out, c_in);
+}
+
+TEST(devirtualize, inout_mixed_type) {
+    std::vector<int> a_in = {1};
+    std::vector<float> a_out = {-1};
+    std::vector<float> a_expected_out = {1};
+
+    std::vector<float> b_in = {1.5};
+    std::vector<double> b_out = {-1.5};
+    std::vector<double> b_expected_out = {1.5};
+
+    std::vector<int> c_in = {2};
+    std::vector<float> c_out = {-2};
+    std::vector<float> c_expected_out = {2};
+
+    std::vector<py::array_view<py::any_cref>> virtualized_in = {a_in, b_in, c_in};
+    std::vector<py::array_view<py::any_ref>> virtualized_out = {a_out, b_out, c_out};
+
+    py::nwise_devirtualize<std::tuple<const int, float>, std::tuple<const float, double>>
+        devirtualized{virtualized_in, virtualized_out};
+
+    devirtualized.for_each([](const auto& in, const auto& out) { out[0] = in[0]; });
+
+    EXPECT_EQ(a_out, a_expected_out);
+    EXPECT_EQ(b_out, b_expected_out);
+    EXPECT_EQ(c_out, c_expected_out);
 }
 }  // namespace test_devirtualize

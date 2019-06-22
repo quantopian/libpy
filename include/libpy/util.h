@@ -14,11 +14,11 @@ namespace py::util {
 /** Check if all parameters are equal.
  */
 template<typename T, typename... Ts>
-bool all_equal(T&& head, Ts&&... tail) {
+constexpr bool all_equal(T&& head, Ts&&... tail) {
     return (... && (head == tail));
 }
 
-inline bool all_equal() {
+constexpr inline bool all_equal() {
     return true;
 }
 

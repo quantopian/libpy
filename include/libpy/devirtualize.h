@@ -9,66 +9,94 @@
 namespace py {
 /** Interface to provide typed access to a collection of type-erased array_views.
 
-    @tparam arity The number of arrays to access at one time.
-    @tparam Ts The types to provided optimized access through. If `py::any_ref` or
-            `py::any_cref` appears in the list, it will catch any type of array_view.
+    @tparam ndim The number of dimensions for the underlying `py::ndarray_view` objects.
+    @tparam Ts A sequence of tuples of types that convey the possible combinations of
+            arrays.
  */
-template<std::size_t arity, typename... Ts>
-class nwise_devirtualize {
+template<std::size_t ndim, typename... Ts>
+struct nwise_nddevirtualize {
 private:
+    static_assert(util::all_equal(std::tuple_size_v<Ts>...),
+                  "all potential devirtualized signatures must be the same arity");
+    static constexpr std::size_t arity = (std::tuple_size_v<Ts>, ...);
+
     static_assert(arity > 0, "arity must be non-zero");
+    static_assert(ndim > 0, "ndim must be non-zero");
 
-    template<typename T>
-    using views = std::array<py::array_view<T>, arity>;
+    template<typename>
+    struct views_impl;
 
-    template<typename T>
-    using type_entry = std::pair<views<T>, std::size_t>;
+    template<typename... Us>
+    struct views_impl<std::tuple<Us...>> {
+        using type = std::tuple<py::ndarray_view<Us, ndim>...>;
+    };
 
-    std::tuple<std::vector<type_entry<Ts>>...> m_arrays;
+    template<typename U>
+    using views = typename views_impl<U>::type;
 
-    template<std::size_t tuple_ix, typename Head, typename... Tail>
-    void add_typed_entry(const views<py::any_ref>& args, std::size_t ix) {
-        if constexpr (std::is_same_v<Head, py::any_ref> ||
-                      std::is_same_v<Head, py::any_cref>) {
+    template<typename U>
+    using type_entry = std::vector<std::pair<views<U>, std::size_t>>;
 
-            std::get<tuple_ix>(m_arrays).emplace_back(args, ix);
+    std::tuple<type_entry<Ts>...> m_arrays;
+
+    template<typename, typename...>
+    struct maybe_add_typed_entry_impl;
+
+    template<typename... Vs, typename... Args>
+    struct maybe_add_typed_entry_impl<std::tuple<Vs...>, Args...> {
+    private:
+        static_assert(util::all_equal(std::is_same_v<Args, py::any_ref> ||
+                                      std::is_same_v<Args, py::any_cref>...),
+                      "type-erased array input must be py::ndarray_view<py::any_ref, "
+                      "ndim> or py::ndarray_view<py::any_ref, ndim>");
+
+        template<typename V, typename Arg>
+        static bool scalar_match(const py::ndarray_view<Arg, ndim>& arr) {
+            return std::is_same_v<V, Arg> || std::is_same_v<V, py::any_cref> ||
+                   arr.vtable() == py::any_vtable::make<V>() ||
+                   arr.vtable() == py::any_vtable::make<std::remove_const_t<V>>();
         }
-        else if (std::get<0>(args).vtable() == py::any_vtable::make<Head>()) {
-            std::get<tuple_ix>(m_arrays).emplace_back(
-                std::apply(
-                    [](const auto&... untyped) {
-                        return views<Head>{untyped.template cast<Head>()...};
-                    },
-                    args),
-                ix);
+
+    public:
+        static bool f(type_entry<std::tuple<Vs...>>& maybe_out,
+                      std::size_t ix,
+                      const py::array_view<Args>&... args) {
+            if ((scalar_match<Vs>(args) && ...)) {
+                maybe_out.push_back(
+                    {views<std::tuple<Vs...>>(args.template cast<Vs>()...), ix});
+                return true;
+            }
+            return false;
         }
-        else {
-            add_typed_entry<tuple_ix + 1, Tail...>(args, ix);
+    };
+
+    template<typename V, typename... Args>
+    static bool maybe_add_typed_entry(type_entry<V>& maybe_out,
+                                      std::size_t ix,
+                                      const py::array_view<Args>&... args) {
+        return maybe_add_typed_entry_impl<V, Args...>::f(maybe_out, ix, args...);
+    }
+
+    template<std::size_t tuple_ix, typename Head, typename... Tail, typename... Args>
+    void add_typed_entry(std::size_t ix, const py::ndarray_view<Args, ndim>&... args) {
+        if (!maybe_add_typed_entry<Head>(std::get<tuple_ix>(m_arrays), ix, args...)) {
+            add_typed_entry<tuple_ix + 1, Tail...>(ix, args...);
         }
     }
 
-    template<std::size_t>
-    void add_typed_entry(const views<py::any_ref>&, std::size_t) {
+    template<std::size_t tuple_ix, typename... Args>
+    void add_typed_entry(std::size_t, const py::ndarray_view<Args, ndim>&...) {
         throw std::bad_any_cast{};
-    }
-
-    void add_entry(const views<py::any_ref>& args, std::size_t ix) {
-        if (!std::apply([](auto... args) { return util::all_equal(args.vtable()...); },
-                        args)) {
-            throw std::bad_any_cast{};
-        }
-
-        add_typed_entry<0, Ts...>(args, ix);
     }
 
 public:
     /** Construct an `nwise_devirtualize` from `arity` collections of
-        `py::array_view<py::any_ref>` or `py::array_view<py::any_cref>`.
+        `py::ndarray_view<py::any_ref>` or `py::array_view<py::any_cref, ndim>`.
 
         @param array_collections One sequence of array views per `arity`.
      */
     template<typename... Args>
-    nwise_devirtualize(const Args&... array_collections) {
+    nwise_nddevirtualize(const Args&... array_collections) {
         static_assert(sizeof...(Args) == arity, "Size of array_collections != arity");
 
         if (!util::all_equal(array_collections.size()...)) {
@@ -77,14 +105,13 @@ public:
 
         std::size_t max_size = std::get<0>(std::make_tuple(array_collections...)).size();
         for (std::size_t ix = 0; ix < max_size; ++ix) {
-            views<py::any_ref> items{array_collections[ix]...};
-            add_entry(items, ix);
+            add_typed_entry<0, Ts...>(ix, array_collections[ix]...);
         }
     }
 
 private:
-    template<typename F, typename T>
-    void for_each_helper(F&& f, const std::vector<type_entry<T>>& entries) {
+    template<typename F, typename E>
+    void for_each_helper(F&& f, const std::vector<E>& entries) {
         for (const auto& [views, ix] : entries) {
             std::apply(f, views);
         }
@@ -98,8 +125,8 @@ public:
         arguments, use `for_each_with_ix`.
 
         @param f A function object which can be called with with a signature of:
-               `f(const py::array_view<T>&...)` for each `T` in `Ts` and with an arity
-               that matches `arity`.
+               `f(const py::ndarray_view<Sig, ndim>&...)` for each candidate signature
+               in `Ts`.
      */
     template<typename F>
     void for_each(F&& f) {
@@ -111,8 +138,8 @@ public:
     }
 
 private:
-    template<typename F, typename T>
-    void for_each_with_ix_helper(F&& f, const std::vector<type_entry<T>>& entries) {
+    template<typename F, typename E>
+    void for_each_with_ix_helper(F&& f, const std::vector<E>& entries) {
         for (const auto& [views, ix] : entries) {
             std::apply([&](const auto&... args) { f(ix, args...); }, views);
         }
@@ -126,8 +153,8 @@ public:
         array views from the original constructor call.
 
         @param f A function object which can be called with with a signature of:
-               `f(std::size_t ix, const py::array_view<T>&...)` for each `T` in `Ts` and
-               with an arity that matches `arity`.
+               `f(std::size_t ix, const py::ndarray_view<Sig, ndim>&...)` for each
+               candidate signature in `Ts`.
      */
     template<typename F>
     void for_each_with_ix(F&& f) {
@@ -139,6 +166,25 @@ public:
     }
 };
 
+/** nwise devirtualize for 1-dimensional array views.
+
+    @tparam Ts A sequence of tuples of types that convey the possible combinations of
+            arrays.
+ */
 template<typename... Ts>
-using devirtualize = nwise_devirtualize<1, Ts...>;
+using nwise_devirtualize = nwise_nddevirtualize<1, Ts...>;
+
+/** Devirtualize for 1-dimensional array views.
+
+    @tparam Ts The possible types of the array to devirtualize.
+ */
+template<typename... Ts>
+using devirtualize = nwise_devirtualize<std::tuple<Ts>...>;
+
+/** Devirtualize for ndimensional array views.
+
+    @tparam Ts The possible types of the array to devirtualize.
+ */
+template<std::size_t ndim, typename... Ts>
+using nddevirtualize = nwise_nddevirtualize<ndim, std::tuple<Ts>...>;
 }  // namespace py
