@@ -282,6 +282,14 @@ public:
         return ndarray_view<const T, ndim>{m_buffer, m_shape, m_strides};
     }
 
+    template<typename U>
+    void scalar_assign(U&& value) const {
+        for (buffer_type ptr = m_buffer; ptr < m_buffer + pos_to_index(this->m_shape);
+             ptr += m_strides.back()) {
+            *reinterpret_cast<T*>(ptr) = value;
+        }
+    }
+
     /** Check if two views are exactly identical.
 
         @param other The view to compare to.
@@ -549,7 +557,16 @@ public:
      */
     ndarray_view<T, 1, false>
     slice(std::size_t start, std::size_t stop = npos, std::size_t step = 1) const {
-        std::size_t size = (stop == npos) ? this->m_shape[0] - start : stop - start;
+        std::size_t size;
+        if (stop == npos) {
+            size = this->m_shape[0];
+        }
+        else if (stop < start) {
+            size = 0;
+        }
+        else {
+            size = stop - start;
+        }
         std::int64_t stride = this->m_strides[0] * step;
         return ndarray_view(this->m_buffer + this->pos_to_index({start}),
                             {size},
@@ -831,6 +848,51 @@ public:
      */
     auto buffer() const {
         return m_buffer;
+    }
+
+private:
+    template<typename U>
+    void typecheck(const U&) const {
+        if (any_vtable::make<T>() != m_vtable) {
+            throw std::bad_any_cast{};
+        }
+    }
+
+    inline void typecheck(const any_ref& other) const {
+        if (m_vtable != other.vtable()) {
+            throw std::bad_any_cast{};
+        }
+    }
+
+    inline void typecheck(const any_cref& other) const {
+        if (m_vtable != other.vtable()) {
+            throw std::bad_any_cast{};
+        }
+    }
+
+public:
+    template<typename U>
+    void scalar_assign(const U& value) const {
+        typecheck(value);
+        for (buffer_type ptr = m_buffer; ptr < m_buffer + pos_to_index(this->m_shape);
+             ptr += m_strides.back()) {
+
+            m_vtable.copy_assign(ptr, std::addressof(value));
+        }
+    }
+
+    void scalar_assign(const py::any_cref& value) const {
+        typecheck(value);
+        for (buffer_type ptr = m_buffer; ptr < m_buffer + pos_to_index(this->m_shape);
+             ptr += m_strides.back()) {
+
+            m_vtable.copy_assign(ptr, value.addr());
+        }
+    }
+
+    void scalar_assign(const py::any_ref& value) const {
+        py::any_cref cref(value.addr(), value.vtable());
+        scalar_assign(cref);
     }
 
     /** Check if two views are exactly identical.

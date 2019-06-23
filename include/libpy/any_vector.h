@@ -312,6 +312,87 @@ public:
         }
     }
 
+private:
+    template<typename T>
+    void fill_constant_trivially_copyable(std::size_t count, const T& value) {
+        const std::byte* addr;
+        std::size_t size;
+        if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
+            addr = reinterpret_cast<const std::byte*>(value.addr());
+            size = value.vtable().size();
+        }
+        else {
+            addr = reinterpret_cast<const std::byte*>(std::addressof(value));
+            size = sizeof(value);
+        }
+
+        bool constant_bitpattern = true;
+        for (std::size_t ix = 1; ix < size; ++ix) {
+            if (addr[ix] != addr[0]) {
+                constant_bitpattern = false;
+                break;
+            }
+        }
+
+        std::size_t itemsize = m_vtable.size();
+
+        if (constant_bitpattern) {
+            // memset is much more efficient for bulk copying
+            std::memset(m_storage, static_cast<int>(addr[0]), count * itemsize);
+        }
+        else {
+            std::byte* end = m_storage + count * itemsize;
+            auto memcpy_optimized =
+                [&](std::size_t itemsize) {
+                    for (std::byte* data = m_storage; data < end; data += itemsize) {
+                        std::memcpy(data, addr, itemsize);
+                    }
+                };
+
+            switch (itemsize) {
+            case 2:
+                memcpy_optimized(2);
+                break;
+            case 4:
+                memcpy_optimized(4);
+                break;
+            case 8:
+                memcpy_optimized(8);
+                break;
+            default:
+                memcpy_optimized(itemsize);
+            }
+        }
+    }
+
+    template<typename AnyRefType>
+    void fill_anyref(std::size_t count, const AnyRefType& value) {
+        if (m_vtable.is_trivially_copy_constructible()) {
+            fill_constant_trivially_copyable(count, value);
+        }
+        else {
+            std::size_t itemsize = m_vtable.size();
+            std::byte* data = m_storage;
+
+            try {
+                for (std::size_t ix = 0; ix < count; ++ix) {
+                    m_vtable.copy_construct(data, value.addr());
+                    data += itemsize;
+                }
+            }
+            catch (...) {
+                // if an exception occurs default constructing the vector, be sure to
+                // unwind the partially initialized state
+                for (std::byte* p = m_storage; p < data; p += itemsize) {
+                    m_vtable.destruct(p);
+                }
+                std::free(m_storage);
+                throw;
+            }
+        }
+    }
+
+public:
     template<typename T>
     inline any_vector(const any_vtable& vtable, std::size_t count, const T& value)
         : m_vtable(vtable),
@@ -323,48 +404,31 @@ public:
             throw std::bad_alloc{};
         }
 
-        typecheck(value);
+        try {
+            typecheck(value);
 
-        std::size_t itemsize = m_vtable.size();
-
-        if (m_vtable.is_trivially_copy_constructible()) {
-            const void* addr;
             if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-                addr = value.addr();
+                fill_anyref(count, value);
             }
             else {
-                addr = std::addressof(value);
-            }
-
-            std::byte* end = m_storage + count * itemsize;
-            for (std::byte* data = m_storage; data < end; data += itemsize) {
-                std::memcpy(data, addr, itemsize);
+                T* buffer = reinterpret_cast<T*>(m_storage);
+                std::size_t ix;
+                try {
+                    for (ix = 0; ix < count; ++ix) {
+                        buffer[ix] = value;
+                    }
+                }
+                catch (...) {
+                    for (std::size_t unwind_ix = 0; unwind_ix < ix; ++ix) {
+                        m_vtable.destruct(&buffer[unwind_ix]);
+                    }
+                    throw;
+                }
             }
         }
-        else {
-            std::byte* data = m_storage;
-
-            try {
-                for (std::size_t ix = 0; ix < count; ++ix) {
-                    if constexpr (std::is_same_v<T, any_ref> ||
-                                  std::is_same_v<T, any_cref>) {
-                        m_vtable.copy_construct(data, value.addr());
-                    }
-                    else {
-                        m_vtable.copy_construct(data, std::addressof(value));
-                    }
-                    data += itemsize;
-                }
-            }
-            catch (...) {
-                // if an exception occurs default constructing the vector, be sure to
-                // unwind the partially initialized state
-                for (std::byte* p = m_storage; p < data; p += itemsize) {
-                    vtable.destruct(p);
-                }
-                std::free(m_storage);
-                throw;
-            }
+        catch (...) {
+            std::free(m_storage);
+            throw;
         }
     }
 
@@ -385,10 +449,21 @@ public:
             std::size_t itemsize = m_vtable.size();
             std::byte* new_data = m_storage;
             std::byte* old_data = cpfrom.m_storage;
-            for (std::size_t ix = 0; ix < size(); ++ix) {
-                m_vtable.copy_construct(new_data, old_data);
-                new_data += itemsize;
-                old_data += itemsize;
+            std::size_t ix;
+
+            try {
+                for (ix = 0; ix < size(); ++ix) {
+                    m_vtable.copy_construct(new_data, old_data);
+                    new_data += itemsize;
+                    old_data += itemsize;
+                }
+            }
+            catch (...) {
+                for (std::size_t unwind_ix = 0; unwind_ix < ix; ++unwind_ix) {
+                    m_vtable.destruct(m_storage + itemsize * unwind_ix);
+                }
+                std::free(m_storage);
+                throw;
             }
         }
     }
