@@ -1070,7 +1070,7 @@ public:
         storage.type = type.get();  // borrowed reference held in the cache
 
         // mark that we have initialized the type already so that
-        // `require_uninitialized()` can faild
+        // `require_uninitialized()` can fail
         m_storage.type = storage.type;
 
         // Create a `PyCFunctionObject` that will call `cache_cleanup`.
