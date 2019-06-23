@@ -82,6 +82,21 @@ TYPED_TEST_P(array_view, reverse_iterator) {
     test_iterator(arr.crbegin(), arr.crend(), view.crbegin(), view.crend());
 }
 
+TYPED_TEST_P(array_view, scalar_assign) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {1, 2, 3, 4, 5};
+    py::array_view<TypeParam> view(arr);
+    ASSERT_EQ(view.size(), arr.size());
+
+    if constexpr (!std::is_const_v<TypeParam>) {
+        view.scalar_assign(6);
+
+        for (std::size_t ix = 0; ix < arr.size(); ++ix) {
+            EXPECT_EQ(view[ix], 6);
+            EXPECT_EQ(arr[ix], 6);
+        }
+    }
+}
+
 TYPED_TEST_P(array_view, _2d_indexing) {
     std::array<std::array<std::remove_const_t<TypeParam>, 3>, 4> arr;
     std::size_t value = 1;
@@ -168,6 +183,7 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
                            from_std_vector,
                            iterator,
                            reverse_iterator,
+                           scalar_assign,
                            _2d_indexing,
                            front_back,
                            virtual_array,
