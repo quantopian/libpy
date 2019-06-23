@@ -1050,9 +1050,13 @@ public:
         // Move our type storage into this persistent storage. `m_storage.methods` has
         // pointers into `m_storage.strings`, so we need to move the list as well to
         // maintain these references.
-        detail::autoclass_storage& storage = detail::autoclass_type_cache
-                                                 .emplace(typeid(T), std::move(m_storage))
-                                                 .first->second;
+        auto [it, inserted] =
+            detail::autoclass_type_cache.try_emplace(typeid(T), std::move(m_storage));
+        if (!inserted) {
+            throw py::exception(PyExc_RuntimeError, "type already constructed");
+        }
+        detail::autoclass_storage& storage = it->second;
+
         // if we need to exit early, evict this cache entry
         py::util::scope_guard release_type_cache(
             [&] { detail::autoclass_type_cache.erase(typeid(T)); });
