@@ -180,6 +180,31 @@ public:
         return nullptr;
     }
 
+    /** Construct a new Python object that wraps a `T` without boxing/unboxing the
+        constructor arguments.
+
+        @param args The arguments to forward to the C++ type's constructor.
+        @return A new reference to a Python wrapped version of `T`, or nullptr on failure.
+     */
+    template<typename... Args>
+    static py::scoped_ref<> construct(Args&&... args) {
+        auto cls = lookup_type();
+        if (!cls) {
+            py::raise(PyExc_RuntimeError) << "type wasn't created yet";
+            return nullptr;
+        }
+
+        PyObject* out;
+        if (cls.get()->tp_flags & Py_TPFLAGS_HAVE_GC) {
+            out = constructor_new_impl<true>(cls.get(), std::forward<Args>(args)...);
+        }
+        else {
+            out = constructor_new_impl<false>(cls.get(), std::forward<Args>(args)...);
+        }
+
+        return py::scoped_ref(out);
+    }
+
     autoclass(std::string name = util::type_name<T>().get(), int extra_flags = 0)
         : m_storage(std::move(name)),
           m_spec({m_storage.strings.front().data(),
