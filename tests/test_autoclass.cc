@@ -98,6 +98,29 @@ TEST_F(autoclass, smoke) {
     }
 }
 
+TEST_F(autoclass, construct) {
+    struct C {
+        int a;
+        float b;
+
+        C(int a, float b) : a(a), b(b) {}
+    };
+
+    // don't use `new_` to expose `__new__` to Python, `autoclass::construct` doesn't need
+    // that
+    py::scoped_ref cls = py::autoclass<C>().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref<> inst = py::autoclass<C>::construct(1, 2.5);
+    ASSERT_TRUE(inst);
+
+    EXPECT_EQ(Py_TYPE(inst.get()), cls.get());
+    C& unboxed = py::autoclass<C>::unbox(inst);
+
+    EXPECT_EQ(unboxed.a, 1);
+    EXPECT_EQ(unboxed.b, 2.5);
+}
+
 TEST_F(autoclass, name) {
     {
         class C {};
