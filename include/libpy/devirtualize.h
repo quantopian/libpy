@@ -48,7 +48,7 @@ private:
         static_assert(util::all_equal(std::is_same_v<Args, py::any_ref> ||
                                       std::is_same_v<Args, py::any_cref>...),
                       "type-erased array input must be py::ndarray_view<py::any_ref, "
-                      "ndim> or py::ndarray_view<py::any_ref, ndim>");
+                      "ndim> or py::ndarray_view<py::any_cref, ndim>");
 
         template<typename V, typename Arg>
         static bool scalar_match(const py::ndarray_view<Arg, ndim>& arr) {
