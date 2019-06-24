@@ -13,8 +13,70 @@
 
 #include "libpy/any.h"
 #include "libpy/any_vector.h"
+#include "libpy/exception.h"
 
 namespace py {
+
+namespace detail {
+struct buffer_free {
+    void operator()(Py_buffer* view) {
+        if (view) {
+            PyBuffer_Release(view);
+            delete view;
+        }
+    }
+};
+}  // namespace detail
+
+using buffer = std::unique_ptr<Py_buffer, detail::buffer_free>;
+
+namespace detail {
+template<typename T>
+constexpr char buffer_format = '\0';
+
+template<>
+constexpr char buffer_format<char> = 'c';
+
+template<>
+constexpr char buffer_format<signed char> = 'b';
+
+template<>
+constexpr char buffer_format<unsigned char> = 'B';
+
+template<>
+constexpr char buffer_format<bool> = '?';
+
+template<>
+constexpr char buffer_format<short> = 'h';
+
+template<>
+constexpr char buffer_format<unsigned short> = 'H';
+
+template<>
+constexpr char buffer_format<int> = 'i';
+
+template<>
+constexpr char buffer_format<unsigned int> = 'I';
+
+template<>
+constexpr char buffer_format<long> = 'l';
+
+template<>
+constexpr char buffer_format<unsigned long> = 'L';
+
+template<>
+constexpr char buffer_format<long long> = 'q';
+
+template<>
+constexpr char buffer_format<unsigned long long> = 'Q';
+
+template<>
+constexpr char buffer_format<float> = 'f';
+
+template<>
+constexpr char buffer_format<double> = 'd';
+}  // namespace detail
+
 /** A struct to wrap an array of type T whose shape is not known until runtime.
 
     @tparam T The type of the elements in the array.
@@ -27,6 +89,9 @@ public:
         std::conditional_t<std::is_const_v<T>, const std::byte*, std::byte*>;
 
 protected:
+    template<typename, std::size_t, bool>
+    friend class ndarray_view;
+
     std::array<std::size_t, ndim> m_shape;
     std::array<std::int64_t, ndim> m_strides;
     buffer_type m_buffer;
@@ -53,6 +118,64 @@ public:
     using const_reference = const value_type&;
     using pointer = value_type*;
     using const_pointer = const value_type*;
+
+    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
+    static std::tuple<ndarray_view<T, ndim>, py::buffer> from_buffer_protocol(PyObject* ob) {
+        py::buffer buf(new Py_buffer);
+        int flags = PyBUF_ND | PyBUF_STRIDED | PyBUF_FORMAT;
+        if (!std::is_const_v<T>) {
+            flags |= PyBUF_WRITABLE;
+        }
+        if (PyObject_GetBuffer(ob, buf.get(), flags)) {
+            throw py::exception{};
+        }
+
+        char fmt;
+        if (!buf->format) {
+            fmt = 'B';
+        }
+        else if (std::strlen(buf->format) != 1) {
+            throw py::exception(PyExc_TypeError,
+                                "cannot adapt buffer of format=",
+                                buf->format,
+                                " to an ndarray_view of ",
+                                util::type_name<T>().get());
+        }
+        else {
+            fmt = *buf->format;
+        }
+
+        if (fmt != detail::buffer_format<T>) {
+            throw py::exception(PyExc_TypeError,
+                                "cannot adapt buffer of format=",
+                                fmt,
+                                " to an ndarray_view of ",
+                                util::type_name<T>().get());
+        }
+
+        if (buf->ndim != ndim) {
+            throw py::exception(
+                PyExc_TypeError, "buffer ndim=", buf->ndim, " != expected_ndim=", ndim);
+        }
+
+        std::array<std::size_t, ndim> shape;
+        std::array<std::int64_t, ndim> strides;
+        for (int ix = 0; ix < buf->ndim; ++ix) {
+            shape[ix] = static_cast<std::size_t>(buf->shape[ix]);
+            strides[ix] = static_cast<std::int64_t>(buf->strides[ix]);
+        }
+
+        return {ndarray_view<T, ndim>{reinterpret_cast<buffer_type>(buf->buf),
+                                      shape,
+                                      strides},
+                std::move(buf)};
+    }
+
+    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
+    static std::tuple<ndarray_view, py::buffer>
+    from_buffer_protocol(const py::scoped_ref<>& ob) {
+        return from_buffer_protocol(ob.get());
+    }
 
     ndarray_view& operator=(const ndarray_view<const T, ndim, false>& cpfrom) {
         m_shape = cpfrom.shape();
@@ -134,7 +257,7 @@ public:
     /** The number of bytes to go from one element to the next.
      */
     const std::array<std::size_t, ndim>& shape() const {
-        return m_strides;
+        return m_shape;
     }
 
     /** The number of bytes to go from one element to the next.
@@ -153,8 +276,8 @@ public:
 
         @return The frozen view.
     */
-    ndarray_view<const T, ndim, true> freeze() const {
-        return {m_buffer, m_shape, m_strides};
+    ndarray_view<const T, ndim> freeze() const {
+        return ndarray_view<const T, ndim>{m_buffer, m_shape, m_strides};
     }
 
     /** Check if two views are exactly identical.
@@ -177,6 +300,10 @@ template<typename T>
 class ndarray_view<T, 1, false> : public ndarray_view<T, 1, true> {
 private:
     using generic_ndarray_impl = ndarray_view<T, 1, true>;
+
+protected:
+    template<typename, std::size_t, bool>
+    friend class ndarray_view;
 
 public:
     using buffer_type = typename generic_ndarray_impl::buffer_type;
@@ -424,16 +551,6 @@ public:
                             {size},
                             {stride});
     }
-
-    /** Create a new immutable view over the same memory.
-
-        @return The frozen view.
-     */
-    ndarray_view<const T, 1, false> freeze() const {
-        return {reinterpret_cast<const T*>(this->m_buffer),
-                this->m_shape,
-                this->m_strides};
-    }
 };
 
 template<typename T>
@@ -452,6 +569,9 @@ public:
         std::conditional_t<std::is_same_v<T, py::any_cref>, const std::byte*, std::byte*>;
 
 protected:
+    template<std::size_t, typename, bool>
+    friend class any_ref_ndarray_view;
+
     std::array<std::size_t, ndim> m_shape;
     std::array<std::int64_t, ndim> m_strides;
     buffer_type m_buffer;
@@ -474,6 +594,108 @@ public:
     using const_reference = any_cref;
     using pointer = value_type*;
     using const_pointer = const value_type*;
+
+    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
+    static std::tuple<any_ref_ndarray_view<ndim, T>, py::buffer>
+    from_buffer_protocol(PyObject* ob) {
+        py::buffer buf(new Py_buffer);
+        int flags = PyBUF_ND | PyBUF_STRIDED | PyBUF_FORMAT;
+        if (!std::is_const_v<T>) {
+            flags |= PyBUF_WRITABLE;
+        }
+        if (PyObject_GetBuffer(ob, buf.get(), flags)) {
+            throw py::exception{};
+        }
+
+        char fmt;
+        if (!buf->format) {
+            fmt = 'B';
+        }
+        else if (std::strlen(buf->format) != 1) {
+            throw py::exception(PyExc_TypeError,
+                                "cannot adapt buffer of format=",
+                                buf->format,
+                                " to an ndarray_view");
+        }
+        else {
+            fmt = *buf->format;
+        }
+
+        py::any_vtable vtable;
+
+        switch (fmt) {
+        case detail::buffer_format<char>:
+            vtable = py::any_vtable::make<char>();
+            break;
+        case detail::buffer_format<signed char>:
+            vtable = py::any_vtable::make<signed char>();
+            break;
+        case detail::buffer_format<unsigned char>:
+            vtable = py::any_vtable::make<unsigned char>();
+            break;
+        case detail::buffer_format<bool>:
+            vtable = py::any_vtable::make<bool>();
+            break;
+        case detail::buffer_format<short>:
+            vtable = py::any_vtable::make<short>();
+            break;
+        case detail::buffer_format<unsigned short>:
+            vtable = py::any_vtable::make<unsigned short>();
+            break;
+        case detail::buffer_format<int>:
+            vtable = py::any_vtable::make<int>();
+            break;
+        case detail::buffer_format<unsigned int>:
+            vtable = py::any_vtable::make<unsigned int>();
+            break;
+        case detail::buffer_format<long>:
+            vtable = py::any_vtable::make<long>();
+            break;
+        case detail::buffer_format<unsigned long>:
+            vtable = py::any_vtable::make<unsigned long>();
+            break;
+        case detail::buffer_format<long long>:
+            vtable = py::any_vtable::make<long long>();
+            break;
+        case detail::buffer_format<unsigned long long>:
+            vtable = py::any_vtable::make<unsigned long long>();
+            break;
+        case detail::buffer_format<float>:
+            vtable = py::any_vtable::make<float>();
+            break;
+        case detail::buffer_format<double>:
+            vtable = py::any_vtable::make<double>();
+            break;
+        default:
+            throw py::exception(PyExc_TypeError,
+                                "cannot adapt buffer of format=",
+                                fmt,
+                                " to an ndarray_view");
+        }
+
+        if (buf->ndim != ndim) {
+            throw py::exception(
+                PyExc_TypeError, "buffer ndim=", buf->ndim, " != expected_ndim=", ndim);
+        }
+
+        std::array<std::size_t, ndim> shape;
+        std::memcpy(shape.data(), buf->shape, ndim);
+
+        std::array<std::int64_t, ndim> strides;
+        std::memcpy(strides.data(), buf->strides, ndim);
+
+        return {any_ref_ndarray_view{vtable,
+                                     reinterpret_cast<buffer_type>(buf->buf),
+                                     shape,
+                                     strides},
+                std::move(buf)};
+    }
+
+    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
+    static std::tuple<any_ref_ndarray_view, py::buffer>
+    from_buffer_protocol(const py::scoped_ref<>& ob) {
+        return from_buffer_protocol(ob.get());
+    }
 
     /** Create a virtual array of length ``size`` holding the scalar ``value``.
 
@@ -633,6 +855,10 @@ template<typename T>
 class any_ref_ndarray_view<1, T, false> : public any_ref_ndarray_view<1, T, true> {
 private:
     using generic_ndarray_impl = any_ref_ndarray_view<1, T, true>;
+
+protected:
+    template<std::size_t, typename, bool>
+    friend class any_ref_ndarray_view;
 
 public:
     using buffer_type = typename generic_ndarray_impl::buffer_type;

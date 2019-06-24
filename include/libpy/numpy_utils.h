@@ -127,6 +127,9 @@ inline std::ostream& operator<<(std::ostream& stream, const py_bool& value) {
 }
 
 namespace detail {
+template<>
+constexpr char buffer_format<py::py_bool> = '?';
+
 template<typename D>
 struct py_chrono_unit_to_numpy_unit;
 
