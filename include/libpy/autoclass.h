@@ -82,23 +82,23 @@ private:
     };
 
     // dispatch for non-const member function
-    template<typename R, typename... Args, auto impl>
-    struct member_function<R (T::*)(Args...), impl>
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function<R (C::*)(Args...), impl>
         : public pointer_to_member_function_base<impl, R, Args...> {};
 
     // dispatch for non-const noexcept member function
-    template<typename R, typename... Args, auto impl>
-    struct member_function<R (T::*)(Args...) noexcept, impl>
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function<R (C::*)(Args...) noexcept, impl>
         : public pointer_to_member_function_base<impl, R, Args...> {};
 
     // dispatch for const member function
-    template<typename R, typename... Args, auto impl>
-    struct member_function<R (T::*)(Args...) const, impl>
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function<R (C::*)(Args...) const, impl>
         : public pointer_to_member_function_base<impl, R, Args...> {};
 
     // dispatch for const noexcept member function
-    template<typename R, typename... Args, auto impl>
-    struct member_function<R (T::*)(Args...) const noexcept, impl>
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function<R (C::*)(Args...) const noexcept, impl>
         : public pointer_to_member_function_base<impl, R, Args...> {};
 
     // dispatch for free function that accepts as a first argument `T`
