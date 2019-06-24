@@ -98,6 +98,28 @@ TEST_F(autoclass, smoke) {
     }
 }
 
+TEST_F(autoclass, def_inherited_method) {
+    struct C {
+        int f(int a) {
+            return a + 1;
+        }
+    };
+
+    struct D : public C {};
+
+    py::scoped_ref cls = py::autoclass<D>().new_<>().def<&D::f>("f").type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls));
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    py::scoped_ref<> res = py::call_method(inst, "f", 1);
+    ASSERT_TRUE(res);
+
+    EXPECT_EQ(py::from_object<int>(res), 2);
+}
+
 TEST_F(autoclass, construct) {
     struct C {
         int a;
