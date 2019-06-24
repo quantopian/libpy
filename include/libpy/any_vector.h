@@ -278,7 +278,10 @@ private:
 public:
     any_vector() = delete;
 
-    inline any_vector(const any_vtable& vtable, std::size_t count = 0)
+    inline any_vector(const any_vtable& vtable)
+        : m_vtable(vtable), m_storage(nullptr), m_size(0), m_capacity(0) {}
+
+    inline any_vector(const any_vtable& vtable, std::size_t count)
         : m_vtable(vtable),
           m_storage(static_cast<std::byte*>(vtable.default_construct_alloc(count))),
           m_size(count),
@@ -394,7 +397,7 @@ public:
         : m_vtable(mvfrom.m_vtable),
           m_storage(mvfrom.m_storage),
           m_size(mvfrom.size()),
-          m_capacity(mvfrom.size()) {
+          m_capacity(mvfrom.capacity()) {
         mvfrom.m_storage = nullptr;
         mvfrom.m_size = 0;
         mvfrom.m_capacity = 0;
