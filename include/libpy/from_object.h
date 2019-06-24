@@ -117,8 +117,6 @@ constexpr bool has_from_object = detail::has_from_object<T>::value;
 
 namespace dispatch {
 
-#if PY_MAJOR_VERSION != 2
-// this dispatch depends on `autoclass` which is only available for Python 3.
 template<typename T>
 struct from_object<T&> {
 private:
@@ -144,7 +142,6 @@ public:
         }
     }
 };
-#endif
 
 template<std::size_t n>
 struct from_object<std::array<char, n>> {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Python.h>
-#if PY_MAJOR_VERSION != 2
 
 #include <forward_list>
 #include <sstream>
@@ -13,6 +12,7 @@
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
+#include "libpy/detail/autoclass_py2.h"
 #include "libpy/meta.h"
 #include "libpy/scope_guard.h"
 
@@ -210,7 +210,7 @@ public:
           m_spec({m_storage.strings.front().data(),
                   static_cast<int>(sizeof(object)),
                   0,
-                  static_cast<unsigned int>(Py_TPFLAGS_DEFAULT | extra_flags),
+                  static_cast<unsigned int>(detail::autoclass_base_flags | extra_flags),
                   nullptr}) {
         auto type_search = detail::autoclass_type_cache.find(typeid(T));
         if (type_search != detail::autoclass_type_cache.end()) {
@@ -1008,11 +1008,21 @@ private:
                 std::stringstream s;
                 s << unbox(self);
                 std::size_t size = s.tellp();
-                PyObject* out = PyUnicode_New(size, PyUnicode_1BYTE_KIND);
+                PyObject* out;
+                char* buf;
+#if PY_MAJOR_VERSION == 2
+                out = PyString_FromStringAndSize(nullptr, size);
                 if (!out) {
                     return nullptr;
                 }
-                char* buf = PyUnicode_AsUTF8(out);
+                buf = PyString_AS_STRING(out);
+#else
+                out = PyUnicode_New(size, PyUnicode_1BYTE_KIND);
+                if (!out) {
+                    return nullptr;
+                }
+                buf = PyUnicode_AsUTF8(out);
+#endif
                 s.read(buf, size);
                 return out;
             }
@@ -1156,4 +1166,3 @@ public:
     };
 };
 }  // namespace py
-#endif
