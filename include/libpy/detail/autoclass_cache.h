@@ -2,8 +2,6 @@
 /** This file is lifted out of `autoclass.h` because both `from_object.h` and
     `autoclass.h` need to read this cache, but `autoclass.h` depends on `from_object.h`.
  */
-#include <Python.h>
-#if PY_MAJOR_VERSION != 2
 
 #include <forward_list>
 #include <typeindex>
@@ -54,4 +52,3 @@ struct autoclass_storage {
 // `py::autoclass`.
 extern std::unordered_map<std::type_index, autoclass_storage> autoclass_type_cache;
 }  // namespace py::detail
-#endif

@@ -1,5 +1,4 @@
 #include <Python.h>
-#if PY_MAJOR_VERSION != 2
 
 #include <map>
 #include <numeric>
@@ -374,9 +373,17 @@ TEST_F(autoclass, float_conversion) {
     test_type_conversion<double, true>("__float__");
 }
 
+namespace {
+#if PY_MAJOR_VERSION == 2
+const char* const bool_method_name = "__nonzero__";
+#else
+const char* const bool_method_name = "__bool__";
+#endif
+}
+
 TEST_F(autoclass, bool_conversion) {
-    test_type_conversion<bool, false>("__bool__");
-    test_type_conversion<bool, true>("__bool__");
+    test_type_conversion<bool, false>(bool_method_name);
+    test_type_conversion<bool, true>(bool_method_name);
 }
 
 TEST_F(autoclass, from_object) {
@@ -806,4 +813,3 @@ TEST_F(autoclass, iter_throws) {
 }
 #endif
 }  // namespace test_autoclass
-#endif
