@@ -7,6 +7,7 @@
 
 #include "libpy/itertools.h"
 #include "libpy/ndarray_view.h"
+#include "test_utils.h"
 
 namespace test_array_view {
 /** A non-fundamental type.
@@ -200,6 +201,30 @@ using array_view_test_types =
 INSTANTIATE_TYPED_TEST_CASE_P(typed_,
                               array_view,
                               typename tuple_to_types<array_view_test_types>::type);
+
+TEST(array_view_extra, from_buffer_protocol) {
+    py::scoped_ref<> ns = RUN_PYTHON(R"(
+        import numpy as np
+        array = np.array([1.5, 2.5, 3.5], dtype='f8')
+        view = memoryview(array)
+    )");
+    ASSERT_TRUE(ns);
+
+    PyObject* view = PyDict_GetItemString(ns.get(), "view");
+    ASSERT_TRUE(view);
+
+    auto [array_view, buf] = py::array_view<double>::from_buffer_protocol(view);
+    ::testing::StaticAssertTypeEq<decltype(array_view), py::array_view<double>>();
+
+    ASSERT_EQ(array_view.size(), 3u);
+    EXPECT_EQ(array_view[0], 1.5);
+    EXPECT_EQ(array_view[1], 2.5);
+    EXPECT_EQ(array_view[2], 3.5);
+
+    EXPECT_THROW(({ py::array_view<float>::from_buffer_protocol(view); }), py::exception);
+    EXPECT_THROW(({ py::ndarray_view<double, 2>::from_buffer_protocol(view); }),
+                 py::exception);
+}
 
 TEST(any_ref_array_view, test_read) {
     std::array<int, 5> underlying = {0, 1, 2, 3, 4};
