@@ -35,10 +35,12 @@ SONAME := $(SHORT_SONAME).$(MAJOR_VERSION).$(MINOR_VERSION).$(MICRO_VERSION)
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
 	SONAME_FLAG := install_name
+	SONAME_PATH := @rpath/$(SONAME)
 	AR := libtool
 	ARFLAGS := -static -o
 else
 	SONAME_FLAG := soname
+	SONAME_PATH := $(SONAME)
 endif
 
 # Sanitizers
@@ -109,7 +111,7 @@ force:
 	@echo '$(ALL_FLAGS)' | cmp -s - $@ || echo '$(ALL_FLAGS)' > $@
 
 $(SONAME): $(OBJECTS)
-	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME) \
+	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME_PATH) \
 		-o $@ $(LDFLAGS)
 	@rm -f $(SHORT_SONAME)
 
