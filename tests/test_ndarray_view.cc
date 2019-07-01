@@ -82,13 +82,13 @@ TYPED_TEST_P(array_view, reverse_iterator) {
     test_iterator(arr.crbegin(), arr.crend(), view.crbegin(), view.crend());
 }
 
-TYPED_TEST_P(array_view, scalar_assign) {
+TYPED_TEST_P(array_view, fill) {
     std::array<std::remove_const_t<TypeParam>, 5> arr = {1, 2, 3, 4, 5};
     py::array_view<TypeParam> view(arr);
     ASSERT_EQ(view.size(), arr.size());
 
     if constexpr (!std::is_const_v<TypeParam>) {
-        view.scalar_assign(6);
+        view.fill(6);
 
         for (std::size_t ix = 0; ix < arr.size(); ++ix) {
             EXPECT_EQ(view[ix], 6);
@@ -178,16 +178,88 @@ TYPED_TEST_P(array_view, negative_strides) {
     }
 }
 
+TYPED_TEST_P(array_view, slice_npos_end) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {0, 1, 2, 3, 4};
+    py::array_view<TypeParam> view(arr);
+
+    auto slice = view.slice(2);
+    ASSERT_EQ(slice.size(), view.size() - 2);
+    for (std::size_t ix = 0; ix < slice.size(); ++ix) {
+        EXPECT_EQ(slice[ix], view[ix + 2]);
+    }
+}
+
+TYPED_TEST_P(array_view, slice_start_end) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {0, 1, 2, 3, 4};
+    py::array_view<TypeParam> view(arr);
+
+    auto slice = view.slice(2, 4);
+    ASSERT_EQ(slice.size(), 2u);
+    for (std::size_t ix = 0; ix < slice.size(); ++ix) {
+        EXPECT_EQ(slice[ix], view[ix + 2]);
+    }
+}
+
+TYPED_TEST_P(array_view, slice_end_greater_than_size_positive_step) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {0, 1, 2, 3, 4};
+    py::array_view<TypeParam> view(arr);
+
+    // slice clips to just the max size
+    auto slice = view.slice(2, view.size() + 10);
+    ASSERT_EQ(slice.size(), view.size() - 2);
+    for (std::size_t ix = 0; ix < slice.size(); ++ix) {
+        EXPECT_EQ(slice[ix], view[ix + 2]);
+    }
+}
+
+TYPED_TEST_P(array_view, slice_start_equal_end) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {0, 1, 2, 3, 4};
+    py::array_view<TypeParam> view(arr);
+
+    // slice protects against start > end
+    auto slice = view.slice(2, 2);
+    ASSERT_EQ(slice.size(), 0u);
+}
+
+TYPED_TEST_P(array_view, slice_positive_step) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {0, 1, 2, 3, 4};
+    py::array_view<TypeParam> view(arr);
+
+    auto slice = view.slice(1, view.snpos, 2);
+    ASSERT_EQ(slice.size(), 2u);
+    for (std::size_t ix = 0; ix < slice.size(); ++ix) {
+        EXPECT_EQ(slice[ix], view[(2 * ix) + 1]);
+    }
+}
+
+TYPED_TEST_P(array_view, slice_negative_step) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {0, 1, 2, 3, 4};
+    py::array_view<TypeParam> view(arr);
+
+    auto slice = view.slice(view.size() - 1, -1, -1);
+    ASSERT_EQ(slice.size(), view.size());
+    for (std::size_t ix = 0; ix < slice.size(); ++ix) {
+        EXPECT_EQ(slice[ix], view[view.size() - (ix + 1)]);
+    }
+}
+
+
 REGISTER_TYPED_TEST_CASE_P(array_view,
                            from_std_array,
                            from_std_vector,
                            iterator,
                            reverse_iterator,
-                           scalar_assign,
+                           fill,
                            _2d_indexing,
                            front_back,
                            virtual_array,
-                           negative_strides);
+                           negative_strides,
+                           slice_npos_end,
+                           slice_start_end,
+                           slice_end_greater_than_size_positive_step,
+                           slice_start_equal_end,
+                           slice_positive_step,
+                           slice_negative_step);
 
 template<typename T>
 struct tuple_to_types;
