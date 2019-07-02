@@ -293,7 +293,7 @@ endlabel:
 
        Q. What do the trashcan macros do?
 
-       A. Read the comment titled "Trashcan mechanism" in object.h.
+       A. Read the comment titled "Trashcan mechanism" in CPython's object.h.
           For one, this explains why there must be a call to GC-untrack
           before the trashcan begin macro.      Without understanding the
           trashcan code, the answers to the following questions don't make
