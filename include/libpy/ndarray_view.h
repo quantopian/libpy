@@ -16,7 +16,6 @@
 #include "libpy/exception.h"
 
 namespace py {
-
 namespace detail {
 struct buffer_free {
     void operator()(Py_buffer* view) {
@@ -75,6 +74,34 @@ constexpr char buffer_format<float> = 'f';
 
 template<>
 constexpr char buffer_format<double> = 'd';
+
+template<typename T>
+T slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t step) {
+    std::int64_t high;
+    std::int64_t low;
+    std::int64_t adj_step;
+
+    if (step > 0) {
+        low = std::max<std::int64_t>(start, 0);
+        high = std::min<std::int64_t>(stop, view.ssize());
+        adj_step = step;
+    }
+    else if (step == 0) {
+        throw std::invalid_argument{"slice step cannot be zero"};
+    }
+    else {
+        low = std::max<std::int64_t>(stop, -1);
+        high = std::min<std::int64_t>(start, view.ssize() - 1);
+        adj_step = -step;
+    }
+
+    std::int64_t size = (low >= high) ? 0 : (high - low - 1) / adj_step + 1;
+    std::int64_t stride = view.strides()[0] * step;
+
+    return T{view.buffer() + view.pos_to_index({static_cast<std::size_t>(start)}),
+             {static_cast<std::size_t>(size)},
+             {stride}};
+}
 }  // namespace detail
 
 /** A struct to wrap an array of type T whose shape is not known until runtime.
@@ -560,6 +587,11 @@ public:
         return (*this)[this->size() - 1];
     }
 
+    friend ndarray_view detail::slice_impl<ndarray_view>(const ndarray_view&,
+                                                         std::int64_t,
+                                                         std::int64_t,
+                                                         std::int64_t);
+
     /** Create a view over a subsection of the viewed memory.
 
         @param start The start index of the slice.
@@ -567,29 +599,9 @@ public:
         @param step The value to increment each index by.
         @return A view over a subset of the memory.
      */
-    ndarray_view<T, 1, false>
+    ndarray_view
     slice(std::int64_t start, std::int64_t stop = snpos, std::int64_t step = 1) const {
-        std::int64_t high;
-        std::int64_t low;
-        std::int64_t adj_step;
-
-        if (step > 0) {
-            low = std::max<std::int64_t>(start, 0);
-            high = std::min<std::int64_t>(stop, this->ssize());
-            adj_step = step;
-        }
-        else {
-            low = std::max<std::int64_t>(stop, -1);
-            high = std::min<std::int64_t>(start, this->ssize() - 1);
-            adj_step = -step;
-        }
-
-        std::int64_t size = (low >= high) ? 0 : (high - low - 1) / adj_step + 1;
-        std::int64_t stride = this->m_strides[0] * step;
-        return ndarray_view(this->m_buffer +
-                                this->pos_to_index({static_cast<std::size_t>(start)}),
-                            {static_cast<std::size_t>(size)},
-                            {stride});
+        return detail::slice_impl(*this, start, stop, step);
     }
 };
 
@@ -1249,6 +1261,11 @@ public:
     // Re-use constructor from the generic impl.
     using any_ref_ndarray_view<1, any_cref, false>::any_ref_ndarray_view;
 
+    friend ndarray_view detail::slice_impl<ndarray_view>(const ndarray_view&,
+                                                         std::int64_t,
+                                                         std::int64_t,
+                                                         std::int64_t);
+
     /** Create a view over a subsection of the viewed memory.
 
         @param start The start index of the slice.
@@ -1256,29 +1273,9 @@ public:
         @param step The value to increment each index by.
         @return A view over a subset of the memory.
      */
-    ndarray_view<any_cref, 1, false>
+    ndarray_view
     slice(std::int64_t start, std::int64_t stop = snpos, std::int64_t step = 1) const {
-        std::int64_t high;
-        std::int64_t low;
-        std::int64_t adj_step;
-
-        if (step > 0) {
-            low = std::max<std::int64_t>(start, 0);
-            high = std::min<std::int64_t>(stop, this->ssize());
-            adj_step = step;
-        }
-        else {
-            low = std::max<std::int64_t>(stop, -1);
-            high = std::min<std::int64_t>(start, this->ssize() - 1);
-            adj_step = -step;
-        }
-
-        std::int64_t size = (low >= high) ? 0 : (high - low - 1) / adj_step + 1;
-        std::int64_t stride = this->m_strides[0] * step;
-        return ndarray_view(this->m_buffer +
-                                this->pos_to_index({static_cast<std::size_t>(start)}),
-                            {static_cast<std::size_t>(size)},
-                            {stride});
+        return detail::slice_impl(*this, start, stop, step);
     }
 
     /** Create a new immutable view over the same memory.
@@ -1303,6 +1300,11 @@ public:
     // Re-use constructor from the generic impl.
     using any_ref_ndarray_view<1, any_ref, false>::any_ref_ndarray_view;
 
+    friend ndarray_view detail::slice_impl<ndarray_view>(const ndarray_view&,
+                                                         std::int64_t,
+                                                         std::int64_t,
+                                                         std::int64_t);
+
     /** Create a view over a subsection of the viewed memory.
 
         @param start The start index of the slice.
@@ -1310,29 +1312,9 @@ public:
         @param step The value to increment each index by.
         @return A view over a subset of the memory.
      */
-    ndarray_view<any_ref, 1, false>
+    ndarray_view
     slice(std::int64_t start, std::int64_t stop = snpos, std::int64_t step = 1) const {
-        std::int64_t high;
-        std::int64_t low;
-        std::int64_t adj_step;
-
-        if (step > 0) {
-            low = std::max<std::int64_t>(start, 0);
-            high = std::min<std::int64_t>(stop, this->ssize());
-            adj_step = step;
-        }
-        else {
-            low = std::max<std::int64_t>(stop, -1);
-            high = std::min<std::int64_t>(start, this->ssize() - 1);
-            adj_step = -step;
-        }
-
-        std::int64_t size = (low >= high) ? 0 : (high - low - 1) / adj_step + 1;
-        std::int64_t stride = this->m_strides[0] * step;
-        return ndarray_view(this->m_buffer +
-                                this->pos_to_index({static_cast<std::size_t>(start)}),
-                            {static_cast<std::size_t>(size)},
-                            {stride});
+        return slice_impl(*this, start, stop, step);
     }
 
     /** Create a new immutable view over the same memory.
