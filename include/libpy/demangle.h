@@ -17,7 +17,7 @@ private:
 public:
     inline demangle_error(const std::string& msg) : m_msg(msg) {}
 
-    inline const char* what() const noexcept {
+    inline const char* what() const noexcept override {
         return m_msg.data();
     }
 };

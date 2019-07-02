@@ -29,7 +29,7 @@ private:
 protected:
     /** Write a character to the file-like object.
      */
-    virtual int_type overflow(int_type ch) {
+    virtual int_type overflow(int_type ch) override {
         if (ch == Traits::eof()) {
             return ch;
         }
@@ -47,7 +47,7 @@ protected:
         Note: This does not actually flush the underlying Python file-like object, it just
         commits the C++ buffered writes to the Python object.
      */
-    virtual int sync() {
+    virtual int sync() override {
         if (m_write_ix) {
             auto view = std::string_view(m_write_buffer.data(), m_write_ix);
             auto result = call_method(m_file_ob.get(), "write", view);

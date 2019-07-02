@@ -52,7 +52,7 @@ public:
         return invalid_conversion(s.str());
     }
 
-    inline const char* what() const noexcept {
+    inline const char* what() const noexcept override {
         return m_msg.data();
     }
 };
