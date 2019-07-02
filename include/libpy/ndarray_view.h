@@ -89,6 +89,8 @@ public:
         std::conditional_t<std::is_const_v<T>, const std::byte*, std::byte*>;
 
 protected:
+    // allow any `ndarray_view` specialization to call the protected constructor
+    // of other `ndarray_view` specializations
     template<typename, std::size_t, bool>
     friend class ndarray_view;
 
@@ -302,6 +304,8 @@ private:
     using generic_ndarray_impl = ndarray_view<T, 1, true>;
 
 protected:
+    // allow any `ndarray_view` specialization to call the protected constructor
+    // of other `ndarray_view` specializations
     template<typename, std::size_t, bool>
     friend class ndarray_view;
 
@@ -569,6 +573,8 @@ public:
         std::conditional_t<std::is_same_v<T, py::any_cref>, const std::byte*, std::byte*>;
 
 protected:
+    // allow any `any_ref_ndarray_view` specialization to call the protected constructor
+    // of other `any_ref_ndarray_view` specializations
     template<std::size_t, typename, bool>
     friend class any_ref_ndarray_view;
 
@@ -857,6 +863,8 @@ private:
     using generic_ndarray_impl = any_ref_ndarray_view<1, T, true>;
 
 protected:
+    // allow any `any_ref_ndarray_view` specialization to call the protected constructor
+    // of other `any_ref_ndarray_view` specializations
     template<std::size_t, typename, bool>
     friend class any_ref_ndarray_view;
 
