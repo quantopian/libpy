@@ -11,11 +11,33 @@ CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
 GTEST_BREAK ?= 1
 
+
+# Sanitizers
+ASAN_OPTIONS := symbolize=1
+LSAN_OPTIONS := suppressions=testleaks.supp
+ASAN_SYMBOLIZER_PATH ?= llvm-symbolizer
+
+SANITIZE_ADDRESS ?= 0
+ifneq ($(SANITIZE_ADDRESS),0)
+	OPTLEVEL := 0
+	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
+	LDFLAGS += -fsanitize=address -static-libasan
+	ASAN_OPTIONS=malloc_context_size=50
+endif
+
+SANITIZE_UNDEFINED ?= 0
+ifneq ($(SANITIZE_UNDEFINED),0)
+	OPTLEVEL := 0
+	CXXFLAGS += -fsanitize=undefined
+	LDFLAGS += -lubsan
+endif
+
 OPTLEVEL ?= 3
 MAX_ERRORS ?= 5
-# This uses = instead of := so that you we can conditionally change OPTLEVEL below.
-CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 \
-	-Wall -Wextra -g -O$(OPTLEVEL) -Wno-register -fmax-errors=$(MAX_ERRORS)
+WARNINGS := -Werror -Wall -Wextra -Wno-register -Wno-missing-field-initializers \
+	-Wsign-compare -Wsuggest-override -Wparentheses -Waggressive-loop-optimizations
+CXXFLAGS := $(shell $(PYTHON)-config --cflags) -std=gnu++17 -g -O$(OPTLEVEL) \
+	-fmax-errors=$(MAX_ERRORS) $(WARNINGS)
 LDFLAGS := $(shell $(PYTHON)-config --ldflags)
 
 ifneq ($(OPTLEVEL),0)
@@ -41,26 +63,6 @@ ifeq ($(OS),Darwin)
 else
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
-endif
-
-# Sanitizers
-ASAN_OPTIONS := symbolize=1
-LSAN_OPTIONS := suppressions=testleaks.supp
-ASAN_SYMBOLIZER_PATH ?= llvm-symbolizer
-
-SANITIZE_ADDRESS ?= 0
-ifneq ($(SANITIZE_ADDRESS),0)
-	OPTLEVEL := 0
-	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
-	LDFLAGS += -fsanitize=address -static-libasan
-	ASAN_OPTIONS=malloc_context_size=50
-endif
-
-SANITIZE_UNDEFINED ?= 0
-ifneq ($(SANITIZE_UNDEFINED),0)
-	OPTLEVEL := 0
-	CXXFLAGS += -fsanitize=undefined
-	LDFLAGS += -lubsan
 endif
 
 SOURCES := $(wildcard src/*.cc)
@@ -136,6 +138,8 @@ gdbtest: $(TESTRUNNER)
 
 tests/%.o: tests/%.cc .compiler_flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) $(TEST_DEFINES) \
+		-isystem submodules/googletest/googletest/include \
+		-isystem submodules/googletest/googletest/src \
 		-MD -fPIC -c $< -o $@
 
 $(TESTRUNNER): gtest.a $(TEST_OBJECTS) $(SONAME)
@@ -143,8 +147,8 @@ $(TESTRUNNER): gtest.a $(TEST_OBJECTS) $(SONAME)
 		-lpthread -L. $(SONAME) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .compiler_flags
-	$(CXX) $(CXXFLAGS) -I $(GTEST_DIR) -I $(GTEST_DIR)/include -c \
-		$(GTEST_DIR)/src/gtest-all.cc -o $@
+	$(CXX) $(filter-out $(WARNINGS),$(CXXFLAGS)) -I $(GTEST_DIR) \
+	-I $(GTEST_DIR)/include -c $(GTEST_DIR)/src/gtest-all.cc -o $@
 
 gtest.a: gtest.o
 	$(AR) $(ARFLAGS) $@ $^

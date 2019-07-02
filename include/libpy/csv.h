@@ -206,7 +206,7 @@ public:
         m_mask.resize(nrows);
     }
 
-    py::scoped_ref<> move_to_python_tuple() && {
+    py::scoped_ref<> move_to_python_tuple() && override {
         auto values = py::move_to_numpy_array(std::move(m_parsed));
         if (!values) {
             return nullptr;

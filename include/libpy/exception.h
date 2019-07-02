@@ -254,7 +254,7 @@ public:
         (raise(exc) << ... << args);
     }
 
-    inline const char* what() const noexcept {
+    inline const char* what() const noexcept override {
         return m_msg.data();
     }
 };
