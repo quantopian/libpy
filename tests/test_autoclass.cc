@@ -7,8 +7,8 @@
 #include "gtest/gtest.h"
 
 #include "libpy/autoclass.h"
-#include "libpy/detail/python.h"
 #include "libpy/call_function.h"
+#include "libpy/detail/python.h"
 #include "libpy/from_object.h"
 #include "test_utils.h"
 
@@ -378,7 +378,7 @@ const char* const bool_method_name = "__nonzero__";
 #else
 const char* const bool_method_name = "__bool__";
 #endif
-}
+}  // namespace
 
 TEST_F(autoclass, bool_conversion) {
     test_type_conversion<bool, false>(bool_method_name);

@@ -14,10 +14,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "libpy/detail/python.h"
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
+#include "libpy/detail/python.h"
 #include "libpy/dict_range.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"

@@ -342,12 +342,11 @@ private:
         }
         else {
             std::byte* end = m_storage + count * itemsize;
-            auto memcpy_optimized =
-                [&](std::size_t itemsize) {
-                    for (std::byte* data = m_storage; data < end; data += itemsize) {
-                        std::memcpy(data, addr, itemsize);
-                    }
-                };
+            auto memcpy_optimized = [&](std::size_t itemsize) {
+                for (std::byte* data = m_storage; data < end; data += itemsize) {
+                    std::memcpy(data, addr, itemsize);
+                }
+            };
 
             switch (itemsize) {
             case 2:

@@ -250,7 +250,6 @@ TYPED_TEST_P(array_view, slice_0_step) {
     EXPECT_THROW(view.slice(0, 2, 0), std::invalid_argument);
 }
 
-
 REGISTER_TYPED_TEST_CASE_P(array_view,
                            from_std_array,
                            from_std_vector,
