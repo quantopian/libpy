@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Python.h>
-
 #include <forward_list>
 #include <sstream>
 #include <type_traits>
@@ -13,6 +11,7 @@
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
 #include "libpy/detail/autoclass_py2.h"
+#include "libpy/detail/python.h"
 #include "libpy/meta.h"
 #include "libpy/scope_guard.h"
 

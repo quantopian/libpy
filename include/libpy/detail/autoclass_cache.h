@@ -8,8 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <Python.h>
-
+#include "libpy/detail/python.h"
 #include "libpy/scoped_ref.h"
 
 namespace py::detail {

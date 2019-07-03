@@ -1,9 +1,9 @@
 #include <string>
 #include <unordered_map>
 
-#include "Python.h"
 #include "gtest/gtest.h"
 
+#include "libpy/detail/python.h"
 #include "libpy/dict_range.h"
 #include "libpy/exception.h"
 #include "test_utils.h"

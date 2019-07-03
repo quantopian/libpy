@@ -3,7 +3,7 @@
 #include <typeindex>
 #include <unordered_map>
 
-#include <Python.h>
+#include "libpy/detail/python.h"
 #include <object.h>
 #include <structmember.h>
 

@@ -4,8 +4,7 @@
 #include <stdexcept>
 #include <string_view>
 
-#include <Python.h>
-
+#include "libpy/detail/python.h"
 #include "libpy/scoped_ref.h"
 
 /** Miscellaneous utilities.

@@ -14,8 +14,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <Python.h>
-
+#include "libpy/detail/python.h"
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"

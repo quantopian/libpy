@@ -7,37 +7,22 @@ MAJOR_VERSION := 1
 MINOR_VERSION := 0
 MICRO_VERSION := 0
 
+PY_VERSION := $(shell $(PYTHON) etc/python_version.py)
+PY_MAJOR_VERSION := $(word 1,$(PY_VERSION))
+PY_MINOR_VERSION := $(word 2,$(PY_VERSION))
+
 CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
 GTEST_BREAK ?= 1
-
-
-# Sanitizers
-ASAN_OPTIONS := symbolize=1
-LSAN_OPTIONS := suppressions=testleaks.supp
-ASAN_SYMBOLIZER_PATH ?= llvm-symbolizer
-
-SANITIZE_ADDRESS ?= 0
-ifneq ($(SANITIZE_ADDRESS),0)
-	OPTLEVEL := 0
-	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
-	LDFLAGS += -fsanitize=address -static-libasan
-	ASAN_OPTIONS=malloc_context_size=50
-endif
-
-SANITIZE_UNDEFINED ?= 0
-ifneq ($(SANITIZE_UNDEFINED),0)
-	OPTLEVEL := 0
-	CXXFLAGS += -fsanitize=undefined
-	LDFLAGS += -lubsan
-endif
 
 OPTLEVEL ?= 3
 MAX_ERRORS ?= 5
 WARNINGS := -Werror -Wall -Wextra -Wno-register -Wno-missing-field-initializers \
 	-Wsign-compare -Wsuggest-override -Wparentheses -Waggressive-loop-optimizations
-CXXFLAGS := $(shell $(PYTHON)-config --cflags) -std=gnu++17 -g -O$(OPTLEVEL) \
-	-fmax-errors=$(MAX_ERRORS) $(WARNINGS)
+CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -g -O$(OPTLEVEL) \
+	-fmax-errors=$(MAX_ERRORS) $(WARNINGS) \
+	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
+	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
 LDFLAGS := $(shell $(PYTHON)-config --ldflags)
 
 ifneq ($(OPTLEVEL),0)
@@ -63,6 +48,26 @@ ifeq ($(OS),Darwin)
 else
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
+endif
+
+# Sanitizers
+ASAN_OPTIONS := symbolize=1
+LSAN_OPTIONS := suppressions=testleaks.supp
+ASAN_SYMBOLIZER_PATH ?= llvm-symbolizer
+
+SANITIZE_ADDRESS ?= 0
+ifneq ($(SANITIZE_ADDRESS),0)
+	OPTLEVEL := 0
+	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer -static-libasan
+	LDFLAGS += -fsanitize=address -static-libasan
+	ASAN_OPTIONS=malloc_context_size=50
+endif
+
+SANITIZE_UNDEFINED ?= 0
+ifneq ($(SANITIZE_UNDEFINED),0)
+	OPTLEVEL := 0
+	CXXFLAGS += -fsanitize=undefined
+	LDFLAGS += -lubsan
 endif
 
 SOURCES := $(wildcard src/*.cc)

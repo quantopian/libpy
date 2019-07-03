@@ -7,8 +7,6 @@
 #include <type_traits>
 #include <vector>
 
-#include <Python.h>
-
 // Numpy expects code is being used in a way that has a 1:1 correspondence from source
 // file to Python extension (as a shared object), for example:
 //
@@ -64,6 +62,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
+#include "libpy/detail/python.h"
 #include "libpy/any.h"
 #include "libpy/automethod.h"
 #include "libpy/char_sequence.h"

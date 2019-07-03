@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include <Python.h>
+#include "libpy/detail/python.h"
 
 namespace py {
 /** An RAII wrapper for ensuring an object is cleaned up in a given scope.

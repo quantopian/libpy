@@ -5,8 +5,7 @@
 #include <iostream>
 #include <tuple>
 
-#include <Python.h>
-
+#include "libpy/detail/python.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
