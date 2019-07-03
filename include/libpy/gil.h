@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Python.h>
+#include "libpy/detail/python.h"
 
 namespace py {
 /** A wrapper around the threadstate.

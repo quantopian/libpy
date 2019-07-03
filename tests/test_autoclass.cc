@@ -1,5 +1,3 @@
-#include <Python.h>
-
 #include <map>
 #include <numeric>
 #include <string>
@@ -9,6 +7,7 @@
 #include "gtest/gtest.h"
 
 #include "libpy/autoclass.h"
+#include "libpy/detail/python.h"
 #include "libpy/call_function.h"
 #include "libpy/from_object.h"
 #include "test_utils.h"

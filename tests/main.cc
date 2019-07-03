@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
-#include <Python.h>
 
+#include "libpy/detail/python.h"
 #define LIBPY_TEST_MAIN
 #include "libpy/numpy_utils.h"
 

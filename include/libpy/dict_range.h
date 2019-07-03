@@ -2,8 +2,7 @@
 
 #include <utility>
 
-#include <Python.h>
-
+#include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 

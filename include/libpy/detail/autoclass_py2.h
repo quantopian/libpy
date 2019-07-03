@@ -2,8 +2,7 @@
 
 #include <cstddef>
 
-#include <Python.h>
-
+#include "libpy/detail/python.h"
 #include "libpy/py2.h"
 
 namespace py {

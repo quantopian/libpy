@@ -4,9 +4,8 @@
 #include <string>
 #include <tuple>
 
-#include <Python.h>
-
 #include "libpy/char_sequence.h"
+#include "libpy/detail/python.h"
 #include "libpy/meta.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"

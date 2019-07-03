@@ -1,8 +1,7 @@
 #pragma once
 
-#include <Python.h>
-
-#include <libpy/scoped_ref.h>
+#include "libpy/detail/python.h"
+#include "libpy/scoped_ref.h"
 
 namespace py::detail {
 template<typename T>

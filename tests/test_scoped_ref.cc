@@ -1,7 +1,7 @@
-#include "Python.h"
 #include "gtest/gtest.h"
 
 #include "libpy/call_function.h"
+#include "libpy/detail/python.h"
 #include "libpy/scoped_ref.h"
 #include "test_utils.h"
 

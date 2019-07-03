@@ -3,11 +3,11 @@
 #include <sstream>
 #include <string>
 
-#include "Python.h"
 #include "gtest/gtest.h"
 
-#include "libpy/exception.h"
 #include "libpy/call_function.h"
+#include "libpy/detail/python.h"
+#include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"
 
