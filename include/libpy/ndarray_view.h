@@ -76,7 +76,8 @@ template<>
 constexpr char buffer_format<double> = 'd';
 
 template<typename T>
-T slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t step) {
+std::tuple<std::size_t, std::array<std::size_t, 1>, std::array<std::int64_t, 1>>
+slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t step) {
     std::int64_t high;
     std::int64_t low;
     std::int64_t adj_step;
@@ -98,9 +99,7 @@ T slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t 
     std::int64_t size = (low >= high) ? 0 : (high - low - 1) / adj_step + 1;
     std::int64_t stride = view.strides()[0] * step;
 
-    return T{view.buffer() + view.pos_to_index({static_cast<std::size_t>(start)}),
-             {static_cast<std::size_t>(size)},
-             {stride}};
+    return {static_cast<std::size_t>(start), {static_cast<std::size_t>(size)}, {stride}};
 }
 }  // namespace detail
 
@@ -587,11 +586,6 @@ public:
         return (*this)[this->size() - 1];
     }
 
-    friend ndarray_view detail::slice_impl<ndarray_view>(const ndarray_view&,
-                                                         std::int64_t,
-                                                         std::int64_t,
-                                                         std::int64_t);
-
     /** Create a view over a subsection of the viewed memory.
 
         @param start The start index of the slice.
@@ -601,7 +595,8 @@ public:
      */
     ndarray_view
     slice(std::int64_t start, std::int64_t stop = snpos, std::int64_t step = 1) const {
-        return detail::slice_impl(*this, start, stop, step);
+        auto [pos, shape, strides] = detail::slice_impl(*this, start, stop, step);
+        return {this->buffer() + this->pos_to_index({pos}), shape, strides};
     }
 };
 
@@ -909,7 +904,7 @@ private:
 
 public:
     template<typename U>
-    void scalar_assign(const U& value) const {
+    void fill(const U& value) const {
         typecheck(value);
         for (buffer_type ptr = m_buffer; ptr < m_buffer + pos_to_index(this->m_shape);
              ptr += m_strides.back()) {
@@ -918,7 +913,7 @@ public:
         }
     }
 
-    void scalar_assign(const py::any_cref& value) const {
+    void fill(const py::any_cref& value) const {
         typecheck(value);
         for (buffer_type ptr = m_buffer; ptr < m_buffer + pos_to_index(this->m_shape);
              ptr += m_strides.back()) {
@@ -927,9 +922,9 @@ public:
         }
     }
 
-    void scalar_assign(const py::any_ref& value) const {
+    void fill(const py::any_ref& value) const {
         py::any_cref cref(value.addr(), value.vtable());
-        scalar_assign(cref);
+        fill(cref);
     }
 
     /** Check if two views are exactly identical.
@@ -1261,11 +1256,6 @@ public:
     // Re-use constructor from the generic impl.
     using any_ref_ndarray_view<1, any_cref, false>::any_ref_ndarray_view;
 
-    friend ndarray_view detail::slice_impl<ndarray_view>(const ndarray_view&,
-                                                         std::int64_t,
-                                                         std::int64_t,
-                                                         std::int64_t);
-
     /** Create a view over a subsection of the viewed memory.
 
         @param start The start index of the slice.
@@ -1275,7 +1265,11 @@ public:
      */
     ndarray_view
     slice(std::int64_t start, std::int64_t stop = snpos, std::int64_t step = 1) const {
-        return detail::slice_impl(*this, start, stop, step);
+        auto [pos, shape, strides] = detail::slice_impl(*this, start, stop, step);
+        return {this->buffer() + this->pos_to_index({pos}),
+                shape,
+                strides,
+                this->vtable()};
     }
 
     /** Create a new immutable view over the same memory.
@@ -1300,11 +1294,6 @@ public:
     // Re-use constructor from the generic impl.
     using any_ref_ndarray_view<1, any_ref, false>::any_ref_ndarray_view;
 
-    friend ndarray_view detail::slice_impl<ndarray_view>(const ndarray_view&,
-                                                         std::int64_t,
-                                                         std::int64_t,
-                                                         std::int64_t);
-
     /** Create a view over a subsection of the viewed memory.
 
         @param start The start index of the slice.
@@ -1314,7 +1303,11 @@ public:
      */
     ndarray_view
     slice(std::int64_t start, std::int64_t stop = snpos, std::int64_t step = 1) const {
-        return slice_impl(*this, start, stop, step);
+        auto [pos, shape, strides] = detail::slice_impl(*this, start, stop, step);
+        return {this->buffer() + this->pos_to_index({pos}),
+                shape,
+                strides,
+                this->vtable()};
     }
 
     /** Create a new immutable view over the same memory.
