@@ -128,8 +128,14 @@ TEST_F(autoclass, construct) {
 
     // don't use `new_` to expose `__new__` to Python, `autoclass::construct` doesn't need
     // that
-    py::scoped_ref cls = py::autoclass<C>().type();
+    py::scoped_ref cls = py::autoclass<C>("C").type();
     ASSERT_TRUE(cls);
+
+    // there is no Python-exposed constructor, calling this class should fail
+    py::scoped_ref failed = py::call_function(static_cast<PyObject*>(cls), 1, 2.5);
+    EXPECT_FALSE(failed);
+    expect_pyerr_type_and_message(PyExc_TypeError, "cannot create 'C' instances");
+    PyErr_Clear();
 
     py::scoped_ref<> inst = py::autoclass<C>::construct(1, 2.5);
     ASSERT_TRUE(inst);
@@ -140,6 +146,62 @@ TEST_F(autoclass, construct) {
     EXPECT_EQ(unboxed.a, 1);
     EXPECT_EQ(unboxed.b, 2.5);
 }
+
+// lifted to global-scope because you cannot declare a local class with static member
+// variables.
+class throwing_new_destructor_counter {
+public:
+    static int destructor_called;
+
+    throwing_new_destructor_counter(int value) {
+        if (value < 0) {
+            throw std::invalid_argument{"value must be >= 0"};
+        }
+    }
+
+    static int free_func_new(int value) {
+        if (value < 0) {
+            throw std::invalid_argument{"threw from free_func_new"};
+        }
+        return value;
+    }
+
+    ~throwing_new_destructor_counter() {
+        ++destructor_called;
+    }
+};
+
+int throwing_new_destructor_counter::destructor_called = 0;
+
+TEST_F(autoclass, constructor_args_new_throws) {
+    py::scoped_ref cls =
+        py::autoclass<throwing_new_destructor_counter>().new_<int>().type();
+    ASSERT_TRUE(cls);
+
+    throwing_new_destructor_counter::destructor_called = 0;
+    py::scoped_ref failed = py::call_function(static_cast<PyObject*>(cls), -1);
+    EXPECT_FALSE(failed);
+    expect_pyerr_type_and_message(PyExc_RuntimeError,
+                                  "a C++ exception was raised: value must be >= 0");
+    PyErr_Clear();
+    EXPECT_EQ(throwing_new_destructor_counter::destructor_called, 0);
+}
+
+TEST_F(autoclass, free_func_new_throws) {
+    py::scoped_ref cls = py::autoclass<throwing_new_destructor_counter>()
+                             .new_<throwing_new_destructor_counter::free_func_new>()
+                             .type();
+    ASSERT_TRUE(cls);
+
+    throwing_new_destructor_counter::destructor_called = 0;
+    py::scoped_ref failed = py::call_function(static_cast<PyObject*>(cls), -1);
+    EXPECT_FALSE(failed);
+    expect_pyerr_type_and_message(PyExc_RuntimeError,
+                                  "a C++ exception was raised: threw from free_func_new");
+    PyErr_Clear();
+    EXPECT_EQ(throwing_new_destructor_counter::destructor_called, 0);
+}
+
 
 TEST_F(autoclass, name) {
     {

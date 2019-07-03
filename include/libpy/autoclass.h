@@ -204,6 +204,7 @@ public:
         return py::scoped_ref(out);
     }
 
+public:
     autoclass(std::string name = util::type_name<T>().get(), int extra_flags = 0)
         : m_storage(std::move(name)),
           m_spec({m_storage.strings.front().data(),
@@ -216,21 +217,21 @@ public:
             throw std::runtime_error{"type was already created"};
         }
 
-        void (*dealloc)(PyObject*);
+        void (*py_dealloc)(PyObject*);
         if (have_gc()) {
-            dealloc = [](PyObject* self) {
+            py_dealloc = [](PyObject* self) {
                 PyObject_GC_UnTrack(self);
                 unbox(self).~T();
-                PyObject_GC_Del(self);
+                dealloc(true, self);
             };
         }
         else {
-            dealloc = [](PyObject* self) {
+            py_dealloc = [](PyObject* self) {
                 unbox(self).~T();
-                PyObject_Del(self);
+                dealloc(false, self);
             };
         }
-        add_slot(Py_tp_dealloc, dealloc);
+        add_slot(Py_tp_dealloc, py_dealloc);
     }
 
     /** Add a `tp_traverse` field to this type. This is only allowed, but required if
@@ -291,6 +292,22 @@ public:
     }
 
 private:
+    static object* alloc(bool have_gc, PyTypeObject* cls) {
+        if (have_gc) {
+            return PyObject_GC_New(object, cls);
+        }
+        return PyObject_New(object, cls);
+    }
+
+    static void dealloc(bool have_gc, PyObject* ob) {
+        if (have_gc) {
+            PyObject_GC_Del(ob);
+        }
+        else {
+            PyObject_Del(ob);
+        }
+    }
+
     /** Helper for adapting a function which constructs a `T` into a Python `__new__`
         implementation.
     */
@@ -300,22 +317,18 @@ private:
     template<bool have_gc, typename R, typename... Args, auto impl>
     struct free_func_new_impl<have_gc, R(Args...), impl> {
         static PyObject* f(PyTypeObject* cls, Args... args) {
-            py::scoped_ref<object> self;
-            if (have_gc) {
-                self = py::scoped_ref(PyObject_GC_New(object, cls));
-            }
-            else {
-                self = py::scoped_ref(PyObject_New(object, cls));
-            }
-            if (!self) {
-                return nullptr;
-            }
-            new (&unbox(self)) T(impl(std::forward<Args>(args)...));
+            return constructor_new_impl<have_gc,
+                                        std::invoke_result_t<decltype(impl), Args...>>(
+                cls, impl(args...));
+        }
+    };
 
-            if (have_gc) {
-                PyObject_GC_Track(self.get());
-            }
-            return static_cast<PyObject*>(std::move(self).escape());
+    template<bool have_gc, typename R, typename... Args, auto impl>
+    struct free_func_new_impl<have_gc, R(*)(Args...), impl> {
+        static PyObject* f(PyTypeObject* cls, Args... args) {
+            return constructor_new_impl<have_gc,
+                                        std::invoke_result_t<decltype(impl), Args...>>(
+                cls, impl(args...));
         }
     };
 
@@ -323,23 +336,22 @@ private:
      */
     template<bool have_gc, typename... ConstructorArgs>
     static PyObject* constructor_new_impl(PyTypeObject* cls, ConstructorArgs... args) {
-        py::scoped_ref<object> self;
-        if (have_gc) {
-            self = py::scoped_ref(PyObject_GC_New(object, cls));
-        }
-        else {
-            self = py::scoped_ref(PyObject_New(object, cls));
-        }
-
+        object* self = alloc(have_gc, cls);
         if (!self) {
             return nullptr;
         }
-        new (&unbox(self)) T(std::forward<ConstructorArgs>(args)...);
+        try {
+            new (&unbox(self)) T(std::forward<ConstructorArgs>(args)...);
+        }
+        catch (...) {
+            dealloc(have_gc, self);
+            throw;
+        }
 
         if (have_gc) {
-            PyObject_GC_Track(self.get());
+            PyObject_GC_Track(self);
         }
-        return static_cast<PyObject*>(std::move(self).escape());
+        return self;
     }
 
 public:
@@ -1062,20 +1074,22 @@ public:
             return scoped_ref(m_storage.type);
         }
 
-        if (have_gc()) {
-            bool have_traverse = false;
-            for (PyType_Slot& sl : m_slots) {
-                if (sl.slot == Py_tp_traverse) {
-                    have_traverse = true;
-                    break;
-                }
+        bool have_new = false;
+        bool have_traverse = false;
+        for (PyType_Slot& sl : m_slots) {
+            if (sl.slot == Py_tp_new) {
+                have_new = true;
             }
 
-            if (!have_traverse) {
-                throw py::exception(PyExc_ValueError,
-                                    "if (flags & Py_TPFLAGS_HAVE_GC), a Py_tp_traverse "
-                                    "slot must be added");
+            if (sl.slot == Py_tp_traverse) {
+                have_traverse = true;
             }
+        }
+
+        if (have_gc() && !have_traverse) {
+            throw py::exception(PyExc_ValueError,
+                                "if (flags & Py_TPFLAGS_HAVE_GC), a Py_tp_traverse "
+                                "slot must be added");
         }
 
         // cap off our methods
@@ -1106,6 +1120,11 @@ public:
             throw py::exception{};
         }
         storage.type = type.get();  // borrowed reference held in the cache
+
+        if (!have_new) {
+            // explicitly delete the new (don't inherit from Python's `object`)
+            type.get()->tp_new = nullptr;
+        }
 
         // mark that we have initialized the type already so that
         // `require_uninitialized()` can fail
