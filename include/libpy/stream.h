@@ -5,8 +5,8 @@
 #include <iostream>
 #include <string_view>
 
-#include "libpy/detail/python.h"
 #include "libpy/call_function.h"
+#include "libpy/detail/python.h"
 #include "libpy/scoped_ref.h"
 
 namespace py {

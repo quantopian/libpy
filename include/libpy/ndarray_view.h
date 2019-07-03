@@ -148,7 +148,8 @@ public:
     using const_pointer = const value_type*;
 
     template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
-    static std::tuple<ndarray_view<T, ndim>, py::buffer> from_buffer_protocol(PyObject* ob) {
+    static std::tuple<ndarray_view<T, ndim>, py::buffer>
+    from_buffer_protocol(PyObject* ob) {
         py::buffer buf(new Py_buffer);
         int flags = PyBUF_ND | PyBUF_STRIDED | PyBUF_FORMAT;
         if (!std::is_const_v<T>) {
