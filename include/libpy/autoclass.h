@@ -204,7 +204,6 @@ public:
         return py::scoped_ref(out);
     }
 
-public:
     autoclass(std::string name = util::type_name<T>().get(), int extra_flags = 0)
         : m_storage(std::move(name)),
           m_spec({m_storage.strings.front().data(),
