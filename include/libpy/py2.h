@@ -1,4 +1,4 @@
-#include <Python.h>
+#include "libpy/detail/python.h"
 
 #if PY_MAJOR_VERSION == 2
 #define Py_RETURN_NOTIMPLEMENTED                                                         \

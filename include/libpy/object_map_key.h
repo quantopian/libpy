@@ -1,7 +1,6 @@
 #pragma once
 
-#include <Python.h>
-
+#include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
 #include "libpy/scoped_ref.h"
