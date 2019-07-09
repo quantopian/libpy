@@ -369,6 +369,10 @@ private:
         if (m_vtable.is_trivially_copy_constructible()) {
             fill_constant_trivially_copyable(count, value);
         }
+        else if (m_vtable == py::any_vtable::make<py::scoped_ref<>>()) {
+            fill_constant_trivially_copyable(count, value.addr());
+            Py_REFCNT(value.addr()) += count;
+        }
         else {
             std::size_t itemsize = m_vtable.size();
             std::byte* data = m_storage;
