@@ -372,11 +372,11 @@ private:
         else {
             std::size_t itemsize = m_vtable.size();
             std::byte* data = m_storage;
+            std::byte* end = data + count * itemsize;
 
             try {
-                for (std::size_t ix = 0; ix < count; ++ix) {
+                for (; data < end; data += itemsize) {
                     m_vtable.copy_construct(data, value.addr());
-                    data += itemsize;
                 }
             }
             catch (...) {
@@ -410,16 +410,17 @@ public:
                 fill_anyref(count, value);
             }
             else {
-                T* buffer = reinterpret_cast<T*>(m_storage);
-                std::size_t ix;
+                std::size_t itemsize = m_vtable.size();
+                std::byte* data = m_storage;
+                std::byte* end = data + count * itemsize;
                 try {
-                    for (ix = 0; ix < count; ++ix) {
-                        buffer[ix] = value;
+                    for (; data < end; data += itemsize) {
+                        new(data) T(value);
                     }
                 }
                 catch (...) {
-                    for (std::size_t unwind_ix = 0; unwind_ix < ix; ++ix) {
-                        m_vtable.destruct(&buffer[unwind_ix]);
+                    for (std::byte* p = m_storage; p < data; p += itemsize) {
+                        m_vtable.destruct(p);
                     }
                     throw;
                 }
