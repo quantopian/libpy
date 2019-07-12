@@ -254,27 +254,41 @@ public:
         return m_impl->type_name();
     }
 
-    /** Allocate memory for objects to be default constructed into. If the object is
-        trivially default constructible, the memory will be zeroed, otherwise it will
-        return `alloc(count)`.
+    /** Allocate uninitialized memory memory for `count` objects of the given type.
      */
-    inline void* default_construct_alloc(std::size_t count) const {
-        if (is_trivially_default_constructible()) {
-            if (align() < alignof(std::max_align_t)) {
-                return std::calloc(count, size());
-            }
-            else {
-                void* out = alloc(count);
-                std::memset(out, 0, size() * count);
-            }
-        }
-        return alloc(count);
+    inline std::byte* alloc(std::size_t count) const {
+        return new(std::align_val_t{align()}) std::byte[size() * count];
     }
 
-    /** Allocate initialized memory memory for `count` objects of the given type.
+    /** Allocate memory and default construct `count` objects of the given type.
      */
-    inline void* alloc(std::size_t count) const {
-        return std::aligned_alloc(align(), size() * count);
+    inline std::byte* default_construct_alloc(std::size_t count) const {
+        if (is_trivially_default_constructible()) {
+            return new(std::align_val_t{align()}) std::byte[size() * count]();
+        }
+        std::byte* out = alloc(count);
+        std::byte* data = out;
+        std::byte* end = out + size() * count;
+        try {
+            for (; data < end; data += size()) {
+                default_construct(data);
+            }
+        }
+        catch (...) {
+            for (std::byte* p = out; p < data; p += size()) {
+                destruct(p);
+            }
+            free(out);
+            throw;
+        }
+
+        return out;
+    }
+
+    /** Free memory allocated with `alloc` or `default_construct_alloc`.
+     */
+    inline void free(std::byte* addr) const {
+        delete[] addr;
     }
 
     constexpr inline bool operator==(const any_vtable& other) const {
