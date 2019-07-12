@@ -18,12 +18,12 @@ GTEST_BREAK ?= 1
 OPTLEVEL ?= 3
 MAX_ERRORS ?= 5
 WARNINGS := -Werror -Wall -Wextra -Wno-register -Wno-missing-field-initializers \
-	-Wsign-compare -Wsuggest-override -Wparentheses -Waggressive-loop-optimizations
+	-Wsign-compare -Wsuggest-override -Wparentheses -Waggressive-loop-optimizations \
+	-Wno-class-memaccess
 CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -g -O$(OPTLEVEL) \
 	-fmax-errors=$(MAX_ERRORS) $(WARNINGS) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
-LDFLAGS := $(shell $(PYTHON)-config --ldflags)
 
 ifneq ($(OPTLEVEL),0)
 	CXXFLAGS += -flto
@@ -45,9 +45,11 @@ ifeq ($(OS),Darwin)
 	SONAME_PATH := @rpath/$(SONAME)
 	AR := libtool
 	ARFLAGS := -static -o
+	LDFLAGS += -undefined dynamic_lookup
 else
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
+	LDFLAGS += $(shell $(PYTHON)-config --ldflags)
 endif
 
 # Sanitizers
@@ -88,7 +90,8 @@ TEST_DFILES := $(TEST_SOURCES:.cc=.d)
 TEST_OBJECTS := $(TEST_SOURCES:.cc=.o)
 TEST_HEADERS := $(wildcard tests/*.h) $(GTEST_HEADERS)
 TEST_INCLUDE := -I tests -I $(GTEST_DIR)/include
-TESTRUNNER := tests/run
+TEST_MODULE := tests/_runner$(SO_SUFFIX)
+TESTRUNNER := tests/runner.py
 
 ALL_SOURCES := $(SOURCES) $(TEST_SOURCES)
 ALL_HEADERS := include/libpy/**.h
@@ -129,13 +132,13 @@ src/%.o: src/%.cc .compiler_flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@
 
 .PHONY: test
-test: $(TESTRUNNER)
+test: $(TESTRUNNER) $(TEST_MODULE)
 	@GTEST_OUTPUT=$(GTEST_OUTPUT) \
 		ASAN_OPTIONS=$(ASAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
-		LD_LIBRARY_PATH=. \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
-		$< --gtest_filter=$(GTEST_FILTER)
+		PYTHONPATH=tests/ \
+		python $< --gtest_filter=$(GTEST_FILTER)
 
 .PHONY: gdbtest
 gdbtest: $(TESTRUNNER)
@@ -147,13 +150,13 @@ tests/%.o: tests/%.cc .compiler_flags
 		-isystem submodules/googletest/googletest/src \
 		-MD -fPIC -c $< -o $@
 
-$(TESTRUNNER): gtest.a $(TEST_OBJECTS) $(SONAME)
-	$(CXX) -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-		-lpthread -L. $(SONAME) $(LDFLAGS)
+$(TEST_MODULE): gtest.a $(TEST_OBJECTS) $(SONAME)
+	$(CXX) -shared -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
+		-Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .compiler_flags
 	$(CXX) $(filter-out $(WARNINGS),$(CXXFLAGS)) -I $(GTEST_DIR) \
-	-I $(GTEST_DIR)/include -c $(GTEST_DIR)/src/gtest-all.cc -o $@
+	-I $(GTEST_DIR)/include -c $(GTEST_DIR)/src/gtest-all.cc -fPIC -o $@
 
 gtest.a: gtest.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -173,7 +176,7 @@ format:
 .PHONY: clean
 clean:
 	@rm -f $(SONAME) $(SHORT_SONAME) $(OBJECTS) $(DFILES) \
-		$(TESTRUNNER) $(TEST_OBJECTS) $(TEST_DFILES) \
+		$(TEST_MODULE) $(TEST_OBJECTS) $(TEST_DFILES) \
 		gtest.o gtest.a
 
 -include $(DFILES) $(TEST_DFILES)
