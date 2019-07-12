@@ -65,7 +65,6 @@ ifneq ($(SANITIZE_ADDRESS),0)
 	TEST_LD_PRELOAD += /usr/lib/libasan.so \
 		/usr/lib/x86_64-linux-gnu/libasan.so.5 \
 		/usr/local/lib/gcc/8/libasan.dylib
-	ASAN_OPTIONS := malloc_context_size=50
 endif
 
 SANITIZE_UNDEFINED ?= 0
