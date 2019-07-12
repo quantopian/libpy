@@ -108,6 +108,8 @@ struct py_bool {
     inline py_bool(npy_bool v) : value(v) {}
     inline py_bool(const py_bool& v) : value(v.value) {}
 
+    inline py_bool& operator=(const py_bool&) = default;
+
     inline operator bool() const {
         return value;
     }
