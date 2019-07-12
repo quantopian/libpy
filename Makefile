@@ -62,7 +62,9 @@ ifneq ($(SANITIZE_ADDRESS),0)
 	OPTLEVEL := 0
 	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 	LDFLAGS += -fsanitize=address
-	LD_PRELOAD := /usr/lib/libasan.so
+	LD_PRELOAD += /usr/lib/libasan.so \
+		/usr/lib/x86_64-linux-gnu/libasan.so \
+		/usr/local/lib/gcc/8/libasan.dylib
 	ASAN_OPTIONS := malloc_context_size=50
 endif
 
@@ -135,11 +137,11 @@ src/%.o: src/%.cc .compiler_flags
 .PHONY: test
 test: $(TESTRUNNER) $(TEST_MODULE)
 	@GTEST_OUTPUT=$(GTEST_OUTPUT) \
-		LD_PRELOAD=$(LD_PRELOAD) \
+		LD_PRELOAD="$(LD_PRELOAD)" \
 		ASAN_OPTIONS=$(ASAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
-		PYTHONPATH=./tests/ \
+		PYTHONPATH=tests/ \
 		python $< --gtest_filter=$(GTEST_FILTER)
 
 .PHONY: gdbtest
