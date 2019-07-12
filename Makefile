@@ -63,7 +63,7 @@ ifneq ($(SANITIZE_ADDRESS),0)
 	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 	LDFLAGS += -fsanitize=address
 	TEST_LD_PRELOAD += /usr/lib/libasan.so \
-		/usr/lib/x86_64-linux-gnu/libasan.so.5 \
+		/usr/lib/gcc/x86_64-linux-gnu/$(shell $(CXX) -dumpversion)/libasan.so \
 		/usr/local/lib/gcc/8/libasan.dylib
 endif
 
