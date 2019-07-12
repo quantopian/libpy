@@ -155,38 +155,17 @@ private:
             count = 1;
         }
 
-        std::byte* new_data;
         std::byte* old_data = m_storage;
+        std::byte* new_data = m_vtable.alloc(count);
+        if (!new_data) {
+            throw std::bad_alloc{};
+        }
 
         if (m_vtable.is_trivially_copyable()) {
-            // the data is trivially copyable, so we will attempt to grow the current
-            // allocation falling back to `std::memcpy`.
-            if (m_vtable.align() <= alignof(std::max_align_t)) {
-                new_data = static_cast<std::byte*>(
-                    std::realloc(m_storage, m_vtable.size() * count));
-                if (!new_data) {
-                    throw std::bad_alloc{};
-                }
-            }
-            else {
-                // `std::realloc` uses `std::malloc` when it can't grow the allocation,
-                // this doesn't respect any explicit over-alignment so it is only safe for
-                // types whose `align()` is less than or equal to that of the
-                // `max_align_t`.
-                new_data = static_cast<std::byte*>(m_vtable.alloc(count));
-                if (!new_data) {
-                    throw std::bad_alloc{};
-                }
-                std::memcpy(new_data, old_data, size() * m_vtable.size());
-                std::free(old_data);
-            }
+            std::memcpy(new_data, old_data, size() * m_vtable.size());
+            m_vtable.free(old_data);
         }
         else {
-            new_data = static_cast<std::byte*>(m_vtable.alloc(count));
-            if (!new_data) {
-                throw std::bad_alloc{};
-            }
-
             if (m_vtable.move_is_noexcept() && m_vtable.is_trivially_destructible()) {
                 // move can't throw and the object doesn't need to be destructed: just
                 // move from the old to the new and free the old in one big chunk
@@ -233,7 +212,7 @@ private:
 
                     // free the new array and re-raise the exception without modifying our
                     // state (`m_storage` nor `m_capacity`).
-                    std::free(new_data);
+                    m_vtable.free(new_data);
                     throw;
                 }
 
@@ -247,7 +226,7 @@ private:
                 }
             }
 
-            std::free(old_data);
+            m_vtable.free(old_data);
         }
 
         // if we make it here, we have successfully initialized `new_data` and unwound
@@ -283,32 +262,12 @@ public:
 
     inline any_vector(const any_vtable& vtable, std::size_t count)
         : m_vtable(vtable),
-          m_storage(static_cast<std::byte*>(vtable.default_construct_alloc(count))),
+          m_storage(vtable.default_construct_alloc(count)),
           m_size(count),
           m_capacity(count) {
 
         if (!m_storage) {
             throw std::bad_alloc{};
-        }
-
-        if (!m_vtable.is_trivially_default_constructible()) {
-            std::byte* data = m_storage;
-            std::size_t itemsize = m_vtable.size();
-            try {
-                for (std::size_t ix = 0; ix < count; ++ix) {
-                    vtable.default_construct(data);
-                    data += itemsize;
-                }
-            }
-            catch (...) {
-                // if an exception occurs default constructing the vector, be sure to
-                // unwind the partially initialized state
-                for (std::byte* p = m_storage; p < data; p += itemsize) {
-                    vtable.destruct(p);
-                }
-                std::free(m_storage);
-                throw;
-            }
         }
     }
 
@@ -389,7 +348,7 @@ private:
                 for (std::byte* p = m_storage; p < data; p += itemsize) {
                     m_vtable.destruct(p);
                 }
-                std::free(m_storage);
+                m_vtable.free(m_storage);
                 throw;
             }
         }
@@ -399,7 +358,7 @@ public:
     template<typename T>
     inline any_vector(const any_vtable& vtable, std::size_t count, const T& value)
         : m_vtable(vtable),
-          m_storage(static_cast<std::byte*>(vtable.alloc(count))),
+          m_storage(vtable.alloc(count)),
           m_size(count),
           m_capacity(count) {
 
@@ -431,14 +390,14 @@ public:
             }
         }
         catch (...) {
-            std::free(m_storage);
+            m_vtable.free(m_storage);
             throw;
         }
     }
 
     inline any_vector(const any_vector& cpfrom)
         : m_vtable(cpfrom.m_vtable),
-          m_storage(static_cast<std::byte*>(cpfrom.vtable().alloc(cpfrom.size()))),
+          m_storage(cpfrom.vtable().alloc(cpfrom.size())),
           m_size(cpfrom.size()),
           m_capacity(cpfrom.size()) {
 
@@ -466,7 +425,7 @@ public:
                 for (std::size_t unwind_ix = 0; unwind_ix < ix; ++unwind_ix) {
                     m_vtable.destruct(m_storage + itemsize * unwind_ix);
                 }
-                std::free(m_storage);
+                m_vtable.free(m_storage);
                 throw;
             }
         }
@@ -502,7 +461,7 @@ public:
 
     inline ~any_vector() {
         clear();
-        std::free(m_storage);
+        m_vtable.free(m_storage);
     }
 
     using reference = any_ref;
