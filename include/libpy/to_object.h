@@ -106,8 +106,9 @@ struct to_object<std::array<T, n>> {
  */
 template<typename T>
 struct to_object<scoped_ref<T>> {
-    static PyObject* f(scoped_ref<T> ob) {
-        return reinterpret_cast<PyObject*>(std::move(ob).escape());
+    static PyObject* f(const scoped_ref<T>& ob) {
+        Py_XINCREF(ob.get());
+        return ob.get();
     }
 };
 

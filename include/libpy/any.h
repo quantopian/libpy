@@ -86,7 +86,7 @@ constexpr any_vtable_impl any_vtable_instance = {
     },
     []([[maybe_unused]] const void* addr) -> scoped_ref<> {
         if constexpr (py::has_to_object<T>) {
-            return to_object(*static_cast<const T*>(addr));
+            return py::to_object(*static_cast<const T*>(addr));
         }
         else {
             throw py::exception(PyExc_TypeError,
@@ -98,7 +98,7 @@ constexpr any_vtable_impl any_vtable_instance = {
     []([[maybe_unused]] std::ostream& stream,
        [[maybe_unused]] const void* addr) -> std::ostream& {
         if constexpr (has_ostream_format<const T&>::value) {
-            return stream << *reinterpret_cast<const T*>(addr);
+            return stream << *static_cast<const T*>(addr);
         }
         else {
             throw py::exception(
