@@ -147,8 +147,9 @@ public:
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
-    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
-    static std::tuple<ndarray_view<T, ndim>, py::buffer>
+    template<typename U = T>
+    static std::enable_if_t<detail::buffer_format<U> != '\0',
+                            std::tuple<ndarray_view<T, ndim>, py::buffer>>
     from_buffer_protocol(PyObject* ob) {
         py::buffer buf(new Py_buffer);
         int flags = PyBUF_ND | PyBUF_STRIDED | PyBUF_FORMAT;
@@ -200,8 +201,9 @@ public:
                 std::move(buf)};
     }
 
-    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
-    static std::tuple<ndarray_view, py::buffer>
+    template<typename U = T>
+    static std::enable_if_t<detail::buffer_format<U> != '\0',
+                            std::tuple<ndarray_view, py::buffer>>
     from_buffer_protocol(const py::scoped_ref<>& ob) {
         return from_buffer_protocol(ob.get());
     }
@@ -645,8 +647,9 @@ public:
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
-    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
-    static std::tuple<any_ref_ndarray_view<ndim, T>, py::buffer>
+    template<typename U = T>
+    static std::enable_if_t<detail::buffer_format<U> != '\0',
+                            std::tuple<any_ref_ndarray_view<ndim, T>, py::buffer>>
     from_buffer_protocol(PyObject* ob) {
         py::buffer buf(new Py_buffer);
         int flags = PyBUF_ND | PyBUF_STRIDED | PyBUF_FORMAT;
@@ -741,8 +744,9 @@ public:
                 std::move(buf)};
     }
 
-    template<typename = std::enable_if_t<detail::buffer_format<T> != '\0'>>
-    static std::tuple<any_ref_ndarray_view, py::buffer>
+    template<typename U = T>
+    static std::enable_if_t<detail::buffer_format<U> != '\0',
+                            std::tuple<any_ref_ndarray_view, py::buffer>>
     from_buffer_protocol(const py::scoped_ref<>& ob) {
         return from_buffer_protocol(ob.get());
     }
@@ -769,7 +773,9 @@ public:
         @param shape The shape of the array.
         @return The new mutable array view.
      */
-    template<typename U, typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
+    template<typename U,
+             typename V = T,
+             typename = std::enable_if_t<std::is_same_v<V, any_cref>>>
     static any_ref_ndarray_view
     virtual_array(const U& value, const std::array<std::size_t, ndim>& shape) {
         return {reinterpret_cast<buffer_type>(std::addressof(value)),
@@ -1104,7 +1110,8 @@ public:
      */
     template<typename C,
              typename U = typename C::value_type,
-             typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
+             typename V = T,
+             typename = std::enable_if_t<std::is_same_v<V, any_cref>>>
     any_ref_ndarray_view(const C& contiguous_container)
         : generic_ndarray_impl(contiguous_container.data(),
                                {contiguous_container.size()},
@@ -1124,7 +1131,7 @@ public:
 
         @param any_vector The `any_vector` to view.
      */
-    template<typename = std::enable_if_t<std::is_same_v<T, any_cref>>>
+    template<typename U = T, typename = std::enable_if_t<std::is_same_v<U, any_cref>>>
     any_ref_ndarray_view(const py::any_vector& any_vector)
         : generic_ndarray_impl(any_vector.data(),
                                {any_vector.size()},
