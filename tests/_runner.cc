@@ -23,6 +23,7 @@ PyObject* run_tests(PyObject*, PyObject* py_argv) {
     argv.push_back(nullptr);
     testing::InitGoogleTest(&argc, argv.data());
     int out = RUN_ALL_TESTS();
+    PyErr_Clear();
     return PyLong_FromLong(out);
 }
 
