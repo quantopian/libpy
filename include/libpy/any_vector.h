@@ -328,10 +328,6 @@ private:
         if (m_vtable.is_trivially_copy_constructible()) {
             fill_constant_trivially_copyable(count, value);
         }
-        else if (m_vtable == py::any_vtable::make<py::scoped_ref<>>()) {
-            fill_constant_trivially_copyable(count, value.addr());
-            Py_REFCNT(value.addr()) += count;
-        }
         else {
             std::size_t itemsize = m_vtable.size();
             std::byte* data = m_storage;
@@ -507,6 +503,7 @@ public:
         if (pos < 0 || static_cast<size_t>(pos) >= size()) {
             throw std::out_of_range("pos out of bounds");
         }
+
 
         return (*this)[pos];
     }

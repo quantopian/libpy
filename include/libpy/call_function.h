@@ -12,15 +12,16 @@
 
 namespace py {
 namespace detail {
-template<typename... Args, std::size_t... ixs>
-scoped_ref<> build_pyargs_tuple(std::index_sequence<ixs...>, Args&&... args) {
-    py::scoped_ref out(PyTuple_New(sizeof...(ixs)));
+template<typename... Args>
+scoped_ref<> build_pyargs_tuple(Args&&... args) {
+    py::scoped_ref out(PyTuple_New(sizeof...(args)));
     if (!out) {
         return nullptr;
     }
 
+    Py_ssize_t ix = 0;
     (...,
-     PyTuple_SET_ITEM(out.get(), ixs, py::to_object(std::forward<Args>(args)).escape()));
+     PyTuple_SET_ITEM(out.get(), ix++, py::to_object(std::forward<Args>(args)).escape()));
     return out;
 }
 }  // namespace detail
@@ -34,8 +35,7 @@ scoped_ref<> build_pyargs_tuple(std::index_sequence<ixs...>, Args&&... args) {
  */
 template<typename... Args>
 scoped_ref<> call_function(PyObject* function, Args&&... args) {
-    auto pyargs = detail::build_pyargs_tuple(std::index_sequence_for<Args...>{},
-                                             std::forward<Args>(args)...);
+    auto pyargs = detail::build_pyargs_tuple(std::forward<Args>(args)...);
     return scoped_ref(PyObject_CallObject(function, pyargs.get()));
 }
 
