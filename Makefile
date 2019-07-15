@@ -25,11 +25,6 @@ CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -g -O$(OPTLEVEL) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
 
-ifneq ($(OPTLEVEL),0)
-	CXXFLAGS += -flto
-	LDFLAGS += -flto
-endif
-
 INCLUDE_DIRS := include/
 INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) \
 	$(shell $(PYTHON)-config --includes) \
@@ -46,10 +41,12 @@ ifeq ($(OS),Darwin)
 	AR := libtool
 	ARFLAGS := -static -o
 	LDFLAGS += -undefined dynamic_lookup
+	LD_PRELOAD_VAR := DYLD_INSERT_LIBRARIES
 else
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
 	LDFLAGS += $(shell $(PYTHON)-config --ldflags)
+	LD_PRELOAD_VAR := LD_PRELOAD
 endif
 
 # Sanitizers
@@ -62,9 +59,12 @@ ifneq ($(SANITIZE_ADDRESS),0)
 	OPTLEVEL := 0
 	CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer
 	LDFLAGS += -fsanitize=address
-	TEST_LD_PRELOAD += /usr/lib/libasan.so \
-		/usr/lib/gcc/x86_64-linux-gnu/$(shell $(CXX) -dumpversion)/libasan.so \
-		/usr/local/lib/gcc/8/libasan.dylib
+	TEST_LD_PRELOAD += $(shell CXX=$(CXX) etc/asan-path)
+endif
+
+ifneq ($(OPTLEVEL),0)
+	CXXFLAGS += -flto
+	LDFLAGS += -flto
 endif
 
 SANITIZE_UNDEFINED ?= 0
@@ -135,8 +135,8 @@ src/%.o: src/%.cc .compiler_flags
 
 .PHONY: test
 test: $(TESTRUNNER) $(TEST_MODULE)
-	@GTEST_OUTPUT=$(GTEST_OUTPUT) \
-		LD_PRELOAD="$(TEST_LD_PRELOAD)" \
+	GTEST_OUTPUT=$(GTEST_OUTPUT) \
+		$(LD_PRELOAD_VAR)="$(TEST_LD_PRELOAD)" \
 		ASAN_OPTIONS=$(ASAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
