@@ -141,7 +141,7 @@ test: $(TESTRUNNER) $(TEST_MODULE)
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		PYTHONPATH=tests/ \
-		python $< --gtest_filter=$(GTEST_FILTER)
+		$(PYTHON) $< --gtest_filter=$(GTEST_FILTER)
 
 .PHONY: gdbtest
 gdbtest: $(TESTRUNNER)
