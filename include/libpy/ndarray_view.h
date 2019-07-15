@@ -75,6 +75,29 @@ constexpr char buffer_format<float> = 'f';
 template<>
 constexpr char buffer_format<double> = 'd';
 
+// clang-format off
+template<typename A, typename B>
+constexpr bool buffer_format_compatible =
+    std::is_integral_v<A> == std::is_integral_v<B> &&
+    std::is_signed_v<A> == std::is_signed_v<B> &&
+    sizeof(A) == sizeof(B);
+// clang-format on
+
+using buffer_format_types = std::tuple<char,
+                                       signed char,
+                                       unsigned char,
+                                       bool,
+                                       short,
+                                       unsigned short,
+                                       int,
+                                       unsigned int,
+                                       long,
+                                       unsigned long,
+                                       long long,
+                                       unsigned long long,
+                                       float,
+                                       double>;
+
 template<typename T>
 std::tuple<std::size_t, std::array<std::size_t, 1>, std::array<std::int64_t, 1>>
 slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t step) {
@@ -147,6 +170,24 @@ public:
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
+private:
+    static void check_buffer_protocol_compatible(std::tuple<>, char fmt) {
+        throw py::exception(PyExc_TypeError,
+                            "cannot adapt buffer of format=",
+                            fmt,
+                            " to an ndarray_view of ",
+                            util::type_name<T>().get());
+    }
+
+    template<typename Head, typename... Tail>
+    static void check_buffer_protocol_compatible(std::tuple<Head, Tail...>, char fmt) {
+        if (!(detail::buffer_format_compatible<T, Head> &&
+              fmt == detail::buffer_format<Head>) ) {
+            check_buffer_protocol_compatible(std::tuple<Tail...>{}, fmt);
+        }
+    }
+
+public:
     template<typename U = T>
     static std::enable_if_t<detail::buffer_format<U> != '\0',
                             std::tuple<ndarray_view<T, ndim>, py::buffer>>
@@ -175,13 +216,7 @@ public:
             fmt = *buf->format;
         }
 
-        if (fmt != detail::buffer_format<T>) {
-            throw py::exception(PyExc_TypeError,
-                                "cannot adapt buffer of format=",
-                                fmt,
-                                " to an ndarray_view of ",
-                                util::type_name<T>().get());
-        }
+        check_buffer_protocol_compatible(detail::buffer_format_types{}, fmt);
 
         if (buf->ndim != ndim) {
             throw py::exception(

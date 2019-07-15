@@ -257,14 +257,14 @@ public:
     /** Allocate uninitialized memory memory for `count` objects of the given type.
      */
     inline std::byte* alloc(std::size_t count) const {
-        return new(std::align_val_t{align()}) std::byte[size() * count];
+        return new (std::align_val_t{align()}) std::byte[size() * count];
     }
 
     /** Allocate memory and default construct `count` objects of the given type.
      */
     inline std::byte* default_construct_alloc(std::size_t count) const {
         if (is_trivially_default_constructible()) {
-            return new(std::align_val_t{align()}) std::byte[size() * count]();
+            return new (std::align_val_t{align()}) std::byte[size() * count]();
         }
         std::byte* out = alloc(count);
         std::byte* data = out;

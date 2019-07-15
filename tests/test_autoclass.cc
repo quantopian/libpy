@@ -202,7 +202,6 @@ TEST_F(autoclass, free_func_new_throws) {
     EXPECT_EQ(throwing_new_destructor_counter::destructor_called, 0);
 }
 
-
 TEST_F(autoclass, name) {
     {
         class C {};
