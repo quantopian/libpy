@@ -31,17 +31,6 @@ steps:
         run: libpy
         shell: ["/bin/bash", "-c"]
 
-  # Run libpy tests for Python 2, with address sanitizer.
-  - label: ":python: tox py2 (asan)"
-    command:
-      - cd /src/libpy
-      - tox -e py27-sanitize
-    timeout_in_minutes: 10
-    plugins:
-      docker-compose#v3.0.0:
-        run: libpy
-        shell: ["/bin/bash", "-c"]
-
   # Run libpy tests for Python 3.
   - label: ":python: tox py3 (release)"
     command:
@@ -53,16 +42,29 @@ steps:
         run: libpy
         shell: ["/bin/bash", "-c"]
 
-  # Run libpy tests for Python 3.
-  - label: ":python: tox py3 (asan)"
-    command:
-      - cd /src/libpy
-      - tox -e py36-sanitize
-    timeout_in_minutes: 10
-    plugins:
-      docker-compose#v3.0.0:
-        run: libpy
-        shell: ["/bin/bash", "-c"]
+  # disabled due to bug in libasan which occurs when exceptions are thrown
+  # in C++ being called from C in dynamically loaded libraries
+  # Run libpy tests for Python 2, with sanitizers.
+  # - label: ":python: tox py2 (sanitize)"
+  #   command:
+  #     - cd /src/libpy
+  #     - tox -e py27-sanitize
+  #   timeout_in_minutes: 10
+  #   plugins:
+  #     docker-compose#v3.0.0:
+  #       run: libpy
+  #       shell: ["/bin/bash", "-c"]
+
+  # # Run libpy tests for Python 3, with sanitizers.
+  # - label: ":python: tox py3 (sanitize)"
+  #   command:
+  #     - cd /src/libpy
+  #     - tox -e py36-sanitize
+  #   timeout_in_minutes: 10
+  #   plugins:
+  #     docker-compose#v3.0.0:
+  #       run: libpy
+  #       shell: ["/bin/bash", "-c"]
 
   - wait:
 
