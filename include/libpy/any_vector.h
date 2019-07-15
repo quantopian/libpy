@@ -374,7 +374,7 @@ public:
                 std::byte* end = data + count * itemsize;
                 try {
                     for (; data < end; data += itemsize) {
-                        new(data) T(value);
+                        new (data) T(value);
                     }
                 }
                 catch (...) {
@@ -503,7 +503,6 @@ public:
         if (pos < 0 || static_cast<size_t>(pos) >= size()) {
             throw std::out_of_range("pos out of bounds");
         }
-
 
         return (*this)[pos];
     }

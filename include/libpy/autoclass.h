@@ -323,7 +323,7 @@ private:
     };
 
     template<bool have_gc, typename R, typename... Args, auto impl>
-    struct free_func_new_impl<have_gc, R(*)(Args...), impl> {
+    struct free_func_new_impl<have_gc, R (*)(Args...), impl> {
         static PyObject* f(PyTypeObject* cls, Args... args) {
             return constructor_new_impl<have_gc,
                                         std::invoke_result_t<decltype(impl), Args...>>(
