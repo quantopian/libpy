@@ -1,0 +1,11 @@
+#!/bin/sh
+
+ubuntu="/usr/lib/gcc/x86_64-linux-gnu/$($CXX -dumpversion)/libasan.so"
+arch="/usr/lib/libasan.so"
+if [ -f "$ubuntu" ];then
+    echo $ubuntu
+elif [ -f "$arch" ];then
+    echo $arch
+else
+    exit 1
+fi
