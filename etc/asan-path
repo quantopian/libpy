@@ -2,10 +2,14 @@
 
 ubuntu="/usr/lib/gcc/x86_64-linux-gnu/$($CXX -dumpversion)/libasan.so"
 arch="/usr/lib/libasan.so"
+macos="/usr/local/lib/gcc/$($CXX -dumpversion)/libasan.dylib"
 if [ -f "$ubuntu" ];then
     echo $ubuntu
 elif [ -f "$arch" ];then
     echo $arch
+elif [ -f "$macos" ];then
+    echo $macos
 else
+    echo "could not find libasan.so"
     exit 1
 fi
