@@ -254,7 +254,7 @@ public:
         return m_impl->type_name();
     }
 
-    /** Allocate uninitialized memory memory for `count` objects of the given type.
+    /** Allocate uninitialized memory for `count` objects of the given type.
      */
     inline std::byte* alloc(std::size_t count) const {
         return new (std::align_val_t{align()}) std::byte[size() * count];
