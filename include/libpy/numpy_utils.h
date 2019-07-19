@@ -60,13 +60,13 @@
 #endif
 #endif
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include "libpy/detail/python.h"  // include this before numpy to silence warnings in py2
 #include <numpy/arrayobject.h>
 
 #include "libpy/any.h"
 #include "libpy/automethod.h"
 #include "libpy/char_sequence.h"
 #include "libpy/datetime64.h"
-#include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/ndarray_view.h"
 #include "libpy/scoped_ref.h"
