@@ -20,7 +20,9 @@ MAX_ERRORS ?= 5
 WARNINGS := -Werror -Wall -Wextra -Wno-register -Wno-missing-field-initializers \
 	-Wsign-compare -Wsuggest-override -Wparentheses -Waggressive-loop-optimizations \
 	-Wno-class-memaccess
-CXXFLAGS = $(shell $(PYTHON)-config --cflags) -std=gnu++17 -g -O$(OPTLEVEL) \
+CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
+	-fwrapv -fno-strict-aliasing -pipe \
+	-march=x86-64 -mtune=generic \
 	-fmax-errors=$(MAX_ERRORS) $(WARNINGS) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
