@@ -45,7 +45,7 @@ ifeq ($(OS),Darwin)
 	LDFLAGS += -undefined dynamic_lookup
 	LD_PRELOAD_VAR := DYLD_INSERT_LIBRARIES
 else
-        CXXFLAGS += -fstack-protector-strong
+	CXXFLAGS += -fstack-protector-strong
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
 	LDFLAGS += $(shell $(PYTHON)-config --ldflags)
