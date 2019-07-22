@@ -108,10 +108,14 @@ ifneq ($(UNSAFE_API),0)
 	TEST_DEFINES += -DLIBPY_AUTOCLASS_UNSAFE_API
 endif
 
-ALL_FLAGS := 'CFLAGS=$(CFLAGS) CXXFLAGS=$(CXXFLAGS) LDFLAGS=$(LDFLAGS)'
+ALL_FLAGS := 'CC=$(CC) CXX=$(CXX) CFLAGS=$(CFLAGS) CXXFLAGS=$(CXXFLAGS) LDFLAGS=$(LDFLAGS)'
+ALL_FLAGS_CACHE := .make/all-flags
 
 .PHONY: all
 all: $(SHORT_SONAME)
+
+# Empty rule that should always trigger a build
+.make/force:
 
 .PHONY: local-install
 local-install: $(SONAME)
@@ -121,18 +125,15 @@ local-install: $(SONAME)
 	cp -rf include/$(LIBRARY) ~/include
 
 
-.force:
-
-COMPILER_FLAGS := .compiler_flags
 
 # Write our current compiler flags so that we rebuild if they change.
-ALL_FLAGS_MATCH := $(shell echo '$(ALL_FLAGS)' | cmp -s - $(COMPILER_FLAGS) || echo 1)
+ALL_FLAGS_MATCH := $(shell echo '$(ALL_FLAGS)' | cmp -s - $(ALL_FLAGS_CACHE) || echo 1)
 ifeq ($(ALL_FLAGS_MATCH),1)
-	ALL_FLAGS_DEPS := .force
+	ALL_FLAGS_DEPS := .make/force
 endif
-$(COMPILER_FLAGS): $(ALL_FLAGS_DEPS)
-	@echo '$(ALL_FLAGS)' > $(COMPILER_FLAGS)
-
+$(ALL_FLAGS_CACHE): $(ALL_FLAGS_DEPS)
+	@mkdir -p .make
+	@echo '$(ALL_FLAGS)' > $(ALL_FLAGS_CACHE)
 
 $(SONAME): $(OBJECTS)
 	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME_PATH) \
@@ -142,7 +143,7 @@ $(SONAME): $(OBJECTS)
 $(SHORT_SONAME): $(SONAME)
 	ln -s $(SONAME) $(SHORT_SONAME)
 
-src/%.o: src/%.cc .compiler_flags
+src/%.o: src/%.cc .make/all-flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@
 
 .PHONY: test
@@ -159,7 +160,7 @@ test: $(TESTRUNNER) $(TEST_MODULE)
 gdbtest: $(TESTRUNNER)
 	@LD_LIBRARY_PATH=. GTEST_BREAK_ON_FAILURE=$(GTEST_BREAK) gdb -ex run $<
 
-tests/%.o: tests/%.cc .compiler_flags
+tests/%.o: tests/%.cc .make/compiler-flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) $(TEST_DEFINES) \
 		-isystem submodules/googletest/googletest/include \
 		-isystem submodules/googletest/googletest/src \
@@ -169,7 +170,7 @@ $(TEST_MODULE): gtest.a $(TEST_OBJECTS) $(SONAME)
 	$(CXX) -shared -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
 		-Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
 
-gtest.o: $(GTEST_SRCS) .compiler_flags
+gtest.o: $(GTEST_SRCS) .make/all-flags
 	$(CXX) $(filter-out $(WARNINGS),$(CXXFLAGS)) -I $(GTEST_DIR) \
 	-I $(GTEST_DIR)/include -c $(GTEST_DIR)/src/gtest-all.cc -fPIC -o $@
 
