@@ -120,10 +120,19 @@ local-install: $(SONAME)
 	ln -s ~/lib/$(SONAME) ~/lib/$(SHORT_SONAME)
 	cp -rf include/$(LIBRARY) ~/include
 
+
+.force:
+
+COMPILER_FLAGS := .compiler_flags
+
 # Write our current compiler flags so that we rebuild if they change.
-force:
-.compiler_flags: force
-	@echo '$(ALL_FLAGS)' | cmp -s - $@ || echo '$(ALL_FLAGS)' > $@
+ALL_FLAGS_MATCH := $(shell echo '$(ALL_FLAGS)' | cmp -s - $(COMPILER_FLAGS) || echo 1)
+ifeq ($(ALL_FLAGS_MATCH),1)
+	ALL_FLAGS_DEPS := .force
+endif
+$(COMPILER_FLAGS): $(ALL_FLAGS_DEPS)
+	@echo '$(ALL_FLAGS)' > $(COMPILER_FLAGS)
+
 
 $(SONAME): $(OBJECTS)
 	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME_PATH) \
