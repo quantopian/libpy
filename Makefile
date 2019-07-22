@@ -127,8 +127,8 @@ local-install: $(SONAME)
 
 
 # Write our current compiler flags so that we rebuild if they change.
-ALL_FLAGS_MATCH := $(shell echo '$(ALL_FLAGS)' | cmp -s - $(ALL_FLAGS_CACHE) || echo 1)
-ifeq ($(ALL_FLAGS_MATCH),1)
+ALL_FLAGS_MATCH := $(shell echo '$(ALL_FLAGS)' | cmp -s - $(ALL_FLAGS_CACHE) || echo 0)
+ifeq ($(ALL_FLAGS_MATCH),0)
 	ALL_FLAGS_DEPS := .make/force
 endif
 $(ALL_FLAGS_CACHE): $(ALL_FLAGS_DEPS)
