@@ -109,7 +109,6 @@ ifneq ($(UNSAFE_API),0)
 endif
 
 ALL_FLAGS := 'CC=$(CC) CXX=$(CXX) CFLAGS=$(CFLAGS) CXXFLAGS=$(CXXFLAGS) LDFLAGS=$(LDFLAGS)'
-ALL_FLAGS_CACHE := .make/all-flags
 
 .PHONY: all
 all: $(SHORT_SONAME)
@@ -117,23 +116,14 @@ all: $(SHORT_SONAME)
 # Empty rule that should always trigger a build
 .make/force:
 
-.PHONY: local-install
-local-install: $(SONAME)
-	cp $< ~/lib
-	@rm -f ~/lib/$(SHORT_SONAME)
-	ln -s ~/lib/$(SONAME) ~/lib/$(SHORT_SONAME)
-	cp -rf include/$(LIBRARY) ~/include
-
-
-
 # Write our current compiler flags so that we rebuild if they change.
-ALL_FLAGS_MATCH := $(shell echo '$(ALL_FLAGS)' | cmp -s - $(ALL_FLAGS_CACHE) || echo 0)
+ALL_FLAGS_MATCH := $(shell echo '$(ALL_FLAGS)' | cmp -s - .make/all-flags || echo 0)
 ifeq ($(ALL_FLAGS_MATCH),0)
 	ALL_FLAGS_DEPS := .make/force
 endif
-$(ALL_FLAGS_CACHE): $(ALL_FLAGS_DEPS)
+.make/all-flags: $(ALL_FLAGS_DEPS)
 	@mkdir -p .make
-	@echo '$(ALL_FLAGS)' > $(ALL_FLAGS_CACHE)
+	@echo '$(ALL_FLAGS)' > $@
 
 $(SONAME): $(OBJECTS)
 	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME_PATH) \
@@ -160,7 +150,7 @@ test: $(TESTRUNNER) $(TEST_MODULE)
 gdbtest: $(TESTRUNNER)
 	@LD_LIBRARY_PATH=. GTEST_BREAK_ON_FAILURE=$(GTEST_BREAK) gdb -ex run $<
 
-tests/%.o: tests/%.cc .make/compiler-flags
+tests/%.o: tests/%.cc .make/all-flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) $(TEST_DEFINES) \
 		-isystem submodules/googletest/googletest/include \
 		-isystem submodules/googletest/googletest/src \
