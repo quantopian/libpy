@@ -22,8 +22,9 @@ a.out
 *.a
 *.so*
 
-# gcc header dependencies
+# make artifacts
 *.d
+.make/*
 
 # coverage artifacts
 *.gcov
