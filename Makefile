@@ -27,10 +27,10 @@ CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
 
-INCLUDE_DIRS := include/
-INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) \
-	$(shell $(PYTHON)-config --includes) \
-	-I $(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
+INCLUDE_DIRS := include/ \
+	$(shell $(PYTHON) -c "from distutils import sysconfig; print(sysconfig.get_config_var('INCLUDEPY'))") \
+	$(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
+INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d)
 
 SO_SUFFIX := $(shell $(PYTHON) etc/ext_suffix.py)
 LIBRARY := py
