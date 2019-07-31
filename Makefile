@@ -27,10 +27,13 @@ CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
 
-INCLUDE_DIRS := include/
-INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d) \
-	$(shell $(PYTHON)-config --includes) \
-	-I $(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
+# https://github.com/quantopian/libpy/pull/86/files#r309288697
+INCLUDE_DIRS := include/ \
+	$(shell $(PYTHON) -c "import sysconfig; \
+						  print(sysconfig.get_path('include')); \
+						  print(sysconfig.get_path('platinclude'))") \
+	$(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
+INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d)
 
 SO_SUFFIX := $(shell $(PYTHON) etc/ext_suffix.py)
 LIBRARY := py
