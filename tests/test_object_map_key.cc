@@ -146,4 +146,13 @@ TEST_F(object_map_key, use_in_map) {
     test_use_in_map(py::sparse_hash_map<py::object_map_key, int>{});
     test_use_in_map(py::dense_hash_map<py::object_map_key, int>{py::object_map_key{}});
 }
+
+TEST_F(object_map_key, convert) {
+    py::scoped_ref<> ob = py::to_object(1);
+    ASSERT_TRUE(ob);
+
+    py::object_map_key m = ob;
+    EXPECT_EQ(m.get(), ob.get());
+    EXPECT_EQ(static_cast<py::scoped_ref<>>(m).get(), ob.get());
+}
 }  // namespace test_object_hash_key

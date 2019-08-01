@@ -39,6 +39,10 @@ public:
         return static_cast<bool>(m_ob);
     }
 
+    inline operator const py::scoped_ref<>&() const noexcept {
+        return m_ob;
+    }
+
     inline bool operator==(const object_map_key& other) const {
         if (!m_ob) {
             return !static_cast<bool>(other.m_ob);
