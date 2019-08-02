@@ -29,9 +29,8 @@ CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 
 # https://github.com/quantopian/libpy/pull/86/files#r309288697
 INCLUDE_DIRS := include/ \
-	$(shell $(PYTHON) -c "import sysconfig; \
-						  print(sysconfig.get_path('include')); \
-						  print(sysconfig.get_path('platinclude'))") \
+	$(shell $(PYTHON) -c "from distutils import sysconfig; \
+						  print(sysconfig.get_config_var('INCLUDEPY'))") \
 	$(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
 INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d)
 
