@@ -110,6 +110,48 @@ py::scoped_ref<> runtime_fixed_width_string_parser::move_to_python_tuple() && {
     return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
 }
 
+std::tuple<std::size_t, bool> vlen_string_parser::chomp(char delim,
+                                                        std::size_t ix,
+                                                        const std::string_view& row,
+                                                        std::size_t offset) {
+    std::string& cell = this->m_parsed[ix];
+    auto ret = detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
+                                           delim,
+                                           row,
+                                           offset);
+    this->m_mask[ix] = cell.size() > 0;
+    return ret;
+}
+
+py::scoped_ref<> vlen_string_parser::move_to_python_tuple() && {
+    std::vector<py::scoped_ref<>> as_ob(m_parsed.size());
+    std::size_t ix = 0;
+    for (const std::string& str : m_parsed) {
+        if (!m_mask[ix]) {
+            Py_INCREF(Py_None);
+            as_ob[ix] = py::scoped_ref(Py_None);
+        }
+        else {
+            as_ob[ix] = py::to_object(str);
+            if (!as_ob[ix]) {
+                return nullptr;
+            }
+        }
+        ++ix;
+    }
+    auto values = py::move_to_numpy_array(std::move(as_ob));
+    if (!values) {
+        return nullptr;
+    }
+
+    auto mask_array = py::move_to_numpy_array(std::move(m_mask));
+    if (!mask_array) {
+        return nullptr;
+    }
+
+    return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
+}
+
 namespace {
 using namespace py::cs::literals;
 
@@ -302,14 +344,25 @@ cell_parser* bool_column::emplace_cell_parser(void* addr) const {
                       m_parser_template);
 }
 
-fixed_width_string_column::fixed_width_string_column(std::size_t size) : m_size(size) {}
+string_column::string_column(std::int64_t size) : m_size(size) {}
 
-column_spec::alloc_info fixed_width_string_column::cell_parser_alloc_info() const {
-    return column_spec::alloc_info::make<runtime_fixed_width_string_parser>();
+column_spec::alloc_info string_column::cell_parser_alloc_info() const {
+    if (m_size > 0) {
+        return column_spec::alloc_info::make<runtime_fixed_width_string_parser>();
+    }
+    else {
+        return column_spec::alloc_info::make<vlen_string_parser>();
+    }
 }
 
-cell_parser* fixed_width_string_column::emplace_cell_parser(void* addr) const {
-    return new (addr) runtime_fixed_width_string_parser{m_size};
+cell_parser* string_column::emplace_cell_parser(void* addr) const {
+    if (m_size > 0) {
+        return new (addr)
+            runtime_fixed_width_string_parser{static_cast<std::size_t>(m_size)};
+    }
+    else {
+        return new (addr) vlen_string_parser{};
+    }
 }
 
 namespace {
@@ -668,7 +721,7 @@ column_spec* unbox_spec(PyObject* spec) {
                              float64_column,
                              datetime_column,
                              bool_column,
-                             fixed_width_string_column>::f(spec);
+                             string_column>::f(spec);
 }
 
 template<typename InitColumn, typename Init>
@@ -897,9 +950,7 @@ bool add_parser_pytypes(PyObject* module) {
             py::autoclass<float64_column>("Float64").new_<std::string_view>().type(),
             py::autoclass<datetime_column>("DateTime").new_<std::string_view>().type(),
             py::autoclass<bool_column>("Bool").new_<std::string_view>().type(),
-            py::autoclass<fixed_width_string_column>("FixedString")
-                .new_<std::size_t>()
-                .type(),
+            py::autoclass<string_column>("String").new_<std::int64_t>().type(),
         };
 
         for (const auto& type : types) {

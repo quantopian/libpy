@@ -169,18 +169,39 @@ public:
         m_mask.resize(nrows);
     }
 
+private:
+    struct has_to_numpy_array {
+    private:
+        template<typename U>
+        static decltype(py::dispatch::new_dtype<U>::get(), std::true_type{}) test(int);
+
+        template<typename>
+        static std::false_type test(long);
+
+    public:
+        static constexpr bool value =
+            std::is_same_v<decltype(test<T>(0)), std::true_type>;
+    };
+
+public:
     py::scoped_ref<> move_to_python_tuple() && override {
-        auto values = py::move_to_numpy_array(std::move(m_parsed));
-        if (!values) {
-            return nullptr;
+        if constexpr (!has_to_numpy_array::value) {
+            Py_INCREF(Py_None);
+            return py::scoped_ref(Py_None);
         }
+        else {
+            auto values = py::move_to_numpy_array(std::move(m_parsed));
+            if (!values) {
+                return nullptr;
+            }
 
-        auto mask_array = py::move_to_numpy_array(std::move(m_mask));
-        if (!mask_array) {
-            return nullptr;
+            auto mask_array = py::move_to_numpy_array(std::move(m_mask));
+            if (!mask_array) {
+                return nullptr;
+            }
+
+            return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
         }
-
-        return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
     }
 
     std::tuple<std::vector<T>, std::vector<py::py_bool>> move_to_tuple() && {
@@ -865,6 +886,16 @@ public:
     }
 };
 
+class vlen_string_parser : public typed_cell_parser<std::string> {
+public:
+    virtual std::tuple<std::size_t, bool> chomp(char delim,
+                                                std::size_t ix,
+                                                const std::string_view& row,
+                                                std::size_t offset) override;
+
+    virtual py::scoped_ref<> move_to_python_tuple() && override;
+};
+
 /** Column spec for indicating that a column should be skipped.
  */
 class skip_column : public column_spec {
@@ -1031,12 +1062,12 @@ public:
     cell_parser* emplace_cell_parser(void*) const override;
 };
 
-class fixed_width_string_column : public column_spec {
+class string_column : public column_spec {
 private:
-    std::size_t m_size;
+    std::int64_t m_size;
 
 public:
-    fixed_width_string_column(std::size_t size);
+    string_column(std::int64_t size);
 
     column_spec::alloc_info cell_parser_alloc_info() const override;
     cell_parser* emplace_cell_parser(void*) const override;
