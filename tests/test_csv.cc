@@ -19,7 +19,7 @@ TEST(fast_strtol, int8) {
 
     for (const auto& [input, expected] : py::zip(strings, expected_values)) {
         const char* out;
-        auto actual = py::csv::fast_strtol<std::int8_t>(input, &out);
+        auto actual = py::csv::parser::fast_strtol<std::int8_t>(input, &out);
         EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
         EXPECT_EQ(actual, expected);
     }
@@ -30,7 +30,8 @@ TEST(fast_strtol, int8_overflow) {
 
     for (const char* input : strings) {
         const char* out;
-        EXPECT_THROW(py::csv::fast_strtol<std::int8_t>(input, &out), std::overflow_error)
+        EXPECT_THROW(py::csv::parser::fast_strtol<std::int8_t>(input, &out),
+                     std::overflow_error)
             << "input=" << input;
     }
 }
@@ -43,7 +44,7 @@ TEST(fast_strtol, int16) {
 
     for (const auto& [input, expected] : py::zip(strings, expected_values)) {
         const char* out;
-        auto actual = py::csv::fast_strtol<std::int16_t>(input, &out);
+        auto actual = py::csv::parser::fast_strtol<std::int16_t>(input, &out);
         EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
         EXPECT_EQ(actual, expected);
     }
@@ -54,7 +55,8 @@ TEST(fast_strtol, int16_overflow) {
 
     for (const char* input : strings) {
         const char* out;
-        EXPECT_THROW(py::csv::fast_strtol<std::int16_t>(input, &out), std::overflow_error)
+        EXPECT_THROW(py::csv::parser::fast_strtol<std::int16_t>(input, &out),
+                     std::overflow_error)
             << "input=" << input;
     }
 }
@@ -67,7 +69,7 @@ TEST(fast_strtol, int32) {
 
     for (const auto& [input, expected] : py::zip(strings, expected_values)) {
         const char* out;
-        auto actual = py::csv::fast_strtol<std::int32_t>(input, &out);
+        auto actual = py::csv::parser::fast_strtol<std::int32_t>(input, &out);
         EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
         EXPECT_EQ(actual, expected);
     }
@@ -81,7 +83,8 @@ TEST(fast_strtol, int32_overflow) {
 
     for (const char* input : strings) {
         const char* out;
-        EXPECT_THROW(py::csv::fast_strtol<std::int32_t>(input, &out), std::overflow_error)
+        EXPECT_THROW(py::csv::parser::fast_strtol<std::int32_t>(input, &out),
+                     std::overflow_error)
             << "input=" << input;
     }
 }
@@ -104,7 +107,7 @@ TEST(fast_strtol, int64) {
 
     for (const auto& [input, expected] : py::zip(strings, expected_values)) {
         const char* out;
-        auto actual = py::csv::fast_strtol<std::int64_t>(input, &out);
+        auto actual = py::csv::parser::fast_strtol<std::int64_t>(input, &out);
         EXPECT_EQ(out - input, static_cast<std::ptrdiff_t>(std::strlen(input)));
         EXPECT_EQ(actual, expected);
     }
@@ -118,7 +121,8 @@ TEST(fast_strtol, int64_overflow) {
 
     for (const char* input : strings) {
         const char* out;
-        EXPECT_THROW(py::csv::fast_strtol<std::int64_t>(input, &out), std::overflow_error)
+        EXPECT_THROW(py::csv::parser::fast_strtol<std::int64_t>(input, &out),
+                     std::overflow_error)
             << "input=" << input;
     }
 }
@@ -136,7 +140,7 @@ TYPED_TEST_P(fast_strtol_errors, invalid_string) {
          py::zip(strings, expected_values, expected_lengths)) {
 
         const char* out;
-        auto actual = py::csv::fast_strtol<TypeParam>(input, &out);
+        auto actual = py::csv::parser::fast_strtol<TypeParam>(input, &out);
 
         EXPECT_EQ(out - input, expected_lenth);
         EXPECT_EQ(actual, expected_value);
@@ -199,21 +203,23 @@ TEST_P(parse_csv, parse_simple) {
         3, 4.5, "2014-01-03", "2015-01-03 15:50:50", "fam");
     // clang-format on
 
-    auto int64_parser = std::make_shared<py::csv::typed_cell_parser<std::int64_t>>();
-    auto float64_parser = std::make_shared<py::csv::typed_cell_parser<double>>();
-    auto date_parser =
-        std::make_shared<py::csv::typed_cell_parser<py::datetime64<py::chrono::D>>>();
+    auto int64_parser = std::make_shared<py::csv::parser::int64_parser>();
+    auto float64_parser = std::make_shared<py::csv::parser::precise_float64_parser>();
+    auto date_parser = std::make_shared<py::csv::parser::basic_date_parser>();
     auto datetime_parser =
-        std::make_shared<py::csv::typed_cell_parser<py::datetime64<py::chrono::s>>>();
+        std::make_shared<py::csv::parser::basic_datetime_seconds_parser>();
     auto string_parser =
-        std::make_shared<py::csv::typed_cell_parser<std::array<char, 4>>>();
+        std::make_shared<py::csv::parser::fixed_width_string_parser<4>>();
 
-    std::unordered_map<std::string, std::shared_ptr<py::csv::cell_parser>> cols =
-        {{"int64", std::static_pointer_cast<py::csv::cell_parser>(int64_parser)},
-         {"float64", std::static_pointer_cast<py::csv::cell_parser>(float64_parser)},
-         {"date", std::static_pointer_cast<py::csv::cell_parser>(date_parser)},
-         {"datetime", std::static_pointer_cast<py::csv::cell_parser>(datetime_parser)},
-         {"string", std::static_pointer_cast<py::csv::cell_parser>(string_parser)}};
+    std::unordered_map<std::string, std::shared_ptr<py::csv::parser::cell_parser>> cols =
+        {{"int64", std::static_pointer_cast<py::csv::parser::cell_parser>(int64_parser)},
+         {"float64",
+          std::static_pointer_cast<py::csv::parser::cell_parser>(float64_parser)},
+         {"date", std::static_pointer_cast<py::csv::parser::cell_parser>(date_parser)},
+         {"datetime",
+          std::static_pointer_cast<py::csv::parser::cell_parser>(datetime_parser)},
+         {"string",
+          std::static_pointer_cast<py::csv::parser::cell_parser>(string_parser)}};
 
     py::csv::parse(csv_content.data(), cols, params.delim, params.line_sep, 0);
 

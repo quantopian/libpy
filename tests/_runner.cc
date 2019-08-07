@@ -4,6 +4,9 @@
 #define LIBPY_TEST_MAIN
 #include "libpy/numpy_utils.h"
 
+#include "libpy/automethod.h"
+#include "libpy/csv.h"
+
 namespace test {
 PyObject* run_tests(PyObject*, PyObject* py_argv) {
     if (!PyTuple_Check(py_argv)) {
@@ -22,6 +25,9 @@ PyObject* run_tests(PyObject*, PyObject* py_argv) {
     int argc = argv.size();
     argv.push_back(nullptr);
     testing::InitGoogleTest(&argc, argv.data());
+    // print a newline to start output fresh from the partial line that pytest starts
+    // us with
+    std::cout << '\n';
     int out = RUN_ALL_TESTS();
     PyErr_Clear();
     return PyLong_FromLong(out);
@@ -29,13 +35,18 @@ PyObject* run_tests(PyObject*, PyObject* py_argv) {
 
 PyMethodDef methods[] = {
     {"run_tests", run_tests, METH_O, nullptr},
+    py::automethod<py::csv::py_parse>("parse_csv"),
     {nullptr, nullptr, 0, nullptr},
 };
 
 #if PY_MAJOR_VERSION == 2
 PyMODINIT_FUNC init_runner() {
     import_array();
-    Py_InitModule("_runner", methods);
+    PyObject* mod = Py_InitModule("_runner", methods);
+    if (!mod) {
+        return;
+    }
+    py::csv::add_parser_pytypes(mod);
 }
 #else
 PyModuleDef module = {
@@ -52,7 +63,14 @@ PyModuleDef module = {
 
 PyMODINIT_FUNC PyInit__runner() {
     import_array();
-    return PyModule_Create(&module);
+    py::scoped_ref mod(PyModule_Create(&module));
+    if (!mod) {
+        return nullptr;
+    }
+    if (py::csv::add_parser_pytypes(mod.get())) {
+        return nullptr;
+    }
+    return std::move(mod).escape();
 }
 #endif
 }  // namespace test

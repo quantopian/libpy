@@ -209,27 +209,7 @@ inline detail::raise_buffer<> raise(PyObject* exc) {
     @return Always `nullptr`. This allows users to write:
             `return raise_from_cxx_exception(e)`
  */
-inline std::nullptr_t raise_from_cxx_exception(const std::exception& e) {
-    if (!PyErr_Occurred()) {
-        py::raise(PyExc_RuntimeError) << "a C++ exception was raised: " << e.what();
-        return nullptr;
-    }
-    PyObject* type;
-    PyObject* value;
-    PyObject* tb;
-    PyErr_Fetch(&type, &value, &tb);
-    Py_XDECREF(tb);
-    const char* what = e.what();
-    if (!what[0]) {
-        raise(type) << value << " (raised from C++ exception)";
-    }
-    else {
-        raise(type) << value << " (raised from C++ exception: " << what << ')';
-    }
-    Py_DECREF(type);
-    Py_DECREF(value);
-    return nullptr;
-}
+std::nullptr_t raise_from_cxx_exception(const std::exception& e);
 
 /** A C++ exception that can be used to communicate a Python error.
  */
@@ -249,7 +229,7 @@ public:
         @param args The arguments to forward to `py::raise`.
      */
     template<typename... Args>
-    inline exception(PyObject* exc, Args&&... args) {
+    exception(PyObject* exc, Args&&... args) {
         (raise(exc) << ... << args);
     }
 

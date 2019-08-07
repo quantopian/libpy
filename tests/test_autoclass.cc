@@ -16,12 +16,18 @@ namespace test_autoclass {
 using namespace std::literals;
 
 class autoclass : public with_python_interpreter {
+    std::size_t m_cache_start_size;
+
+    void SetUp() override {
+        m_cache_start_size = py::detail::autoclass_type_cache.size();
+    }
+
     void TearDown() override {
         // Types basically always participate in a cycle because the method descriptors.
         // Run the collector until there is no more garbage.
         while (PyGC_Collect())
             ;
-        EXPECT_EQ(py::detail::autoclass_type_cache.size(), 0ul);
+        EXPECT_EQ(py::detail::autoclass_type_cache.size(), m_cache_start_size);
 
         with_python_interpreter::TearDown();
     }

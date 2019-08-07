@@ -2,6 +2,7 @@
 -include Makefile.local
 
 PYTHON ?= python
+PYTEST ?= pytest
 
 MAJOR_VERSION := 1
 MINOR_VERSION := 0
@@ -98,7 +99,7 @@ TEST_OBJECTS := $(TEST_SOURCES:.cc=.o)
 TEST_HEADERS := $(wildcard tests/*.h) $(GTEST_HEADERS)
 TEST_INCLUDE := -I tests -I $(GTEST_DIR)/include
 TEST_MODULE := tests/_runner$(SO_SUFFIX)
-TESTRUNNER := tests/runner.py
+PYTHON_TESTS := $(wildcard tests/*.py)
 
 ALL_SOURCES := $(SOURCES) $(TEST_SOURCES)
 ALL_HEADERS := include/libpy/**.h
@@ -139,18 +140,19 @@ src/%.o: src/%.cc .make/all-flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@
 
 .PHONY: test
-test: $(TESTRUNNER) $(TEST_MODULE)
+test: $(PYTHON_TESTS) $(TEST_MODULE)
 	GTEST_OUTPUT=$(GTEST_OUTPUT) \
 		$(LD_PRELOAD_VAR)="$(TEST_LD_PRELOAD)" \
 		ASAN_OPTIONS=$(ASAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
-		PYTHONPATH=tests/ \
-		$(PYTHON) $< --gtest_filter=$(GTEST_FILTER)
+		GTEST_ARGS=--gtest_filter=$(GTEST_FILTER) \
+		$(PYTEST) tests/ $(PYTEST_ARGS)
 
 .PHONY: gdbtest
-gdbtest: $(TESTRUNNER)
-	@LD_LIBRARY_PATH=. GTEST_BREAK_ON_FAILURE=$(GTEST_BREAK) gdb -ex run $<
+gdbtest: $(PYTHON_TESTS)
+	@LD_LIBRARY_PATH=. GTEST_BREAK_ON_FAILURE=$(GTEST_BREAK) \
+		gdb -ex run $(PYTEST) tests/
 
 tests/%.o: tests/%.cc .make/all-flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $(TEST_INCLUDE) $(TEST_DEFINES) \
