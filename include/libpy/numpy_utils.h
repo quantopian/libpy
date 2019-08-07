@@ -97,6 +97,12 @@ inline void ensure_import_array() {
 #endif
 }
 
+struct ensure_import_array_module_scope {
+    inline ensure_import_array_module_scope() {
+        ensure_import_array();
+    }
+};
+
 /** A strong typedef of npy_bool to not be ambiguous with `unsigned char` but may
     still be used in a vector without the dreaded `std::vector<bool>`.
 */

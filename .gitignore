@@ -51,3 +51,4 @@ libpy_report.xml
 
 # tox envs
 .tox/*
+.cache/*

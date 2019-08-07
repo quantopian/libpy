@@ -225,10 +225,11 @@ static_assert(std::is_standard_layout<datetime64ns>::value,
 static_assert(sizeof(datetime64ns) == sizeof(std::int64_t),
               "alias type should be the same size as aliased type");
 
-namespace detail {
-// The number of days in each month. The array at index 0 holds the counts for non-leap
-// years. The array at index 1 holds the counts for leap years.
-static constexpr std::array<std::array<std::int8_t, 12>, 2> days_in_months = {
+namespace chrono {
+/* The number of days in each month. The array at index 0 holds the counts for non-leap
+   years. The array at index 1 holds the counts for leap years.
+*/
+static constexpr std::array<std::array<std::int8_t, 12>, 2> days_in_month = {
     // The number of days in each month for non-leap years.
     std::array<std::int8_t, 12>{31,   // jan
                                 28,   // feb
@@ -257,6 +258,61 @@ static constexpr std::array<std::array<std::int8_t, 12>, 2> days_in_months = {
                                 31},  // dec
 };
 
+/** Check if `year` is a leap year.
+ */
+inline constexpr bool is_leapyear(std::int64_t year) {
+    return (year % 4) == 0 && ((year % 100) != 0 || (year % 400) == 0);
+}
+
+namespace detail {
+inline constexpr std::array<std::array<uint16_t, 12>, 2> build_days_before_month() {
+    std::array<std::array<uint16_t, 12>, 2> out = {{0}};
+    for (std::size_t n = 1; n < 12; ++n) {
+        for (int is_leapyear = 0; is_leapyear < 2; ++is_leapyear) {
+            out[is_leapyear][n] = days_in_month[is_leapyear][n - 1] +
+                                  out[is_leapyear][n - 1];
+        }
+    }
+    return out;
+}
+
+/** The number of days that occur before the first of the month in a non-leap
+    year. The array at index 0 holds the counts for non-leap years. The array at
+    index 1 holds the counts for leap years.
+ */
+constexpr std::array<std::array<uint16_t, 12>, 2> days_before_month =
+    build_days_before_month();
+
+inline constexpr int leap_years_before(int year) {
+    --year;
+    return (year / 4) - (year / 100) + (year / 400);
+}
+}  // namespace detail
+
+/** Compute the time since the unix epoch for a given year,
+    month and day.
+
+    @param year
+    @month The month, 1-indexed (1 = January)
+    @day The day, 1-indexed (1 = The first of the month).
+    @return The time since the epoch as a `std::chrono::duration`.
+ */
+inline constexpr auto time_since_epoch(int year, int month, int day) {
+    using days = std::chrono::duration<std::int64_t, std::ratio<86400>>;
+    // The number of seconds in 365 days. This doesn't account for leap years, we will
+    // manually add those days.
+    using years = std::chrono::duration<std::int64_t, std::ratio<31536000>>;
+
+    days out = years(year - 1970);
+    out += days(detail::leap_years_before(year) - detail::leap_years_before(1970));
+    out += days(detail::days_before_month[is_leapyear(year)][month - 1]);
+    out += days(day - 1);
+
+    return out;
+}
+}  // namespace chrono
+
+namespace detail {
 namespace {
 using namespace py::cs::literals;
 // Constant time access to zero padded numbers suitable for use in the months, days,
@@ -347,10 +403,6 @@ days_to_year_and_days(std::int64_t days_from_epoch) {
     return {year + 2000, days};
 }
 
-inline constexpr bool is_leapyear(std::int64_t year) {
-    return (year % 4) == 0 && ((year % 100) != 0 || (year % 400) == 0);
-}
-
 /** Convert a year and number of days into the year into the month number and day number,
     both 1-indexed.
 
@@ -360,7 +412,7 @@ inline constexpr bool is_leapyear(std::int64_t year) {
 */
 inline constexpr std::tuple<std::int8_t, std::int8_t>
 month_day_for_year_days(std::int64_t year, std::int16_t days_into_year) {
-    const auto& month_lengths = days_in_months[is_leapyear(year)];
+    const auto& month_lengths = chrono::days_in_month[chrono::is_leapyear(year)];
 
     for (int ix = 0; ix < 12; ++ix) {
         if (days_into_year < month_lengths[ix]) {
