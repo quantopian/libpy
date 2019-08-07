@@ -81,6 +81,23 @@ def _generate_S(rand, count, size):
     ).view(('S', size))
 
 
+def _generate_O(rand, count):
+    """Generate an array of random uppercase strings for a numpy bytes dtype.
+    """
+    base = np.array(
+        [c.encode() for c in string.ascii_letters + string.digits],
+        dtype='S1',
+    )
+
+    return np.array(
+        [
+            b''.join(rand.choice(base, rand.randint(3, 12)))
+            for _ in range(count)
+        ],
+        dtype='O',
+    )
+
+
 def _generate_column(name, dtype, rand, count):
     if dtype == np.dtype('M8[D]'):
         return _generate_datetime64D(rand, count).astype('M8[ns]')
@@ -94,6 +111,8 @@ def _generate_column(name, dtype, rand, count):
         return _generate_bool(rand, count)
     if dtype.kind == 'S':
         return _generate_S(rand, count, dtype.itemsize)
+    if dtype.kind == 'O':
+        return _generate_O(rand, count)
 
     raise TypeError('unknown dtype: %s' % dtype)
 
@@ -330,6 +349,7 @@ MISSING_VALUES = {
     np.dtype('int8'): 0,
     np.dtype('S1'): b'\0',
     np.dtype('S6'): b'\0' * 6,
+    np.dtype('O'): None,
 }
 # TODO: Is there a better way to do this?
 #
@@ -345,8 +365,9 @@ DTYPE_TO_COLUMN_SPEC = {
     np.dtype('datetime64[ns]'): cxx.DateTime(b'y-m-d h:m:s.s'),
     np.dtype('float64'): cxx.Float64(b'precise'),
     np.dtype('int8'): cxx.Int8(),
-    np.dtype('S1'): cxx.FixedString(1),
-    np.dtype('S6'): cxx.FixedString(6),
+    np.dtype('S1'): cxx.String(1),
+    np.dtype('S6'): cxx.String(6),
+    np.dtype('O'): cxx.String(-1),
 }
 
 
