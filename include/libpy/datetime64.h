@@ -276,9 +276,9 @@ inline constexpr std::array<std::array<uint16_t, 12>, 2> build_days_before_month
     return out;
 }
 
-/** The number of days that occur before the first of the month in a non-leap
-    year. The array at index 0 holds the counts for non-leap years. The array at
-    index 1 holds the counts for leap years.
+/** The number of days that occur before the first of the month. year. The array
+    at index 0 holds the counts for non-leap years. The array at index 1 holds
+    the counts for leap years.
  */
 constexpr std::array<std::array<uint16_t, 12>, 2> days_before_month =
     build_days_before_month();

@@ -1098,7 +1098,7 @@ void parse(const std::string_view& data,
  */
 PyObject* py_parse(PyObject*,
                    const std::string_view& data,
-                   PyObject* dtypes,
+                   PyObject* columns,
                    char delimiter,
                    const std::string_view& line_ending,
                    std::size_t num_threads);
