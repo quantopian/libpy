@@ -22,7 +22,9 @@ inline void expect_pyerr_type_and_message(PyObject* ptype, std::string_view pmsg
     py::scoped_ref py_msg(PyObject_Str(value));
     ASSERT_TRUE(py_msg);
     std::string_view c_msg = py::util::pystring_to_string_view(py_msg);
-    EXPECT_EQ(c_msg, pmsg);
+
+    // convert the values to std::string to get *much* nicer error output
+    EXPECT_EQ(std::string{c_msg}, std::string{pmsg});
 }
 
 inline std::string format_current_python_exception() {
