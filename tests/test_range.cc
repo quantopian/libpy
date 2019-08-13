@@ -56,11 +56,8 @@ TEST_F(range, iteration) {
 }
 
 TEST_F(range, not_iterable) {
-    auto ob = py::to_object(1);
-    ASSERT_TRUE(ob);
-
-    EXPECT_THROW(py::range{ob}, py::exception);
-    expect_pyerr_type_and_message(PyExc_TypeError, "'int' object is not iterable");
+    EXPECT_THROW(py::range{Py_None}, py::exception);
+    expect_pyerr_type_and_message(PyExc_TypeError, "'NoneType' object is not iterable");
     PyErr_Clear();
 }
 
