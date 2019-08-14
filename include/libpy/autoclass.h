@@ -825,16 +825,23 @@ public:
                 pointer to member function, it doesn't need to have the implicit
                 `PyObject* self` argument, it will just be called on the boxed value of
                 `self`.
+        @tparam flags extra flags to indicate whether a function is a static or
+                classmethod.
         @param name The name of the function as it will appear in Python.
         @return *this.
      */
-    template<auto impl>
+    template<auto impl, int flags = 0>
     autoclass& def(std::string name) {
         require_uninitialized("cannot add methods after the class has been created");
 
         std::string& name_copy = m_storage.strings.emplace_front(std::move(name));
-        m_storage.methods.emplace_back(
-            automethod<member_function<decltype(impl), impl>::f>(name_copy.data()));
+        if constexpr (flags & METH_STATIC || flags & METH_CLASS) {
+            m_storage.methods.emplace_back(automethod<impl, flags>(name_copy.data()));
+        }
+        else {
+            m_storage.methods.emplace_back(
+                automethod<member_function<decltype(impl), impl>::f>(name_copy.data()));
+        }
         return *this;
     }
 
@@ -844,19 +851,27 @@ public:
                 pointer to member function, it doesn't need to have the implicit
                 `PyObject* self` argument, it will just be called on the boxed value of
                 `self`.
+        @tparam flags extra flags to indicate whether a function is a static or
+                classmethod.
         @param name The name of the function as it will appear in Python.
         @param doc The docstring of the function as it will appear in Python.
         @return *this.
      */
-    template<auto impl>
+    template<auto impl, int flags = 0>
     autoclass& def(std::string name, std::string doc) {
         require_uninitialized("cannot add methods after the class has been created");
 
         std::string& name_copy = m_storage.strings.emplace_front(std::move(name));
         std::string& doc_copy = m_storage.strings.emplace_front(std::move(doc));
-        m_storage.methods.emplace_back(
-            automethod<member_function<decltype(impl), impl>::f>(name_copy.data(),
-                                                                 doc_copy.data()));
+        if constexpr (flags & METH_STATIC || flags & METH_CLASS) {
+            m_storage.methods.emplace_back(
+                automethod<impl, flags>(name_copy.data(), doc_copy.data()));
+        }
+        else {
+            m_storage.methods.emplace_back(
+                automethod<member_function<decltype(impl), impl>::f>(name_copy.data(),
+                                                                     doc_copy.data()));
+        }
         return *this;
     }
 
