@@ -69,6 +69,7 @@
 #include "libpy/datetime64.h"
 #include "libpy/exception.h"
 #include "libpy/ndarray_view.h"
+#include "libpy/object_map_key.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
 
@@ -228,6 +229,9 @@ struct new_dtype<PyObject*> : new_dtype_from_typecode<NPY_OBJECT> {};
 
 template<typename T>
 struct new_dtype<scoped_ref<T>> : new_dtype<PyObject*> {};
+
+template<>
+struct new_dtype<object_map_key> : new_dtype<PyObject*> {};
 
 template<>
 struct new_dtype<bool> : new_dtype_from_typecode<NPY_BOOL> {};
