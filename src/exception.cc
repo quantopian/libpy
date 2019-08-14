@@ -10,6 +10,7 @@ std::nullptr_t raise_from_cxx_exception(const std::exception& e) {
     PyObject* value;
     PyObject* tb;
     PyErr_Fetch(&type, &value, &tb);
+    PyErr_NormalizeException(&type, &value, &tb);
     Py_XDECREF(tb);
     const char* what = e.what();
     if (!what[0]) {
