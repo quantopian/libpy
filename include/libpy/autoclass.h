@@ -233,6 +233,13 @@ public:
         add_slot(Py_tp_dealloc, py_dealloc);
     }
 
+    // Delete the copy constructor, the intermediate string data points into
+    // storage that is managed by the type until `.type()` is called.
+    // Also, don't try to create 2 versions of the same type.
+    autoclass(const autoclass&) = delete;
+    autoclass(autoclass&&) = default;
+    autoclass& operator=(autoclass&&) = default;
+
     /** Add a `tp_traverse` field to this type. This is only allowed, but required if
         `extra_flags & Py_TPFLAGS_HAVE_GC`.
 
