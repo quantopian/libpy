@@ -421,7 +421,7 @@ private:
 
 public:
     static std::tuple<Ts...> f(PyObject* tup) {
-        if (!(PyTuple_Check(tup) || PyTuple_GET_SIZE(tup) != sizeof...(Ts))) {
+        if (!(PyTuple_Check(tup) && PyTuple_GET_SIZE(tup) == sizeof...(Ts))) {
             throw invalid_conversion::make<std::tuple<Ts...>>(tup);
         }
 
