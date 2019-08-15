@@ -11,6 +11,31 @@
 /** Miscellaneous utilities.
  */
 namespace py::util {
+/** Format a string by building up an intermediate `std::stringstream`.
+
+    @param msg The components of the message.
+    @return A new string which formatted all parts of msg with
+            `operator(std::ostream&, decltype(msg))`
+ */
+template<typename... Ts>
+std::string format_string(Ts&&... msg) {
+    std::stringstream s;
+    (s << ... << msg);
+    return s.str();
+}
+
+/** Create an exception object by forwarding the result of `msg` to
+    `py::util::format_string`.
+
+    @tparam Exc The type of the exception to raise.
+    @param msg The components of the message.
+    @return A new exception object.
+ */
+template<typename Exc, typename... Args>
+Exc formatted_error(Args&&... msg) {
+    return Exc(format_string(std::forward<Args>(msg)...));
+}
+
 /** Check if all parameters are equal.
  */
 template<typename T, typename... Ts>
@@ -49,7 +74,8 @@ inline std::string_view pystring_to_string_view(PyObject* ob) {
 #else
     cs = PyUnicode_AsUTF8AndSize(ob, &size);
     if (!cs) {
-        throw std::runtime_error("failed to get string and size");
+        throw formatted_error<std::runtime_error>(
+            "failed to get string and size from object of type: ", Py_TYPE(ob)->tp_name);
     }
 #endif
     return {cs, static_cast<std::size_t>(size)};
@@ -127,30 +153,5 @@ void apply_to_groups(I begin, I end, F&& f) {
 template<typename R, typename F>
 void apply_to_groups(R&& range, F&& f) {
     apply_to_groups(range.begin(), range.end(), f);
-}
-
-/** Format a string by building up an intermediate `std::stringstream`.
-
-    @param msg The components of the message.
-    @return A new string which formatted all parts of msg with
-            `operator(std::ostream&, decltype(msg))`
- */
-template<typename... Ts>
-std::string format_string(Ts&&... msg) {
-    std::stringstream s;
-    (s << ... << msg);
-    return s.str();
-}
-
-/** Create an exception object by forwarding the result of `msg` to
-    `py::util::format_string`.
-
-    @tparam Exc The type of the exception to raise.
-    @param msg The components of the message.
-    @return A new exception object.
- */
-template<typename Exc, typename... Args>
-Exc formatted_error(Args&&... msg) {
-    return Exc(format_string(std::forward<Args>(msg)...));
 }
 }  // namespace py::util
