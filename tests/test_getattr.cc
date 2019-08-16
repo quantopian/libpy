@@ -26,7 +26,7 @@ TEST_F(getattr, simple) {
     ASSERT_TRUE(actual);
 
     PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
-    ASSERT_TRUE(actual);
+    ASSERT_TRUE(expected);
 
     // compare them using object identity
     EXPECT_EQ(actual.get(), expected);
@@ -67,7 +67,7 @@ TEST_F(getattr, nested) {
     ASSERT_TRUE(actual);
 
     PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
-    ASSERT_TRUE(actual);
+    ASSERT_TRUE(expected);
 
     // compare them using object identity
     EXPECT_EQ(actual.get(), expected);
@@ -112,7 +112,7 @@ TEST_F(getattr_throws, simple) {
     ASSERT_TRUE(actual);
 
     PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
-    ASSERT_TRUE(actual);
+    ASSERT_TRUE(expected);
 
     // compare them using object identity
     EXPECT_EQ(actual.get(), expected);
@@ -152,7 +152,7 @@ TEST_F(getattr_throws, nested) {
     ASSERT_TRUE(actual);
 
     PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
-    ASSERT_TRUE(actual);
+    ASSERT_TRUE(expected);
 
     // compare them using object identity
     EXPECT_EQ(actual.get(), expected);
