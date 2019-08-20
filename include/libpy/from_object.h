@@ -119,8 +119,9 @@ namespace dispatch {
 template<typename T>
 struct from_object<T&> {
 private:
+    using mut_T = std::remove_const_t<T>;
     static constexpr bool specialized = std::is_const_v<T> &&
-                                        py::has_from_object<std::remove_const_t<T>> &&
+                                        py::has_from_object<mut_T> &&
                                         !py::has_from_object<T>;
 
 public:
@@ -129,15 +130,14 @@ public:
             return py::from_object<std::remove_const_t<T>>(ob);
         }
         else {
-            auto search = py::detail::autoclass_type_cache.get().find(
-                typeid(std::remove_const_t<T>));
+            auto search = py::detail::autoclass_type_cache.get().find(typeid(mut_T));
             if (search == py::detail::autoclass_type_cache.get().end()) {
                 throw invalid_conversion::make<T&>(ob);
             }
 
             // NOTE: the parentheses change the behavior of `decltype(auto)` to make this
             // resolve to a return type of `T&` instead of `T`
-            return (py::detail::autoclass_object<T>::unbox(ob));
+            return (py::detail::autoclass_object<mut_T>::unbox(ob));
         }
     }
 };
@@ -200,7 +200,7 @@ template<typename T>
 struct from_object<scoped_ref<T>> {
     static scoped_ref<T> f(PyObject* ob) {
         Py_INCREF(ob);
-        return scoped_ref(ob);
+        return scoped_ref<T>(ob);
     }
 };
 

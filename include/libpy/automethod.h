@@ -24,11 +24,11 @@ using default_self = std::conditional_t<METH_CLASS & flags, PyTypeObject*, PyObj
 template<typename F, int base_flags, typename Self = default_self<base_flags>>
 struct function_traits;
 
-template<typename R, typename Self, int base_flags, typename... Args>
-struct remove_cref_traits {
+template<typename R, typename... Args, int base_flags, typename Self>
+struct function_traits<R (*)(Self, Args...), base_flags, Self> {
 private:
     template<std::size_t... ixs>
-    static std::tuple<Self, Args...>
+    static std::tuple<Self, decltype(py::from_object<Args>(nullptr))...>
     inner_build_arg_tuple(Self self, PyObject* t, std::index_sequence<ixs...>) {
         return {self, py::from_object<Args>(PyTuple_GET_ITEM(t, ixs))...};
     }
@@ -39,17 +39,10 @@ public:
     static constexpr std::size_t arity = sizeof...(Args);
     static constexpr auto flags = base_flags | (arity ? METH_VARARGS : METH_NOARGS);
 
-    static std::tuple<Self, Args...> build_arg_tuple(Self self, PyObject* t) {
+    static auto build_arg_tuple(Self self, PyObject* t) {
         return inner_build_arg_tuple(self, t, std::index_sequence_for<Args...>{});
     }
 };
-
-template<typename R, typename... Args, int base_flags, typename Self>
-struct function_traits<R (*)(Self, Args...), base_flags, Self>
-    : public remove_cref_traits<R,
-                                Self,
-                                base_flags,
-                                std::remove_const_t<std::remove_reference_t<Args>>...> {};
 
 /** Struct which provides a single function `f` which is the actual implementation of
     `_automethod_wrapper` to use. This is implemented as a struct to allow for partial
