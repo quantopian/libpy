@@ -95,6 +95,13 @@ TEST_F(call_function, method_exception) {
     EXPECT_FALSE(result);
     expect_pyerr_type_and_message(PyExc_ValueError, "ayy lmao");
     PyErr_Clear();
+
+    // should still throw if the method doesn't exist
+    result = py::call_method(ob, "g");
+    EXPECT_FALSE(result);
+    expect_pyerr_type_and_message(PyExc_AttributeError,
+                                  "'C' object has no attribute 'g'");
+    PyErr_Clear();
 }
 
 class call_function_throws : public with_python_interpreter {};
