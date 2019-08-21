@@ -128,7 +128,7 @@ template<typename... Args>
 scoped_ref<> call_method_throws(PyObject* ob, const std::string& method, Args&&... args) {
     scoped_ref bound_method(PyObject_GetAttrString(ob, method.data()));
     if (!bound_method) {
-        return nullptr;
+        throw py::exception{};
     }
 
     return call_function_throws(bound_method.get(), std::forward<Args>(args)...);
