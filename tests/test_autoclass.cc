@@ -19,7 +19,7 @@ class autoclass : public with_python_interpreter {
     std::size_t m_cache_start_size;
 
     void SetUp() override {
-        m_cache_start_size = py::detail::autoclass_type_cache.size();
+        m_cache_start_size = py::detail::autoclass_type_cache.get().size();
     }
 
     void TearDown() override {
@@ -27,7 +27,7 @@ class autoclass : public with_python_interpreter {
         // Run the collector until there is no more garbage.
         while (PyGC_Collect())
             ;
-        EXPECT_EQ(py::detail::autoclass_type_cache.size(), m_cache_start_size);
+        EXPECT_EQ(py::detail::autoclass_type_cache.get().size(), m_cache_start_size);
 
         with_python_interpreter::TearDown();
     }

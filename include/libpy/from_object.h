@@ -129,9 +129,9 @@ public:
             return py::from_object<std::remove_const_t<T>>(ob);
         }
         else {
-            auto search = py::detail::autoclass_type_cache.find(
+            auto search = py::detail::autoclass_type_cache.get().find(
                 typeid(std::remove_const_t<T>));
-            if (search == py::detail::autoclass_type_cache.end()) {
+            if (search == py::detail::autoclass_type_cache.get().end()) {
                 throw invalid_conversion::make<T&>(ob);
             }
 

@@ -170,8 +170,8 @@ public:
         @return The already created type, or `nullptr` if the type wasn't yet created.
      */
     static py::scoped_ref<PyTypeObject> lookup_type() {
-        auto type_search = detail::autoclass_type_cache.find(typeid(T));
-        if (type_search != detail::autoclass_type_cache.end()) {
+        auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
+        if (type_search != detail::autoclass_type_cache.get().end()) {
             PyTypeObject* type = type_search->second.type;
             Py_INCREF(type);
             return py::scoped_ref(type);
@@ -211,8 +211,8 @@ public:
                   0,
                   static_cast<unsigned int>(detail::autoclass_base_flags | extra_flags),
                   nullptr}) {
-        auto type_search = detail::autoclass_type_cache.find(typeid(T));
-        if (type_search != detail::autoclass_type_cache.end()) {
+        auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
+        if (type_search != detail::autoclass_type_cache.get().end()) {
             throw std::runtime_error{"type was already created"};
         }
 
@@ -1081,7 +1081,7 @@ private:
         cache.
      */
     static void cache_cleanup(PyObject*, PyObject*) {
-        detail::autoclass_type_cache.erase(typeid(T));
+        detail::autoclass_type_cache.get().erase(typeid(T));
     }
 
 public:
@@ -1123,7 +1123,8 @@ public:
         // pointers into `m_storage.strings`, so we need to move the list as well to
         // maintain these references.
         auto [it, inserted] =
-            detail::autoclass_type_cache.try_emplace(typeid(T), std::move(m_storage));
+            detail::autoclass_type_cache.get().try_emplace(typeid(T),
+                                                           std::move(m_storage));
         if (!inserted) {
             throw py::exception(PyExc_RuntimeError, "type already constructed");
         }
@@ -1131,7 +1132,7 @@ public:
 
         // if we need to exit early, evict this cache entry
         py::util::scope_guard release_type_cache(
-            [&] { detail::autoclass_type_cache.erase(typeid(T)); });
+            [&] { detail::autoclass_type_cache.get().erase(typeid(T)); });
 
         // Make the `Py_tp_methods` the newly created vector's data, not the original
         // data.
