@@ -91,7 +91,6 @@ TEST_F(getattr, nested_failure) {
     expect_pyerr_type_and_message(PyExc_AttributeError,
                                   "type object 'C' has no attribute 'D'");
     PyErr_Clear();
-    // compare them using object identity
 }
 
 class getattr_throws : public with_python_interpreter {};
@@ -175,6 +174,5 @@ TEST_F(getattr_throws, nested_failure) {
     expect_pyerr_type_and_message(PyExc_AttributeError,
                                   "type object 'C' has no attribute 'D'");
     PyErr_Clear();
-    // compare them using object identity
 }
 }  // namespace test_getattr
