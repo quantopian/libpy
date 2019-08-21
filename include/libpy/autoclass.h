@@ -834,6 +834,9 @@ public:
                 `self`.
         @tparam flags extra flags to indicate whether a function is a static or
                 classmethod.
+                See https://docs.python.org/3/c-api/structures.html#METH_CLASS
+                for more info. Only METH_CLASS and METH_STATIC can be passed,
+                the others are inferred from your function.
         @param name The name of the function as it will appear in Python.
         @return *this.
      */
