@@ -139,6 +139,18 @@ public:
         write('"');
     }
 
+    void write(const std::string_view& data) {
+        if (space_left() < data.size()) {
+            flush();
+            if (m_buffer.size() < data.size()) {
+                m_stream.write(std::string{data}, data.size());
+                return;
+            }
+        }
+        std::memcpy(m_buffer.data() + m_ix, data.data(), data.size());
+        m_ix += data.size();
+    }
+
     void write(std::string&& data) {
         if (space_left() < data.size()) {
             flush();
@@ -226,8 +238,17 @@ void format_pyobject(iobuffer<T>& buf, const py::any_cref& any_value) {
         return;
     }
 
-    std::string_view text = py::util::pystring_to_string_view(as_ob);
-    buf.write_quoted(text);
+    if (Py_TYPE(as_ob.get()) == &PyUnicode_Type) {
+        buf.write_quoted(py::util::pystring_to_string_view(as_ob));
+    }
+    else {
+        char* cs;
+        Py_ssize_t size;
+        if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
+            throw py::exception{};
+        }
+        buf.write(std::string_view{cs, static_cast<std::size_t>(size)});
+    }
 }
 
 template<typename T, typename F>
@@ -311,7 +332,7 @@ get_format_functions(const std::vector<py::array_view<py::any_cref>>& columns) {
             // `py::util::pystring_to_string_view` will return views over the same memory,
             // thus making those future calls safe without holding the GIL
             for (const py::scoped_ref<>& maybe_string : column.cast<const py::scoped_ref<>>()) {
-                if (maybe_string.get() != Py_None) {
+                if (Py_TYPE(maybe_string.get()) == &PyUnicode_Type) {
                     py::util::pystring_to_string_view(maybe_string);
                 }
             }
@@ -363,17 +384,19 @@ void write_worker_impl(iobuffer<T>& buf,
                        const std::vector<py::array_view<py::any_cref>>& columns,
                        std::int64_t begin,
                        std::int64_t end,
-                       const std::vector<format_function<T>>& formatters) {
+                       const std::vector<format_function<T>>& formatters,
+                       char delim,
+                       const std::string_view& line_sep) {
     for (std::int64_t ix = begin; ix < end; ++ix) {
         auto columns_it = columns.begin();
         auto format_it = formatters.begin();
         (*format_it)(buf, (*columns_it)[ix]);
         for (++columns_it, ++format_it; columns_it != columns.end();
              ++columns_it, ++format_it) {
-            buf.write(',');
+            buf.write(delim);
             (*format_it)(buf, (*columns_it)[ix]);
         }
-        buf.write('\n');
+        buf.write(line_sep);
     }
 }
 
@@ -384,9 +407,11 @@ void write_worker(std::mutex* exception_mutex,
                   const std::vector<py::array_view<py::any_cref>>* columns,
                   std::int64_t begin,
                   std::int64_t end,
-                  const std::vector<format_function<T>>* formatters) {
+                  const std::vector<format_function<T>>* formatters,
+                  char delim,
+                  const std::string_view* line_sep) {
     try {
-        write_worker_impl<T>(*buf, *columns, begin, end, *formatters);
+        write_worker_impl<T>(*buf, *columns, begin, end, *formatters, delim, *line_sep);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -398,7 +423,9 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
                           const std::vector<py::array_view<py::any_cref>>& columns,
                           std::size_t buffer_size,
                           int num_threads,
-                          std::uint8_t float_sigfigs) {
+                          std::uint8_t float_sigfigs,
+                          char delim,
+                          const std::string_view& line_sep) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -424,7 +451,7 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
         write_header(bufs[0], column_names);
 
         if (num_threads <= 1) {
-            write_worker_impl(bufs[0], columns, 0, num_rows, formatters);
+            write_worker_impl(bufs[0], columns, 0, num_rows, formatters, delim, line_sep);
         }
         else {
             std::mutex exception_mutex;
@@ -442,7 +469,9 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
                                 &columns,
                                 begin,
                                 std::min<std::int64_t>(begin + group_size, num_rows),
-                                &formatters));
+                                &formatters,
+                                delim,
+                                &line_sep));
             }
 
             for (auto& thread : threads) {
@@ -501,7 +530,9 @@ void write(std::ostream& stream,
            const std::vector<std::string>& column_names,
            const std::vector<py::array_view<py::any_cref>>& columns,
            std::size_t buffer_size,
-           std::uint8_t float_sigfigs) {
+           std::uint8_t float_sigfigs,
+           char delim,
+           const std::string_view& line_sep) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -517,7 +548,7 @@ void write(std::ostream& stream,
                                                 buffer_size,
                                                 float_sigfigs);
     write_header(buf, column_names);
-    write_worker_impl(buf, columns, 0, num_rows, formatters);
+    write_worker_impl(buf, columns, 0, num_rows, formatters, delim, line_sep);
 }
 
 /** Format a CSV from an array of columns. This is meant to be exposed to Python with
@@ -537,13 +568,17 @@ PyObject* py_write(PyObject*,
                    const std::vector<py::array_view<py::any_cref>>& columns,
                    std::size_t buffer_size,
                    int num_threads,
-                   std::uint8_t float_sigfigs) {
+                   std::uint8_t float_sigfigs,
+                   char delim,
+                   const std::string_view& line_sep) {
     if (file.get() == Py_None) {
         return write_in_memory(column_names,
                                columns,
                                buffer_size,
                                num_threads,
-                               float_sigfigs);
+                               float_sigfigs,
+                               delim,
+                               line_sep);
     }
     else if (num_threads > 1) {
         py::raise(PyExc_ValueError)
@@ -560,7 +595,7 @@ PyObject* py_write(PyObject*,
             py::raise(PyExc_OSError) << "failed to open file";
             return nullptr;
         }
-        write(stream, column_names, columns, buffer_size, float_sigfigs);
+        write(stream, column_names, columns, buffer_size, float_sigfigs, delim, line_sep);
         if (!stream) {
             py::raise(PyExc_OSError) << "failed to write csv";
             return nullptr;
@@ -569,7 +604,7 @@ PyObject* py_write(PyObject*,
     }
     else {
         py::ostream stream(file);
-        write(stream, column_names, columns, buffer_size, float_sigfigs);
+        write(stream, column_names, columns, buffer_size, float_sigfigs, delim, line_sep);
         if (!stream) {
             py::raise(PyExc_OSError) << "failed to write csv";
             return nullptr;
