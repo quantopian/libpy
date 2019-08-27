@@ -23,7 +23,7 @@ namespace py::csv::writer {
 */
 void write(std::ostream& stream,
            const std::vector<std::string>& column_names,
-           std::vector<py::array_view<py::any_ref>>& columns,
+           std::vector<py::array_view<py::any_cref>>& columns,
            std::size_t buffer_size,
            std::uint8_t float_sigfigs);
 
@@ -41,7 +41,7 @@ void write(std::ostream& stream,
 PyObject* py_write(PyObject*,
                    const py::scoped_ref<>& file,
                    const std::vector<std::string>& column_names,
-                   std::vector<py::array_view<py::any_ref>>& columns,
+                   const std::vector<py::array_view<py::any_cref>>& columns,
                    std::size_t buffer_size,
                    int num_threads,
                    std::uint8_t float_sigfigs);

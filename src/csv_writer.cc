@@ -205,14 +205,14 @@ public:
 };
 
 template<typename T>
-void format_any(iobuffer<T>& buf, const py::any_ref& value) {
+void format_any(iobuffer<T>& buf, const py::any_cref& value) {
     std::stringstream stream;
     stream << value;
     buf.write(stream.str());
 }
 
 template<typename T>
-void format_pyobject(iobuffer<T>& buf, const py::any_ref& any_value) {
+void format_pyobject(iobuffer<T>& buf, const py::any_cref& any_value) {
     const auto& as_ob = *reinterpret_cast<const py::scoped_ref<>*>(any_value.addr());
     if (as_ob.get() == Py_None) {
         return;
@@ -231,7 +231,7 @@ void format_pyobject(iobuffer<T>& buf, const py::any_ref& any_value) {
 }
 
 template<typename T, typename F>
-void format_float(iobuffer<T>& buf, const py::any_ref& any_value) {
+void format_float(iobuffer<T>& buf, const py::any_cref& any_value) {
     const auto& as_float = *reinterpret_cast<const F*>(any_value.addr());
     if (as_float != as_float) {
         return;
@@ -240,13 +240,13 @@ void format_float(iobuffer<T>& buf, const py::any_ref& any_value) {
 }
 
 template<typename T, typename I>
-void format_int(iobuffer<T>& buf, const py::any_ref& any_value) {
+void format_int(iobuffer<T>& buf, const py::any_cref& any_value) {
     std::int64_t as_int = *reinterpret_cast<const I*>(any_value.addr());
     buf.write(as_int);
 }
 
 template<typename T, typename unit>
-void format_datetime64(iobuffer<T>& buf, const py::any_ref& any_value) {
+void format_datetime64(iobuffer<T>& buf, const py::any_cref& any_value) {
     const auto& as_M8 = *reinterpret_cast<const py::datetime64<unit>*>(any_value.addr());
     if (as_M8.isnat()) {
         return;
@@ -255,17 +255,17 @@ void format_datetime64(iobuffer<T>& buf, const py::any_ref& any_value) {
 }
 
 template<typename T>
-void format_pybool(iobuffer<T>& buf, const py::any_ref& any_value) {
+void format_pybool(iobuffer<T>& buf, const py::any_cref& any_value) {
     const auto& as_pybool = *reinterpret_cast<py::py_bool*>(any_value.addr());
     buf.write(as_pybool);
 }
 
 template<typename T>
-using format_function = void (*)(iobuffer<T>&, const py::any_ref&);
+using format_function = void (*)(iobuffer<T>&, const py::any_cref&);
 
 template<typename T>
 std::vector<format_function<T>>
-get_format_functions(std::vector<py::array_view<py::any_ref>>& columns) {
+get_format_functions(const std::vector<py::array_view<py::any_cref>>& columns) {
     std::size_t num_rows = columns[0].size();
     std::vector<format_function<T>> formatters;
     for (const auto& column : columns) {
@@ -310,7 +310,7 @@ get_format_functions(std::vector<py::array_view<py::any_ref>>& columns) {
             // form. This is cached, so future calls to
             // `py::util::pystring_to_string_view` will return views over the same memory,
             // thus making those future calls safe without holding the GIL
-            for (const py::scoped_ref<>& maybe_string : column.cast<py::scoped_ref<>>()) {
+            for (const py::scoped_ref<>& maybe_string : column.cast<const py::scoped_ref<>>()) {
                 if (maybe_string.get() != Py_None) {
                     py::util::pystring_to_string_view(maybe_string);
                 }
@@ -360,7 +360,7 @@ void write_header(iobuffer<T>& buf, const std::vector<std::string>& column_names
 
 template<typename T>
 void write_worker_impl(iobuffer<T>& buf,
-                       std::vector<py::array_view<py::any_ref>>& columns,
+                       const std::vector<py::array_view<py::any_cref>>& columns,
                        std::int64_t begin,
                        std::int64_t end,
                        const std::vector<format_function<T>>& formatters) {
@@ -381,7 +381,7 @@ template<typename T>
 void write_worker(std::mutex* exception_mutex,
                   std::vector<std::exception_ptr>* exceptions,
                   iobuffer<T>* buf,
-                  std::vector<py::array_view<py::any_ref>>* columns,
+                  const std::vector<py::array_view<py::any_cref>>* columns,
                   std::int64_t begin,
                   std::int64_t end,
                   const std::vector<format_function<T>>* formatters) {
@@ -395,7 +395,7 @@ void write_worker(std::mutex* exception_mutex,
 }
 
 PyObject* write_in_memory(const std::vector<std::string>& column_names,
-                          std::vector<py::array_view<py::any_ref>>& columns,
+                          const std::vector<py::array_view<py::any_cref>>& columns,
                           std::size_t buffer_size,
                           int num_threads,
                           std::uint8_t float_sigfigs) {
@@ -499,7 +499,7 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
 */
 void write(std::ostream& stream,
            const std::vector<std::string>& column_names,
-           std::vector<py::array_view<py::any_ref>>& columns,
+           const std::vector<py::array_view<py::any_cref>>& columns,
            std::size_t buffer_size,
            std::uint8_t float_sigfigs) {
     if (columns.size() != column_names.size()) {
@@ -534,7 +534,7 @@ void write(std::ostream& stream,
 PyObject* py_write(PyObject*,
                    const py::scoped_ref<>& file,
                    const std::vector<std::string>& column_names,
-                   std::vector<py::array_view<py::any_ref>>& columns,
+                   const std::vector<py::array_view<py::any_cref>>& columns,
                    std::size_t buffer_size,
                    int num_threads,
                    std::uint8_t float_sigfigs) {
