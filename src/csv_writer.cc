@@ -402,14 +402,14 @@ get_format_functions(const std::vector<std::string>& column_names,
 }
 
 template<typename T>
-void write_header(iobuffer<T>& buf, const std::vector<std::string>& column_names) {
+void write_header(iobuffer<T>& buf, const std::vector<std::string>& column_names, char delim, std::string_view line_ending) {
     auto names_it = column_names.begin();
     buf.write_quoted(*names_it);
     for (++names_it; names_it != column_names.end(); ++names_it) {
-        buf.write(',');
+        buf.write(delim);
         buf.write_quoted(*names_it);
     }
-    buf.write('\n');
+    buf.write(line_ending);
 }
 
 template<typename T>
@@ -484,7 +484,7 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
             bufs.emplace_back(stream, buffer_size, float_sigfigs);
         }
 
-        write_header(bufs[0], column_names);
+        write_header(bufs[0], column_names, delim, line_ending);
 
         if (num_threads <= 1) {
             write_worker_impl(
@@ -588,7 +588,7 @@ void write(std::ostream& stream,
     iobuffer<ostream_adapter<std::ostream>> buf(stream_adapter,
                                                 buffer_size,
                                                 float_sigfigs);
-    write_header(buf, column_names);
+    write_header(buf, column_names, delim, line_ending);
     write_worker_impl(buf, columns, 0, num_rows, formatters, delim, line_ending);
 }
 
