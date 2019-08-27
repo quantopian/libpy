@@ -83,6 +83,7 @@ TEST(any_vtable, ostream_format) {
 
         // this should throw a runtime error because this operation isn't defined
         EXPECT_THROW(vtable.ostream_format(stream, &value), py::exception);
+        PyErr_Clear();
     }
 }
 
