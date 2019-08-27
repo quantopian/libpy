@@ -217,14 +217,14 @@ public:
 };
 
 template<typename T>
-void format_any(iobuffer<T>& buf, const py::any_cref& value) {
+void format_any(iobuffer<T>& buf, py::any_cref value) {
     std::stringstream stream;
     stream << value;
     buf.write(stream.str());
 }
 
 template<typename T>
-void format_pyobject(iobuffer<T>& buf, const py::any_cref& any_value) {
+void format_pyobject(iobuffer<T>& buf, py::any_cref any_value) {
     const auto& as_ob = *reinterpret_cast<const py::scoped_ref<>*>(any_value.addr());
     if (as_ob.get() == Py_None) {
         return;
@@ -247,12 +247,32 @@ void format_pyobject(iobuffer<T>& buf, const py::any_cref& any_value) {
         if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
             throw py::exception{};
         }
+        buf.write_quoted(std::string_view{cs, static_cast<std::size_t>(size)});
+    }
+}
+
+template<typename T>
+void format_pyobject_preformatted(iobuffer<T>& buf, py::any_cref any_value) {
+    const auto& as_ob = *reinterpret_cast<const py::scoped_ref<>*>(any_value.addr());
+    if (as_ob.get() == Py_None) {
+        return;
+    }
+
+    if (Py_TYPE(as_ob.get()) == &PyUnicode_Type) {
+        buf.write(py::util::pystring_to_string_view(as_ob));
+    }
+    else {
+        char* cs;
+        Py_ssize_t size;
+        if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
+            throw py::exception{};
+        }
         buf.write(std::string_view{cs, static_cast<std::size_t>(size)});
     }
 }
 
 template<typename T, typename F>
-void format_float(iobuffer<T>& buf, const py::any_cref& any_value) {
+void format_float(iobuffer<T>& buf, py::any_cref any_value) {
     const auto& as_float = *reinterpret_cast<const F*>(any_value.addr());
     if (as_float != as_float) {
         return;
@@ -261,13 +281,13 @@ void format_float(iobuffer<T>& buf, const py::any_cref& any_value) {
 }
 
 template<typename T, typename I>
-void format_int(iobuffer<T>& buf, const py::any_cref& any_value) {
+void format_int(iobuffer<T>& buf, py::any_cref any_value) {
     std::int64_t as_int = *reinterpret_cast<const I*>(any_value.addr());
     buf.write(as_int);
 }
 
 template<typename T, typename unit>
-void format_datetime64(iobuffer<T>& buf, const py::any_cref& any_value) {
+void format_datetime64(iobuffer<T>& buf, py::any_cref any_value) {
     const auto& as_M8 = *reinterpret_cast<const py::datetime64<unit>*>(any_value.addr());
     if (as_M8.isnat()) {
         return;
@@ -276,26 +296,53 @@ void format_datetime64(iobuffer<T>& buf, const py::any_cref& any_value) {
 }
 
 template<typename T>
-void format_pybool(iobuffer<T>& buf, const py::any_cref& any_value) {
+void format_pybool(iobuffer<T>& buf, py::any_cref any_value) {
     const auto& as_pybool = *reinterpret_cast<py::py_bool*>(any_value.addr());
     buf.write(as_pybool);
 }
 
 template<typename T>
-using format_function = void (*)(iobuffer<T>&, const py::any_cref&);
+using format_function = void (*)(iobuffer<T>&, py::any_cref);
 
 template<typename T>
 std::vector<format_function<T>>
-get_format_functions(const std::vector<py::array_view<py::any_cref>>& columns) {
+get_format_functions(const std::vector<std::string>& column_names,
+                     const std::vector<py::array_view<py::any_cref>>& columns,
+                     const std::unordered_set<std::string>& preformatted_columns) {
     std::size_t num_rows = columns[0].size();
     std::vector<format_function<T>> formatters;
-    for (const auto& column : columns) {
+    for (auto [column_name, column] : py::zip(column_names, columns)) {
         if (column.size() != num_rows) {
             throw std::runtime_error("mismatched column lengths");
         }
 
         const auto& vtable = column.vtable();
-        if (vtable == py::any_vtable::make<double>()) {
+
+        if (vtable == py::any_vtable::make<py::scoped_ref<>>()) {
+#if PY_MAJOR_VERSION != 2
+            // `py::util::pystring_to_string_view` may allocate memory to hold the utf8
+            // form. This is cached, so future calls to
+            // `py::util::pystring_to_string_view` will return views over the same memory,
+            // thus making those future calls safe without holding the GIL
+            for (const py::scoped_ref<>& maybe_string :
+                 column.template cast<const py::scoped_ref<>>()) {
+                if (Py_TYPE(maybe_string.get()) == &PyUnicode_Type) {
+                    py::util::pystring_to_string_view(maybe_string);
+                }
+            }
+#endif
+            if (preformatted_columns.count(column_name)) {
+                formatters.emplace_back(format_pyobject_preformatted<T>);
+            }
+            else {
+                formatters.emplace_back(format_pyobject<T>);
+            }
+        }
+        else if (preformatted_columns.count(column_name)) {
+            throw py::exception(PyExc_ValueError,
+                                "only object dtype columns can be preformatted");
+        }
+        else if (vtable == py::any_vtable::make<double>()) {
             formatters.emplace_back(format_float<T, double>);
         }
         else if (vtable == py::any_vtable::make<float>()) {
@@ -324,20 +371,6 @@ get_format_functions(const std::vector<py::array_view<py::any_cref>>& columns) {
         }
         else if (vtable == py::any_vtable::make<std::uint8_t>()) {
             formatters.emplace_back(format_int<T, std::uint8_t>);
-        }
-        else if (vtable == py::any_vtable::make<py::scoped_ref<>>()) {
-#if PY_MAJOR_VERSION != 2
-            // `py::util::pystring_to_string_view` may allocate memory to hold the utf8
-            // form. This is cached, so future calls to
-            // `py::util::pystring_to_string_view` will return views over the same memory,
-            // thus making those future calls safe without holding the GIL
-            for (const py::scoped_ref<>& maybe_string : column.cast<const py::scoped_ref<>>()) {
-                if (Py_TYPE(maybe_string.get()) == &PyUnicode_Type) {
-                    py::util::pystring_to_string_view(maybe_string);
-                }
-            }
-#endif
-            formatters.emplace_back(format_pyobject<T>);
         }
         else if (vtable == py::any_vtable::make<py::datetime64<py::chrono::ns>>()) {
             formatters.emplace_back(format_datetime64<T, py::chrono::ns>);
@@ -386,7 +419,7 @@ void write_worker_impl(iobuffer<T>& buf,
                        std::int64_t end,
                        const std::vector<format_function<T>>& formatters,
                        char delim,
-                       const std::string_view& line_sep) {
+                       const std::string_view& line_ending) {
     for (std::int64_t ix = begin; ix < end; ++ix) {
         auto columns_it = columns.begin();
         auto format_it = formatters.begin();
@@ -396,7 +429,7 @@ void write_worker_impl(iobuffer<T>& buf,
             buf.write(delim);
             (*format_it)(buf, (*columns_it)[ix]);
         }
-        buf.write(line_sep);
+        buf.write(line_ending);
     }
 }
 
@@ -409,9 +442,10 @@ void write_worker(std::mutex* exception_mutex,
                   std::int64_t end,
                   const std::vector<format_function<T>>* formatters,
                   char delim,
-                  const std::string_view* line_sep) {
+                  const std::string_view* line_ending) {
     try {
-        write_worker_impl<T>(*buf, *columns, begin, end, *formatters, delim, *line_sep);
+        write_worker_impl<T>(
+            *buf, *columns, begin, end, *formatters, delim, *line_ending);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -425,7 +459,8 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
                           int num_threads,
                           std::uint8_t float_sigfigs,
                           char delim,
-                          const std::string_view& line_sep) {
+                          std::string_view line_ending,
+                          const std::unordered_set<std::string>& preformatted_columns) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -439,7 +474,8 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
     }
 
     std::size_t num_rows = columns[0].size();
-    auto formatters = get_format_functions<rope_adapter>(columns);
+    auto formatters =
+        get_format_functions<rope_adapter>(column_names, columns, preformatted_columns);
 
     std::vector<rope_adapter> streams(num_threads);
     {
@@ -451,7 +487,8 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
         write_header(bufs[0], column_names);
 
         if (num_threads <= 1) {
-            write_worker_impl(bufs[0], columns, 0, num_rows, formatters, delim, line_sep);
+            write_worker_impl(
+                bufs[0], columns, 0, num_rows, formatters, delim, line_ending);
         }
         else {
             std::mutex exception_mutex;
@@ -471,7 +508,7 @@ PyObject* write_in_memory(const std::vector<std::string>& column_names,
                                 std::min<std::int64_t>(begin + group_size, num_rows),
                                 &formatters,
                                 delim,
-                                &line_sep));
+                                &line_ending));
             }
 
             for (auto& thread : threads) {
@@ -532,7 +569,8 @@ void write(std::ostream& stream,
            std::size_t buffer_size,
            std::uint8_t float_sigfigs,
            char delim,
-           const std::string_view& line_sep) {
+           std::string_view line_ending,
+           const std::unordered_set<std::string>& preformatted_columns) {
     if (columns.size() != column_names.size()) {
         throw std::runtime_error("mismatched column_names and columns");
     }
@@ -542,43 +580,53 @@ void write(std::ostream& stream,
     }
 
     std::size_t num_rows = columns[0].size();
-    auto formatters = get_format_functions<ostream_adapter<std::ostream>>(columns);
+    auto formatters =
+        get_format_functions<ostream_adapter<std::ostream>>(column_names,
+                                                            columns,
+                                                            preformatted_columns);
     ostream_adapter stream_adapter(stream);
     iobuffer<ostream_adapter<std::ostream>> buf(stream_adapter,
                                                 buffer_size,
                                                 float_sigfigs);
     write_header(buf, column_names);
-    write_worker_impl(buf, columns, 0, num_rows, formatters, delim, line_sep);
+    write_worker_impl(buf, columns, 0, num_rows, formatters, delim, line_ending);
 }
 
-/** Format a CSV from an array of columns. This is meant to be exposed to Python with
-    `py::automethod`.
+PyObject* py_write(
+    PyObject*,
+    const py::scoped_ref<>& file,
+    py::arg::keyword<decltype("column_names"_cs), std::vector<std::string>> column_names,
+    py::arg::keyword<decltype("columns"_cs), std::vector<py::array_view<py::any_cref>>>
+        columns,
+    py::arg::optional<py::arg::keyword<decltype("buffer_size"_cs), std::size_t>>
+        opt_buffer_size,
+    py::arg::optional<py::arg::keyword<decltype("num_threads"_cs), int>> opt_num_threads,
+    py::arg::optional<py::arg::keyword<decltype("float_sigfigs"_cs), std::uint8_t>>
+        opt_float_sigfigs,
+    py::arg::optional<py::arg::keyword<decltype("delimiter"_cs), char>> opt_delim,
+    py::arg::optional<py::arg::keyword<decltype("line_ending"_cs), std::string_view>>
+        opt_line_ending,
+    py::arg::optional<py::arg::keyword<decltype("preformatted_columns"_cs),
+                                       std::unordered_set<std::string>>>
+        opt_preformatted_columns) {
+    using namespace std::literals;
 
-    @param file A python object which is either a string to be interpreted as a file name,
-                or None, in which case the data will be returned as a Python string.
-    @param column_names The names to write into the column header.
-    @param columns The arrays of values for each column. Columns are written in the order
-                   they appear here, and  must be aligned with `column_names`.
-    @param float_sigfigs The number of significant figures to print floats with.
-    @return Either the data as a Python string, or None.
-*/
-PyObject* py_write(PyObject*,
-                   const py::scoped_ref<>& file,
-                   const std::vector<std::string>& column_names,
-                   const std::vector<py::array_view<py::any_cref>>& columns,
-                   std::size_t buffer_size,
-                   int num_threads,
-                   std::uint8_t float_sigfigs,
-                   char delim,
-                   const std::string_view& line_sep) {
+    auto buffer_size = opt_buffer_size.get().value_or(1 << 16);
+    auto num_threads = opt_num_threads.get().value_or(0);
+    auto float_sigfigs = opt_float_sigfigs.get().value_or(17);
+    auto delim = opt_delim.get().value_or(',');
+    auto line_ending = opt_line_ending.get().value_or("\n"sv);
+    auto preformatted_columns = opt_preformatted_columns.get().value_or(
+        std::unordered_set<std::string>{});
     if (file.get() == Py_None) {
-        return write_in_memory(column_names,
-                               columns,
+        return write_in_memory(column_names.get(),
+                               columns.get(),
                                buffer_size,
                                num_threads,
                                float_sigfigs,
                                delim,
-                               line_sep);
+                               line_ending,
+                               preformatted_columns);
     }
     else if (num_threads > 1) {
         py::raise(PyExc_ValueError)
@@ -595,7 +643,14 @@ PyObject* py_write(PyObject*,
             py::raise(PyExc_OSError) << "failed to open file";
             return nullptr;
         }
-        write(stream, column_names, columns, buffer_size, float_sigfigs, delim, line_sep);
+        write(stream,
+              column_names.get(),
+              columns.get(),
+              buffer_size,
+              float_sigfigs,
+              delim,
+              line_ending,
+              preformatted_columns);
         if (!stream) {
             py::raise(PyExc_OSError) << "failed to write csv";
             return nullptr;
@@ -604,7 +659,14 @@ PyObject* py_write(PyObject*,
     }
     else {
         py::ostream stream(file);
-        write(stream, column_names, columns, buffer_size, float_sigfigs, delim, line_sep);
+        write(stream,
+              column_names.get(),
+              columns.get(),
+              buffer_size,
+              float_sigfigs,
+              delim,
+              line_ending,
+              preformatted_columns);
         if (!stream) {
             py::raise(PyExc_OSError) << "failed to write csv";
             return nullptr;

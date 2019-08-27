@@ -2,6 +2,7 @@
 
 #include <variant>
 
+#include "libpy/automethod.h"
 #include "libpy/datetime64.h"
 #include "libpy/exception.h"
 #include "libpy/itertools.h"
@@ -1073,6 +1074,8 @@ public:
     cell_parser* emplace_cell_parser(void*) const override;
 };
 
+using namespace py::cs::literals;
+
 /** CSV parsing function.
     @param data The string data to parse as a CSV.
     @param types A mapping from column name to a cell parser for the given column. The
@@ -1096,12 +1099,13 @@ void parse(const std::string_view& data,
     @return A Python dictionary from column name to a tuple of (value, mask)
    arrays.
  */
-PyObject* py_parse(PyObject*,
-                   const std::string_view& data,
-                   PyObject* columns,
-                   char delimiter,
-                   const std::string_view& line_ending,
-                   std::size_t num_threads);
+PyObject*
+py_parse(PyObject*,
+         std::string_view data,
+         py::arg::keyword<decltype("column_specs"_cs), PyObject*> column_specs,
+         py::arg::keyword<decltype("delimiter"_cs), char> delimiter,
+         py::arg::keyword<decltype("line_ending"_cs), std::string_view> line_ending,
+         py::arg::keyword<decltype("num_threads"_cs), std::size_t> num_threads);
 
 /** Add all of the Python column spec types to a module.
 

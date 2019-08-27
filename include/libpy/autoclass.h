@@ -845,8 +845,8 @@ public:
         require_uninitialized("cannot add methods after the class has been created");
 
         std::string& name_copy = m_storage.strings.emplace_front(std::move(name));
-        if constexpr (flags & METH_STATIC || flags & METH_CLASS) {
-            m_storage.methods.emplace_back(automethod<impl, flags>(name_copy.data()));
+        if constexpr (flags & METH_STATIC) {
+            m_storage.methods.emplace_back(autofunction<impl, flags>(name_copy.data()));
         }
         else {
             m_storage.methods.emplace_back(
@@ -1012,12 +1012,8 @@ private:
     template<typename U, typename Args>
     ternaryfunc get_call_func() {
         return [](PyObject* self, PyObject* args, PyObject* kwargs) -> PyObject* {
-            if (kwargs && PyDict_Size(kwargs)) {
-                raise(PyExc_TypeError)
-                    << Py_TYPE(self)->tp_name << " does not accept keyword arguments";
-                return nullptr;
-            }
-            return detail::automethodwrapper<invoke_unpack<U, Args>::call, 0>(self, args);
+            return detail::automethodwrapper<invoke_unpack<U, Args>::call, 0, PyObject*>(
+                self, args, kwargs);
         };
     }
 

@@ -863,13 +863,16 @@ void parse(const std::string_view& data,
     parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
 }
 
-PyObject* py_parse(PyObject*,
-                   const std::string_view& data,
-                   PyObject* column_specs,
-                   char delimiter,
-                   const std::string_view& line_ending,
-                   std::size_t num_threads) {
-    Py_ssize_t num_specified_columns = PyDict_Size(column_specs);
+using namespace py::cs::literals;
+
+PyObject* py_parse(
+    PyObject*,
+    std::string_view data,
+    py::arg::keyword<decltype("column_specs"_cs), PyObject*> column_specs,
+    py::arg::keyword<decltype("delimiter"_cs), char> delimiter,
+    py::arg::keyword<decltype("line_ending"_cs), std::string_view> line_ending,
+    py::arg::keyword<decltype("num_threads"_cs), std::size_t> num_threads) {
+    Py_ssize_t num_specified_columns = PyDict_Size(column_specs.get());
     if (num_specified_columns < 0) {
         // use `PyDict_Size` to ensure this is a dict with a reasonable error message
         return nullptr;
@@ -892,7 +895,7 @@ PyObject* py_parse(PyObject*,
     auto init_column = [&](std::size_t ix, const auto& cell) {
         auto& cell_ob = header[ix] = py::to_object(cell);
 
-        PyObject* spec = PyDict_GetItem(column_specs, cell_ob.get());
+        PyObject* spec = PyDict_GetItem(column_specs.get(), cell_ob.get());
         if (spec) {
             specs[ix] = unbox_spec(spec);
         }
@@ -902,16 +905,16 @@ PyObject* py_parse(PyObject*,
     };
 
     std::string_view to_parse =
-        parse_header(data, delimiter, line_ending, init, init_column);
+        parse_header(data, delimiter.get(), line_ending.get(), init, init_column);
 
     auto parsers = allocate_parsers(specs);
 
-    verify_column_specs_dict(column_specs, header);
+    verify_column_specs_dict(column_specs.get(), header);
     parse_from_header<destruct_only_unique_ptr>(to_parse,
                                                 parsers.ptrs(),
-                                                delimiter,
-                                                line_ending,
-                                                num_threads);
+                                                delimiter.get(),
+                                                line_ending.get(),
+                                                num_threads.get());
 
     py::scoped_ref out(PyDict_New());
     if (!out) {
