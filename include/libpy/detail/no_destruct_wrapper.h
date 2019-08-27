@@ -10,7 +10,7 @@ namespace py::detail {
 template<typename T>
 class no_destruct_wrapper {
 public:
-    /** Forward all arguments to the uunderlying object.
+    /** Forward all arguments to the underlying object.
      */
     template<typename... Args>
     no_destruct_wrapper(Args... args) {
