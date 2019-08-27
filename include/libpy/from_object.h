@@ -127,7 +127,7 @@ private:
 public:
     static decltype(auto) f(PyObject* ob) {
         if constexpr (specialized) {
-            return py::from_object<std::remove_const_t<T>>(ob);
+            return py::from_object<mut_T>(ob);
         }
         else {
             auto search = py::detail::autoclass_type_cache.get().find(typeid(mut_T));
