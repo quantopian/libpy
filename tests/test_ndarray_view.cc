@@ -250,6 +250,17 @@ TYPED_TEST_P(array_view, slice_0_step) {
     EXPECT_THROW(view.slice(0, 2, 0), std::invalid_argument);
 }
 
+TYPED_TEST_P(array_view, construction_from_const_view) {
+    std::array<std::remove_const_t<TypeParam>, 5> arr = {0, 1, 2, 3, 4};
+    py::array_view<std::remove_const_t<TypeParam>> view{arr};
+    py::array_view<const TypeParam> const_view{view};
+    ASSERT_EQ(view.size(), const_view.size());
+
+    for (std::size_t ix = 0; ix < view.size(); ++ix) {
+        EXPECT_EQ(const_view[ix], view[ix]);
+    }
+}
+
 REGISTER_TYPED_TEST_CASE_P(array_view,
                            from_std_array,
                            from_std_vector,
@@ -266,7 +277,8 @@ REGISTER_TYPED_TEST_CASE_P(array_view,
                            slice_start_equal_end,
                            slice_positive_step,
                            slice_negative_step,
-                           slice_0_step);
+                           slice_0_step,
+                           construction_from_const_view);
 
 template<typename T>
 struct tuple_to_types;
