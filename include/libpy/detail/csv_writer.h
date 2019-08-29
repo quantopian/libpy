@@ -23,7 +23,7 @@ namespace py::csv::writer {
 */
 void write(std::ostream& stream,
            const std::vector<std::string>& column_names,
-           std::vector<py::array_view<py::any_cref>>& columns,
+           const std::vector<py::array_view<py::any_cref>>& columns,
            std::size_t buffer_size,
            std::uint8_t float_sigfigs);
 
