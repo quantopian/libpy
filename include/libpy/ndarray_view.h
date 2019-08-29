@@ -243,7 +243,12 @@ public:
         return from_buffer_protocol(ob.get());
     }
 
-    ndarray_view& operator=(const ndarray_view<const T, ndim, false>& cpfrom) {
+    ndarray_view(const ndarray_view<std::remove_const_t<T>, ndim>& cpfrom)
+        : m_shape(cpfrom.shape()),
+          m_strides(cpfrom.strides()),
+          m_buffer(cpfrom.buffer()) {}
+
+    ndarray_view& operator=(const ndarray_view<std::remove_const_t<T>, ndim>& cpfrom) {
         m_shape = cpfrom.shape();
         m_strides = cpfrom.strides();
         m_buffer = cpfrom.buffer();
