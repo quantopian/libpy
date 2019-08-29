@@ -28,17 +28,17 @@ public:
 
         @param ref The reference to manage
      */
-    explicit scoped_ref(T* ref) : m_ref(ref) {}
+    constexpr explicit scoped_ref(T* ref) : m_ref(ref) {}
 
-    scoped_ref(const scoped_ref& cpfrom) : m_ref(cpfrom.m_ref) {
+    constexpr scoped_ref(const scoped_ref& cpfrom) : m_ref(cpfrom.m_ref) {
         Py_XINCREF(m_ref);
     }
 
-    scoped_ref(scoped_ref&& mvfrom) noexcept : m_ref(mvfrom.m_ref) {
+    constexpr scoped_ref(scoped_ref&& mvfrom) noexcept : m_ref(mvfrom.m_ref) {
         mvfrom.m_ref = nullptr;
     }
 
-    scoped_ref& operator=(const scoped_ref& cpfrom) {
+    constexpr scoped_ref& operator=(const scoped_ref& cpfrom) {
         // we need to incref before we decref to support self assignment
         Py_XINCREF(cpfrom.m_ref);
         Py_XDECREF(m_ref);
@@ -46,9 +46,18 @@ public:
         return *this;
     }
 
-    scoped_ref& operator=(scoped_ref&& mvfrom) noexcept {
+    constexpr scoped_ref& operator=(scoped_ref&& mvfrom) noexcept {
         std::swap(m_ref, mvfrom.m_ref);
         return *this;
+    }
+
+    /** Create a scoped ref that is a new reference to `ref`.
+
+        @param ref The Python object to create a new managed reference to.
+     */
+    constexpr static scoped_ref new_reference(T* ref) {
+        Py_INCREF(ref);
+        return scoped_ref{ref};
     }
 
     /** Decref the managed pointer if it is not `nullptr`.
