@@ -217,11 +217,14 @@ class exception : public std::exception {
 private:
     std::string m_msg;
 
+    static std::string msg_from_current_pyexc();
+
 public:
     /** Default constructor assumes that an exception has already been thrown.
      */
-    inline exception(const std::string& msg = "a Python exception occurred")
-        : m_msg(msg) {}
+    inline exception() : m_msg(msg_from_current_pyexc()) {}
+
+    inline exception(const std::string& msg) : m_msg(msg) {}
 
     /** Create a wrapping exception and raise it in Python.
 
@@ -230,7 +233,8 @@ public:
      */
     template<typename... Args>
     exception(PyObject* exc, Args&&... args) {
-        (raise(exc) << ... << args);
+        (raise(exc) << ... << std::forward<Args>(args));
+        m_msg = msg_from_current_pyexc();
     }
 
     inline const char* what() const noexcept override {
