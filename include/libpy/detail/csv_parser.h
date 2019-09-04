@@ -113,7 +113,6 @@ public:
      */
     virtual void set_num_lines(std::size_t);
 
-
     /** "chomp" text from a row and parse the given cell.
 
         @param delim The delimiter.
@@ -123,10 +122,8 @@ public:
         @return A tuple of the number of characters consumed from the row and a boolean
                 which is true if we expect there to be more columns to parse in this row.
      */
-    virtual std::tuple<std::size_t, bool> chomp(char delim,
-                                                std::size_t row_ix,
-                                                const std::string_view& row,
-                                                std::size_t offset) = 0;
+    virtual std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t row_ix, std::string_view row, std::size_t offset) = 0;
 
     /** Move the state of this column to a Python tuple of numpy arrays.
 
@@ -139,15 +136,12 @@ public:
     }
 };
 
-
 /** Parser for skipping a column.
  */
 class skip_parser : public cell_parser {
 public:
-    std::tuple<std::size_t, bool> chomp(char delim,
-                                        std::size_t,
-                                        const std::string_view& row,
-                                        std::size_t offset) override;
+    std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t, std::string_view row, std::size_t offset) override;
 };
 
 /** Base class for cell parsers that produce statically typed vectors of values.
@@ -223,10 +217,8 @@ class fundamental_parser : public typed_cell_parser<parse_result<scalar_parse>> 
 public:
     using type = typename typed_cell_parser<parse_result<scalar_parse>>::type;
 
-    std::tuple<std::size_t, bool> chomp(char delim,
-                                        std::size_t ix,
-                                        const std::string_view& row,
-                                        std::size_t offset) override {
+    std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
         const char* first = &row.data()[offset];
         const char* last;
         type parsed = scalar_parse(first, &last);
@@ -250,11 +242,10 @@ public:
                 // to report in the error.
                 cell = row.substr(offset);
             }
-            throw util::formatted_error<parse_error>(
-                "invalid digit in ",
-                py::util::type_name<type>().get(),
-                ": ",
-                cell);
+            throw util::formatted_error<parse_error>("invalid digit in ",
+                                                     py::util::type_name<type>().get(),
+                                                     ": ",
+                                                     cell);
         }
 
         if (size > 0) {
@@ -266,7 +257,6 @@ public:
         return {size + more, more};
     }
 };
-
 
 /** Adapt a fundamental parser function which only handle positive values to
     accept positive or negative values.
@@ -450,14 +440,12 @@ class precise_float32_parser
 class precise_float64_parser
     : public detail::float_parser<detail::precise_strtod<double>> {};
 
-class fast_float32_parser
-    : public detail::float_parser<detail::fast_strtod<float>> {};
-class fast_float64_parser
-    : public detail::float_parser<detail::fast_strtod<double>> {};
+class fast_float32_parser : public detail::float_parser<detail::fast_strtod<float>> {};
+class fast_float64_parser : public detail::float_parser<detail::fast_strtod<double>> {};
 
 namespace detail {
 inline std::tuple<std::string_view, std::size_t, bool>
-isolate_unquoted_cell(const std::string_view& row, std::size_t offset, char delim) {
+isolate_unquoted_cell(std::string_view row, std::size_t offset, char delim) {
     auto subrow = row.substr(offset);
     const void* loc = std::memchr(subrow.data(), delim, subrow.size());
     std::size_t size;
@@ -485,12 +473,9 @@ enum class datetime_resolution {
 template<typename parser_core>
 class datetime_parser : public typed_cell_parser<py::datetime64ns> {
 private:
-
 public:
-    std::tuple<std::size_t, bool> chomp(char delim,
-                                        std::size_t ix,
-                                        const std::string_view& row,
-                                        std::size_t offset) override {
+    std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
         auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
         if (!raw.size()) {
             return {consumed, more};
@@ -573,7 +558,7 @@ private:
     }
 
     template<std::size_t ndigits>
-    static int parse_int(const std::string_view& cs) {
+    static int parse_int(std::string_view cs) {
         static_assert(ndigits > 0, "parse_int must be at least 1 char wide");
 
         int result = 0;
@@ -592,7 +577,7 @@ private:
     }
 
     template<typename... Cs>
-    static void expect_char(const std::string_view& raw, std::size_t ix, Cs... cs) {
+    static void expect_char(std::string_view raw, std::size_t ix, Cs... cs) {
         if (((raw[ix] != cs) && ...)) {
             throw util::formatted_error<parse_error>((sizeof...(cs) == 1)
                                                          ? "expected \""
@@ -606,7 +591,7 @@ private:
     }
 
 public:
-    static std::tuple<int, int, int> parse_year_month_day(const std::string_view& raw,
+    static std::tuple<int, int, int> parse_year_month_day(std::string_view raw,
                                                           bool expect_time) {
         if (expect_time) {
             if (raw.size() < 10) {
@@ -629,8 +614,6 @@ public:
             throw util::formatted_error<parse_error>("month not in range [1, 12]: ", raw);
         }
 
-        expect_char(raw, 7, ymd_sep);
-
         int day = parse_int<2>(raw.substr(off.day));
         int max_day = py::chrono::days_in_month[py::chrono::is_leapyear(year)][month - 1];
         if (day < 1 || day > max_day) {
@@ -641,7 +624,7 @@ public:
         return {year, month, day};
     }
 
-    static std::chrono::nanoseconds parse_time(const std::string_view& raw) {
+    static std::chrono::nanoseconds parse_time(std::string_view raw) {
         std::chrono::nanoseconds time(0);
         if (raw.size() == 10) {
             return time;
@@ -668,14 +651,16 @@ public:
         expect_char(raw, 13, ':');
         std::chrono::minutes minutes(parse_int<2>(raw.substr(14)));
         if (minutes < std::chrono::minutes(0) || minutes > std::chrono::minutes(59)) {
-            throw util::formatted_error<parse_error>("minutes not in range [0, 59): ", raw);
+            throw util::formatted_error<parse_error>("minutes not in range [0, 59): ",
+                                                     raw);
         }
         time += minutes;
 
         expect_char(raw, 16, ':');
         std::chrono::seconds seconds(parse_int<2>(raw.substr(17)));
         if (seconds < std::chrono::seconds(0) || seconds > std::chrono::seconds(60)) {
-            throw util::formatted_error<parse_error>("seconds not in range [0, 60): ", raw);
+            throw util::formatted_error<parse_error>("seconds not in range [0, 60): ",
+                                                     raw);
         }
         time += seconds;
 
@@ -733,11 +718,10 @@ private:
     bool contains(py::cs::char_sequence<cs...>, char c) {
         return ((c == cs) || ...);
     }
+
 public:
-    std::tuple<std::size_t, bool> chomp(char delim,
-                                        std::size_t ix,
-                                        const std::string_view& row,
-                                        std::size_t offset) override {
+    std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
         auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
         if (raw.size() == 0) {
             return {consumed, more};
@@ -788,10 +772,8 @@ public:
 
     virtual void set_num_lines(std::size_t nrows) override;
 
-    virtual std::tuple<std::size_t, bool> chomp(char delim,
-                                        std::size_t ix,
-                                        const std::string_view& row,
-                                        std::size_t offset) override;
+    virtual std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override;
 
     virtual py::scoped_ref<> move_to_python_tuple() && override;
 };
@@ -804,7 +786,7 @@ enum class quote_state {
 
 template<typename F>
 std::tuple<std::size_t, bool>
-chomp_quoted_string(F&& f, char delim, const std::string_view& row, std::size_t offset) {
+chomp_quoted_string(F&& f, char delim, std::string_view row, std::size_t offset) {
     quote_state st = quote_state::not_quoted;
     std::size_t started_quote;
 
@@ -867,10 +849,8 @@ chomp_quoted_string(F&& f, char delim, const std::string_view& row, std::size_t 
 template<std::size_t itemsize>
 class fixed_width_string_parser : public typed_cell_parser<std::array<char, itemsize>> {
 public:
-    std::tuple<std::size_t, bool> chomp(char delim,
-                                        std::size_t ix,
-                                        const std::string_view& row,
-                                        std::size_t offset) override {
+    std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
         auto& cell = this->m_parsed[ix];
         std::size_t cell_ix = 0;
         auto ret = detail::chomp_quoted_string(
@@ -889,10 +869,8 @@ public:
 
 class vlen_string_parser : public typed_cell_parser<std::string> {
 public:
-    virtual std::tuple<std::size_t, bool> chomp(char delim,
-                                                std::size_t ix,
-                                                const std::string_view& row,
-                                                std::size_t offset) override;
+    virtual std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override;
 
     virtual py::scoped_ref<> move_to_python_tuple() && override;
 };
@@ -934,7 +912,7 @@ private:
     std::variant<fast_float32_parser, precise_float32_parser> m_parser_template;
 
 public:
-    float32_column(const std::string_view& mode);
+    float32_column(std::string_view mode);
 
     column_spec::alloc_info cell_parser_alloc_info() const override;
     cell_parser* emplace_cell_parser(void*) const override;
@@ -945,7 +923,7 @@ private:
     std::variant<fast_float64_parser, precise_float64_parser> m_parser_template;
 
 public:
-    float64_column(const std::string_view& mode);
+    float64_column(std::string_view mode);
 
     column_spec::alloc_info cell_parser_alloc_info() const override;
     cell_parser* emplace_cell_parser(void*) const override;
@@ -960,7 +938,7 @@ private:
                                           'd',
                                           detail::datetime_resolution::day>>;
     using hyphen_ymd_second = detail::datetime_parser<
-            detail::base_datetime_parser_core<'-',
+        detail::base_datetime_parser_core<'-',
                                           'y',
                                           'm',
                                           'd',
@@ -1043,7 +1021,7 @@ private:
         m_parser_template;
 
 public:
-    datetime_column(const std::string_view& format);
+    datetime_column(std::string_view format);
 
     column_spec::alloc_info cell_parser_alloc_info() const override;
     cell_parser* emplace_cell_parser(void*) const override;
@@ -1054,10 +1032,11 @@ private:
     std::variant<bool_01_parser,
                  bool_ft_parser,
                  bool_FT_parser,
-                 bool_ft_case_insensitive_parser> m_parser_template;
+                 bool_ft_case_insensitive_parser>
+        m_parser_template;
 
 public:
-    bool_column(const std::string_view& format);
+    bool_column(std::string_view format);
 
     column_spec::alloc_info cell_parser_alloc_info() const override;
     cell_parser* emplace_cell_parser(void*) const override;
@@ -1083,10 +1062,10 @@ using namespace py::cs::literals;
     @param delimiter The delimiter between cells.
     @param line_ending The separator between line.
  */
-void parse(const std::string_view& data,
+void parse(std::string_view data,
            const std::unordered_map<std::string, std::shared_ptr<cell_parser>>& types,
            char delimiter,
-           const std::string_view& line_ending,
+           std::string_view line_ending,
            std::size_t num_threads);
 
 /** Python CSV parsing function.
