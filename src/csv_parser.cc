@@ -5,7 +5,9 @@
 #include "libpy/autoclass.h"
 #include "libpy/detail/csv_parser.h"
 #include "libpy/exception.h"
+#include "libpy/getattr.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/util.h"
 
 #if LIBPY_NO_CSV_PREFETCH
 #define LIBPY_CSV_PREFETCH(...)
@@ -35,10 +37,8 @@ protected:
     std::vector<std::string> m_parsed;
 
 public:
-    std::tuple<std::size_t, bool> chomp(char delim,
-                                        std::size_t,
-                                        const std::string_view& row,
-                                        std::size_t offset) override {
+    std::tuple<std::size_t, bool>
+    chomp(char delim, std::size_t, std::string_view row, std::size_t offset) override {
         auto& cell = m_parsed.emplace_back();
         return detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
                                            delim,
@@ -52,10 +52,8 @@ public:
 };
 }  // namespace
 
-std::tuple<std::size_t, bool> skip_parser::chomp(char delim,
-                                                 std::size_t,
-                                                 const std::string_view& row,
-                                                 std::size_t offset) {
+std::tuple<std::size_t, bool>
+skip_parser::chomp(char delim, std::size_t, std::string_view row, std::size_t offset) {
     return detail::chomp_quoted_string([](char) {}, delim, row, offset);
 }
 
@@ -70,7 +68,7 @@ void runtime_fixed_width_string_parser::set_num_lines(std::size_t num_lines) {
 std::tuple<std::size_t, bool>
 runtime_fixed_width_string_parser::chomp(char delim,
                                          std::size_t ix,
-                                         const std::string_view& row,
+                                         std::string_view row,
                                          std::size_t offset) {
     char* cell = &this->m_parsed[ix * m_itemsize];
     std::size_t cell_ix = 0;
@@ -112,14 +110,14 @@ py::scoped_ref<> runtime_fixed_width_string_parser::move_to_python_tuple() && {
 
 std::tuple<std::size_t, bool> vlen_string_parser::chomp(char delim,
                                                         std::size_t ix,
-                                                        const std::string_view& row,
+                                                        std::string_view row,
                                                         std::size_t offset) {
     std::string& cell = this->m_parsed[ix];
     auto ret = detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
                                            delim,
                                            row,
                                            offset);
-    this->m_mask[ix] = cell.size() > 0;
+    this->m_mask[ix] = std::get<0>(ret) > 1;
     return ret;
 }
 
@@ -166,7 +164,7 @@ struct format_type_map_constructor_helper<std::tuple<CheckedPatterns...>,
                                           std::pair<Pattern, Template>,
                                           Tail...> {
     template<typename V>
-    static void f(V& out, const std::string_view& format) {
+    static void f(V& out, std::string_view format) {
         auto as_array = py::cs::to_array(Pattern{});
         std::string_view viewed(as_array.data());
 
@@ -193,7 +191,7 @@ private:
 
 public:
     template<typename V>
-    static void f(V&, const std::string_view& format) {
+    static void f(V&, std::string_view format) {
         std::stringstream msg;
         msg << "unknown format: \"" << format << "\", must one of [";
         auto quoted_and_joined = py::cs::to_array(
@@ -248,7 +246,7 @@ cell_parser* int64_column::emplace_cell_parser(void* addr) const {
     return new (addr) int64_parser{};
 }
 
-float32_column::float32_column(const std::string_view& mode) {
+float32_column::float32_column(std::string_view mode) {
     format_type_map_intialize<
         std::pair<decltype("fast"_cs), fast_float32_parser>,
         std::pair<decltype("precise"_cs), precise_float32_parser>>::f(m_parser_template,
@@ -269,7 +267,7 @@ cell_parser* float32_column::emplace_cell_parser(void* addr) const {
                       m_parser_template);
 }
 
-float64_column::float64_column(const std::string_view& mode) {
+float64_column::float64_column(std::string_view mode) {
     format_type_map_intialize<
         std::pair<decltype("fast"_cs), fast_float64_parser>,
         std::pair<decltype("precise"_cs), precise_float64_parser>>::f(m_parser_template,
@@ -290,7 +288,7 @@ cell_parser* float64_column::emplace_cell_parser(void* addr) const {
                       m_parser_template);
 }
 
-datetime_column::datetime_column(const std::string_view& format) {
+datetime_column::datetime_column(std::string_view format) {
     format_type_map_intialize<
         std::pair<decltype("y-m-d"_cs), hyphen_ymd_date>,
         std::pair<decltype("y-m-d h:m:s"_cs), hyphen_ymd_second>,
@@ -321,7 +319,7 @@ cell_parser* datetime_column::emplace_cell_parser(void* addr) const {
                       m_parser_template);
 }
 
-bool_column::bool_column(const std::string_view& format) {
+bool_column::bool_column(std::string_view format) {
     format_type_map_intialize<
         std::pair<decltype("0/1"_cs), bool_01_parser>,
         std::pair<decltype("f/t"_cs), bool_ft_parser>,
@@ -404,7 +402,7 @@ Exc position_formatted_error(std::size_t row, std::size_t col, Ts&&... msg) {
 template<template<typename> typename ptr_type>
 void parse_row(std::size_t row,
                char delim,
-               const std::string_view& data,
+               std::string_view data,
                parser_types<ptr_type>& parsers) {
 
     std::size_t col = 0;
@@ -439,7 +437,7 @@ void parse_row(std::size_t row,
 }
 
 template<template<typename> typename ptr_type>
-void parse_lines(const std::string_view data,
+void parse_lines(std::string_view data,
                  char delim,
                  std::size_t data_offset,
                  const std::vector<std::size_t>& line_sizes,
@@ -461,7 +459,7 @@ void parse_lines(const std::string_view data,
 template<template<typename> typename ptr_type>
 void parse_lines_worker(std::mutex* exception_mutex,
                         std::vector<std::exception_ptr>* exceptions,
-                        const std::string_view* data,
+                        std::string_view data,
                         char delim,
                         const std::size_t data_offset,
                         const std::vector<std::size_t>* line_sizes,
@@ -470,7 +468,7 @@ void parse_lines_worker(std::mutex* exception_mutex,
                         parser_types<ptr_type>* parsers) {
     try {
         parse_lines<ptr_type>(
-            *data, delim, data_offset, *line_sizes, line_end_size, offset, *parsers);
+            data, delim, data_offset, *line_sizes, line_end_size, offset, *parsers);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -479,36 +477,38 @@ void parse_lines_worker(std::mutex* exception_mutex,
 }
 
 void split_into_lines_loop(std::vector<std::size_t>& lines,
-                           const std::string_view& data,
+                           std::string_view data,
                            std::string_view::size_type* pos_ptr,
                            std::string_view::size_type end_ix,
-                           const std::string_view& line_ending,
+                           std::string_view line_ending,
                            bool handle_tail) {
-    auto pos = *pos_ptr;
     std::string_view::size_type end;
 
-    if (pos >= line_ending.size() &&
-        data.substr(pos - line_ending.size(), line_ending.size()) != line_ending) {
-        end = data.find(line_ending, pos);
-        if (end == std::string_view::npos) {
-            *pos_ptr = pos = end_ix;
-            return;
-        }
-        else {
-            *pos_ptr = pos = end + line_ending.size();
-        }
+    // crawl the start back to the beginning of the line that we begin inside
+    auto line_start = data.rfind(line_ending, *pos_ptr);
+    if (line_start == std::string_view::npos) {
+        // there is no newline prior to `*pos_ptr`, so we must be in the middle
+        // of the first line, set the `*pos_ptr` back to 0.
+        *pos_ptr = 0;
+    }
+    else {
+        // `pos_ptr` was pointing into the middle of the line that has a newline
+        // before it, set `pos_ptr` back to the start of the line
+        *pos_ptr = line_start + line_ending.size();
     }
 
+    auto pos = *pos_ptr;
     while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
+        if (end > end_ix) {
+            return;
+        }
+
         auto size = end - pos;
         lines.emplace_back(size);
 
-        if (end >= end_ix) {
-            return;
-        }
-
         // advance past line ending
         pos = end + line_ending.size();
+
         LIBPY_CSV_PREFETCH(data.data() + end + size, 0, 0);
         LIBPY_CSV_PREFETCH(data.data() + end + size + l1dcache_line_size, 0, 0);
     }
@@ -522,13 +522,13 @@ void split_into_lines_loop(std::vector<std::size_t>& lines,
 void split_into_lines_worker(std::mutex* exception_mutex,
                              std::vector<std::exception_ptr>* exceptions,
                              std::vector<std::size_t>* lines,
-                             const std::string_view* data,
+                             std::string_view data,
                              std::string_view::size_type* pos,
                              std::string_view::size_type end_ix,
-                             const std::string_view* line_ending,
+                             std::string_view line_ending,
                              bool handle_tail) {
     try {
-        split_into_lines_loop(*lines, *data, pos, end_ix, *line_ending, handle_tail);
+        split_into_lines_loop(*lines, data, pos, end_ix, line_ending, handle_tail);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -537,8 +537,8 @@ void split_into_lines_worker(std::mutex* exception_mutex,
 }
 
 std::tuple<std::vector<std::size_t>, std::vector<std::vector<std::size_t>>>
-split_into_lines(const std::string_view& data,
-                 const std::string_view& line_ending,
+split_into_lines(std::string_view data,
+                 std::string_view line_ending,
                  std::size_t num_columns,
                  std::size_t skip_rows,
                  std::size_t num_threads) {
@@ -556,7 +556,7 @@ split_into_lines(const std::string_view& data,
     std::vector<std::size_t> thread_starts(num_threads);
     for (auto& lines : lines_per_thread) {
         // assume that each column will take about 5 bytes of data on average
-        lines.reserve(std::ceil(group_size / (4.0 * num_columns)));
+        lines.reserve(std::ceil(group_size / (5.0 * num_columns)));
     }
 
     // The current position into the input.
@@ -594,10 +594,10 @@ split_into_lines(const std::string_view& data,
                             &exception_mutex,
                             &exceptions,
                             &lines_per_thread[n],
-                            &data,
+                            data,
                             &thread_starts[n],
                             std::min(thread_starts[n] + group_size, data.size()),
-                            &line_ending,
+                            line_ending,
                             /* handle_thread */ n == num_threads - 1));
         }
 
@@ -619,10 +619,10 @@ split_into_lines(const std::string_view& data,
     @param line_ending The string to split lines on.
  */
 template<template<typename> typename ptr_type>
-void parse_from_header(const std::string_view& data,
+void parse_from_header(std::string_view data,
                        parser_types<ptr_type>& parsers,
                        char delimiter,
-                       const std::string_view& line_ending,
+                       std::string_view line_ending,
                        std::size_t num_threads,
                        std::size_t skip_rows = 0) {
     auto [thread_starts, line_sizes_per_thread] =
@@ -658,7 +658,7 @@ void parse_from_header(const std::string_view& data,
             threads.emplace_back(std::thread(parse_lines_worker<ptr_type>,
                                              &exception_mutex,
                                              &exceptions,
-                                             &data,
+                                             data,
                                              delimiter,
                                              thread_starts[n],
                                              &line_sizes_per_thread[n],
@@ -725,9 +725,9 @@ column_spec* unbox_spec(PyObject* spec) {
 }
 
 template<typename InitColumn, typename Init>
-std::string_view parse_header(const std::string_view& data,
+std::string_view parse_header(std::string_view data,
                               char delimiter,
-                              const std::string_view& line_ending,
+                              std::string_view line_ending,
                               Init&& init,
                               InitColumn&& init_column) {
     auto line_end = data.find(line_ending, 0);
@@ -838,10 +838,10 @@ void verify_column_specs_dict(PyObject* specs, std::vector<py::scoped_ref<>>& he
 }
 }  // namespace
 
-void parse(const std::string_view& data,
+void parse(std::string_view data,
            const std::unordered_map<std::string, std::shared_ptr<cell_parser>>& types,
            char delimiter,
-           const std::string_view& line_ending,
+           std::string_view line_ending,
            std::size_t num_threads) {
     parser_types<std::shared_ptr> parsers;
 
@@ -865,13 +865,13 @@ void parse(const std::string_view& data,
 
 using namespace py::cs::literals;
 
-PyObject* py_parse(
-    PyObject*,
-    std::string_view data,
-    py::arg::keyword<decltype("column_specs"_cs), PyObject*> column_specs,
-    py::arg::keyword<decltype("delimiter"_cs), char> delimiter,
-    py::arg::keyword<decltype("line_ending"_cs), std::string_view> line_ending,
-    py::arg::keyword<decltype("num_threads"_cs), std::size_t> num_threads) {
+PyObject*
+py_parse(PyObject*,
+         std::string_view data,
+         py::arg::keyword<decltype("column_specs"_cs), PyObject*> column_specs,
+         py::arg::keyword<decltype("delimiter"_cs), char> delimiter,
+         py::arg::keyword<decltype("line_ending"_cs), std::string_view> line_ending,
+         py::arg::keyword<decltype("num_threads"_cs), std::size_t> num_threads) {
     Py_ssize_t num_specified_columns = PyDict_Size(column_specs.get());
     if (num_specified_columns < 0) {
         // use `PyDict_Size` to ensure this is a dict with a reasonable error message
@@ -943,23 +943,40 @@ PyObject* py_parse(
 
 bool add_parser_pytypes(PyObject* module) {
     try {
+        py::scoped_ref<> modname_ob = py::getattr(module, "__name__");
+        if (!modname_ob) {
+            return true;
+        }
+        std::string modname{py::util::pystring_to_string_view(modname_ob)};
         static std::vector types = {
-            py::autoclass<skip_column>("Skip").new_<>().type(),
-            py::autoclass<int8_column>("Int8").new_<>().type(),
-            py::autoclass<int16_column>("Int16").new_<>().type(),
-            py::autoclass<int32_column>("Int32").new_<>().type(),
-            py::autoclass<int64_column>("Int64").new_<>().type(),
-            py::autoclass<float32_column>("Float32").new_<std::string_view>().type(),
-            py::autoclass<float64_column>("Float64").new_<std::string_view>().type(),
-            py::autoclass<datetime_column>("DateTime").new_<std::string_view>().type(),
-            py::autoclass<bool_column>("Bool").new_<std::string_view>().type(),
-            py::autoclass<string_column>("String").new_<std::int64_t>().type(),
+            py::autoclass<skip_column>(modname + ".Skip").new_<>().type(),
+            py::autoclass<int8_column>(modname + ".Int8").new_<>().type(),
+            py::autoclass<int16_column>(modname + ".Int16").new_<>().type(),
+            py::autoclass<int32_column>(modname + ".Int32").new_<>().type(),
+            py::autoclass<int64_column>(modname + ".Int64").new_<>().type(),
+            py::autoclass<float32_column>(modname + ".Float32")
+                .new_<std::string_view>()
+                .type(),
+            py::autoclass<float64_column>(modname + ".Float64")
+                .new_<std::string_view>()
+                .type(),
+            py::autoclass<datetime_column>(modname + ".DateTime")
+                .new_<std::string_view>()
+                .type(),
+            py::autoclass<bool_column>(modname + ".Bool").new_<std::string_view>().type(),
+            py::autoclass<string_column>(modname + ".String").new_<std::int64_t>().type(),
         };
 
         for (const auto& type : types) {
-            if (PyObject_SetAttrString(module,
-                                       type->tp_name,
-                                       static_cast<PyObject*>(type))) {
+            const char* name = std::strrchr(type->tp_name, '.');
+            if (!name) {
+                py::raise(PyExc_AssertionError)
+                    << "name " << type->tp_name << " is not in a module";
+                return true;
+            }
+            name += 1;  // advance past the `.` char
+
+            if (PyObject_SetAttrString(module, name, static_cast<PyObject*>(type))) {
                 return true;
             }
         }
