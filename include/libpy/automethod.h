@@ -245,7 +245,7 @@ private:
 
     template<typename Name, std::size_t ix, typename... Keywords>
     static Py_ssize_t get_keyword_ix(std::string_view name,
-                              std::tuple<keyword<Name, ix>, Keywords...>) {
+                                     std::tuple<keyword<Name, ix>, Keywords...>) {
         auto buf = py::cs::to_array(Name{});
         if (name == std::string_view(buf.data(), buf.size() - 1)) {
             return ix;
@@ -289,7 +289,7 @@ public:
         }
         for (Py_ssize_t ix = 0; ix < PyTuple_GET_SIZE(args); ++ix) {
             PyObject* ob = PyTuple_GET_ITEM(args, ix);
-            Py_INCREF(ob);  // add a new ref
+            Py_INCREF(ob);                         // add a new ref
             PyTuple_SET_ITEM(flat.get(), ix, ob);  // steals the new ref
         }
         if (kwargs) {
@@ -457,7 +457,6 @@ constexpr PyMethodDef automethod(const char* const name,
     out.ml_doc = doc;
     return out;
 }
-
 
 /** The marker used to indicate the end of the array of `PyMethodDef`s.
  */

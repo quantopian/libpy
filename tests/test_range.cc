@@ -4,8 +4,8 @@
 #include "gtest/gtest.h"
 
 #include "libpy/detail/python.h"
-#include "libpy/range.h"
 #include "libpy/exception.h"
+#include "libpy/range.h"
 #include "test_utils.h"
 
 namespace test_dict_range {

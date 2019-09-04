@@ -402,7 +402,10 @@ get_format_functions(const std::vector<std::string>& column_names,
 }
 
 template<typename T>
-void write_header(iobuffer<T>& buf, const std::vector<std::string>& column_names, char delim, std::string_view line_ending) {
+void write_header(iobuffer<T>& buf,
+                  const std::vector<std::string>& column_names,
+                  char delim,
+                  std::string_view line_ending) {
     auto names_it = column_names.begin();
     buf.write_quoted(*names_it);
     for (++names_it; names_it != column_names.end(); ++names_it) {
