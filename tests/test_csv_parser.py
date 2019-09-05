@@ -3,6 +3,7 @@ import random
 import string
 import sys
 from operator import and_
+from textwrap import dedent
 
 import numpy as np
 
@@ -426,3 +427,75 @@ def test_fuzz_parser(request):
                 "Parse result did not match expectations for "
                 "root_seed=%s, iteration=%s." % (root_seed, i)
             )
+
+
+def test_empty_string_vs_missing_string_vlen():
+    data = dedent(
+        """\
+        "a","b"
+        ,,
+        "",
+        ,""
+        """,
+    ).encode()
+
+    result = cxx.parse_csv(
+        data,
+        column_specs={b'a': cxx.String(-1), b'b': cxx.String(-1)},
+        delimiter=b',',
+        line_ending=b'\n',
+        num_threads=1,
+    )
+    expected = {
+        b'a': (
+            np.array([None, b'', None]),
+            np.array([False, True, False]),
+        ),
+        b'b': (
+            np.array([None, None, b'']),
+            np.array([False, False, True]),
+        ),
+    }
+    assert result.keys() == expected.keys()
+    for k in b'a', b'b':
+        expected_data, expected_mask = expected[k]
+        actual_data, actual_mask = result[k]
+
+        np.testing.assert_array_equal(expected_data, actual_data)
+        np.testing.assert_array_equal(expected_mask, actual_mask)
+
+
+def test_empty_string_vs_missing_string_fixed():
+    data = dedent(
+        """\
+        "a","b"
+        ,,
+        "",
+        ,""
+        """,
+    ).encode()
+
+    result = cxx.parse_csv(
+        data,
+        column_specs={b'a': cxx.String(3), b'b': cxx.String(3)},
+        delimiter=b',',
+        line_ending=b'\n',
+        num_threads=1,
+    )
+    expected = {
+        b'a': (
+            np.array([b'', b'', b''], dtype='S3'),
+            np.array([False, True, False]),
+        ),
+        b'b': (
+            np.array([b'', b'', b''], dtype='S3'),
+            np.array([False, False, True]),
+        ),
+    }
+    assert result.keys() == expected.keys()
+    for k in b'a', b'b':
+        expected_data, expected_mask = expected[k]
+        actual_data, actual_mask = result[k]
+
+        np.testing.assert_array_equal(expected_data, actual_data)
+        np.testing.assert_array_equal(expected_mask, actual_mask)

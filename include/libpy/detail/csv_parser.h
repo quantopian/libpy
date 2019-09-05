@@ -785,7 +785,7 @@ enum class quote_state {
 };
 
 template<typename F>
-std::tuple<std::size_t, bool>
+std::tuple<bool, std::tuple<std::size_t, bool>>
 chomp_quoted_string(F&& f, char delim, std::string_view row, std::size_t offset) {
     quote_state st = quote_state::not_quoted;
     std::size_t started_quote;
@@ -813,7 +813,7 @@ chomp_quoted_string(F&& f, char delim, std::string_view row, std::size_t offset)
                 started_quote = ix;
             }
             else if (c == delim) {
-                return {ix + 1, true};
+                return {ix > 0, {ix + 1, true}};
             }
             else {
                 f(cell[ix]);
@@ -842,7 +842,7 @@ chomp_quoted_string(F&& f, char delim, std::string_view row, std::size_t offset)
             underline);
     }
 
-    return {ix, false};
+    return {ix > 0, {ix, false}};
 }
 }  // namespace detail
 
@@ -853,7 +853,7 @@ public:
     chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
         auto& cell = this->m_parsed[ix];
         std::size_t cell_ix = 0;
-        auto ret = detail::chomp_quoted_string(
+        auto [mask, ret] = detail::chomp_quoted_string(
             [&](char c) {
                 if (cell_ix < cell.size()) {
                     cell[cell_ix++] = c;
@@ -862,7 +862,7 @@ public:
             delim,
             row,
             offset);
-        this->m_mask[ix] = cell_ix > 0;
+        this->m_mask[ix] = mask;
         return ret;
     }
 };

@@ -40,10 +40,10 @@ public:
     std::tuple<std::size_t, bool>
     chomp(char delim, std::size_t, std::string_view row, std::size_t offset) override {
         auto& cell = m_parsed.emplace_back();
-        return detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
-                                           delim,
-                                           row,
-                                           offset);
+        return std::get<1>(detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
+                                                       delim,
+                                                       row,
+                                                       offset));
     }
 
     const std::vector<std::string>& parsed() const {
@@ -54,7 +54,7 @@ public:
 
 std::tuple<std::size_t, bool>
 skip_parser::chomp(char delim, std::size_t, std::string_view row, std::size_t offset) {
-    return detail::chomp_quoted_string([](char) {}, delim, row, offset);
+    return std::get<1>(detail::chomp_quoted_string([](char) {}, delim, row, offset));
 }
 
 runtime_fixed_width_string_parser::runtime_fixed_width_string_parser(std::size_t itemsize)
@@ -72,7 +72,7 @@ runtime_fixed_width_string_parser::chomp(char delim,
                                          std::size_t offset) {
     char* cell = &this->m_parsed[ix * m_itemsize];
     std::size_t cell_ix = 0;
-    auto ret = detail::chomp_quoted_string(
+    auto [mask, ret] = detail::chomp_quoted_string(
         [&](char c) {
             if (cell_ix < m_itemsize) {
                 cell[cell_ix++] = c;
@@ -81,7 +81,7 @@ runtime_fixed_width_string_parser::chomp(char delim,
         delim,
         row,
         offset);
-    this->m_mask[ix] = cell_ix > 0;
+    this->m_mask[ix] = mask;
     return ret;
 }
 
@@ -113,11 +113,11 @@ std::tuple<std::size_t, bool> vlen_string_parser::chomp(char delim,
                                                         std::string_view row,
                                                         std::size_t offset) {
     std::string& cell = this->m_parsed[ix];
-    auto ret = detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
-                                           delim,
-                                           row,
-                                           offset);
-    this->m_mask[ix] = std::get<0>(ret) > 1;
+    auto [mask, ret] = detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
+                                                   delim,
+                                                   row,
+                                                   offset);
+    this->m_mask[ix] = mask;
     return ret;
 }
 
