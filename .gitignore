@@ -52,3 +52,6 @@ libpy_report.xml
 # tox envs
 .tox/*
 .cache/*
+
+# pytest artifact
+.coverage
