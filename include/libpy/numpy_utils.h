@@ -73,36 +73,57 @@
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
 
-namespace py {
-inline void ensure_import_array() {
-    // If `NO_IMPORT_ARRAY` is defined, this is a nop.
-#ifndef NO_IMPORT_ARRAY
-    if (PyArray_API) {
-        // already imported
-        return;
-    }
-
+/** Helper macro for IMPORT_ARRAY_MODULE_SCOPE below. This is needed because
+    import_array() contains a return statement, and in py2 it returns void, whereas in py3
+    it returns a null pointer. We want a version that consistently doesn't return, so we
+    wrap the import_array call in a lambda and call the lambda.
+*/
 #if PY_MAJOR_VERSION == 2
-    []() -> void { import_array(); }();
+#define DO_IMPORT_ARRAY() []() -> void { import_array(); }()
 #else
-    // this macro returns NULL in Python 3 so we need to put it in a
-    // function to call it to ignore the return statement
-    []() -> std::nullptr_t {
-        import_array();
-        return nullptr;
-    }();
+#define DO_IMPORT_ARRAY()                                                                \
+    []() -> std::nullptr_t {                                                             \
+        import_array();                                                                  \
+        return nullptr;                                                                  \
+    }()
 #endif
-    if (PyErr_Occurred()) {
-        throw py::exception{};
-    }
-#endif
-}
 
-struct ensure_import_array_module_scope {
-    inline ensure_import_array_module_scope() {
-        ensure_import_array();
+/* Macro for ensuring that the Numpy Array API is initialized in a non-extension
+   translation unit. It works by declaring an anonymous namespace containing a
+   default-constructed instance of an object whose constructor initializes the numpy
+   api. This ensures that the numpy api is initialized within the translation unit
+
+   This macro should be invoked at the top-level scope of any **non-extension** .cc file
+   that uses the numpy array API (i.e. any of the functions listed in
+   https://docs.scipy.org/doc/numpy/reference/c-api.array.html).
+
+   Extension files (i.e., files that correspond to importable Python modules) should call
+   import_array() as documented in
+   https://docs.scipy.org/doc/numpy/reference/c-api.array.html#c.import_array.
+
+   If you're seeing mysterious segfault calling numpy functions from a libpy .cc file, you
+   probably need to add this to a .cc file.
+*/
+#ifdef NO_IMPORT_ARRAY
+#define IMPORT_ARRAY_MODULE_SCOPE()
+#else
+#define IMPORT_ARRAY_MODULE_SCOPE()                                                      \
+    namespace {                                                                          \
+    struct importer {                                                                    \
+        importer() {                                                                     \
+            if (!PyArray_API) {                                                          \
+                DO_IMPORT_ARRAY();                                                       \
+                if (PyErr_Occurred()) {                                                  \
+                    throw py::exception{};                                               \
+                }                                                                        \
+            }                                                                            \
+        }                                                                                \
+    };                                                                                   \
+    importer ensure_array_imported;                                                      \
     }
-};
+#endif
+
+namespace py {
 
 /** A strong typedef of npy_bool to not be ambiguous with `unsigned char` but may
     still be used in a vector without the dreaded `std::vector<bool>`.

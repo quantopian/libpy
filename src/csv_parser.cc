@@ -16,9 +16,8 @@
 #endif
 
 namespace py::csv::parser {
-namespace {
-py::ensure_import_array_module_scope imported;
-}  // namespace
+
+IMPORT_ARRAY_MODULE_SCOPE();
 
 void cell_parser::set_num_lines(std::size_t) {}
 
