@@ -7,9 +7,13 @@
 #include "libpy/detail/csv_writer.h"
 #include "libpy/itertools.h"
 #include "libpy/stream.h"
+#include "libpy/numpy_utils.h"
 #include "libpy/util.h"
 
 namespace py::csv::writer {
+
+IMPORT_ARRAY_MODULE_SCOPE()
+
 namespace {
 /** A rope-backed buffer for building up CSVs in memory.
  */
