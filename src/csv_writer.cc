@@ -263,10 +263,12 @@ void write_stringlike_quoted(iobuffer<T>& buf, const py::scoped_ref<>& ob) {
         Py_ssize_t size = PyUnicode_GET_SIZE(ob.get());
 #ifdef Py_UNICODE_WIDE
         // UCS-4. This is the default on Linux.
+        static_assert(sizeof(Py_UNICODE) == sizeof(char32_t));
         const char32_t* cs = reinterpret_cast<const char32_t*>(PyUnicode_AS_UNICODE(ob.get()));
         buf.write_quoted(std::u32string_view{cs, static_cast<std::size_t>(size)});
 #else
         // UCS-2. This seems to be the default on OSX.
+        static_assert(sizeof(Py_UNICODE) == sizeof(char16_t));
         const char16_t* cs = reinterpret_cast<const char16_t*>(PyUnicode_AS_UNICODE(ob.get()));
         buf.write_quoted(std::u16string_view{cs, static_cast<std::size_t>(size)});
 #endif
