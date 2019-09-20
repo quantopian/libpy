@@ -1,17 +1,20 @@
+#include <codecvt>
 #include <cstring>
 #include <fstream>
+#include <locale>
 #include <mutex>
 #include <thread>
 
 #include "libpy/char_sequence.h"
 #include "libpy/detail/csv_writer.h"
 #include "libpy/itertools.h"
-#include "libpy/stream.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/stream.h"
 #include "libpy/util.h"
 
 namespace py::csv::writer {
 
+// Ensure that the numpy array API is set up correctly.
 IMPORT_ARRAY_MODULE_SCOPE()
 
 namespace {
@@ -143,6 +146,20 @@ public:
         write('"');
     }
 
+    /** Write a UTF-16 string view, converting to utf-8.
+     */
+    void write_quoted(const std::u16string_view& view) {
+        std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> converter;
+        write_quoted(converter.to_bytes(view.begin(), view.end()));
+    }
+
+    /** Write a UTF-32 string view, converting to utf-8.
+     */
+    void write_quoted(const std::u32string_view& view) {
+        std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+        write_quoted(converter.to_bytes(view.begin(), view.end()));
+    }
+
     void write(const std::string_view& data) {
         if (space_left() < data.size()) {
             flush();
@@ -227,6 +244,46 @@ void format_any(iobuffer<T>& buf, py::any_cref value) {
     buf.write(stream.str());
 }
 
+/** Write a quoted string-like value into @buf.
+
+    @param buf Buffer into which to write the quoted value.
+    @param any_value String-like value to write.
+
+    In Python 2, any_value must hold a Python value of type ``str``.
+    In Python 3, any_value may hold a Python value of type ``bytes`` or ``str``.
+
+    We don't support unicode in Python 2 because this function might be called in a
+    multi-threaded context, and there's no thread-safe Python API that would allow us to
+    encode the string as utf-8.
+*/
+template<typename T>
+void write_stringlike_quoted(iobuffer<T>& buf, const py::scoped_ref<>& ob) {
+    if (Py_TYPE(ob.get()) == &PyUnicode_Type) {
+#if PY_MAJOR_VERSION == 2
+        Py_ssize_t size = PyUnicode_GET_SIZE(ob.get());
+#ifdef Py_UNICODE_WIDE
+        // UCS-4. This is the default on Linux.
+        const char32_t* cs = reinterpret_cast<const char32_t*>(PyUnicode_AS_UNICODE(ob.get()));
+        buf.write_quoted(std::u32string_view{cs, static_cast<std::size_t>(size)});
+#else
+        // UCS-2. This seems to be the default on OSX.
+        const char16_t* cs = reinterpret_cast<const char16_t*>(PyUnicode_AS_UNICODE(ob.get()));
+        buf.write_quoted(std::u16string_view{cs, static_cast<std::size_t>(size)});
+#endif
+#else
+        buf.write_quoted(py::util::pystring_to_string_view(ob.get()));
+#endif
+    }
+    else {
+        char* cs;
+        Py_ssize_t size;
+        if (PyBytes_AsStringAndSize(ob.get(), &cs, &size)) {
+            throw py::exception{};
+        }
+        buf.write_quoted(std::string_view{cs, static_cast<std::size_t>(size)});
+    }
+}
+
 template<typename T>
 void format_pyobject(iobuffer<T>& buf, py::any_cref any_value) {
     const auto& as_ob = *reinterpret_cast<const py::scoped_ref<>*>(any_value.addr());
@@ -242,17 +299,7 @@ void format_pyobject(iobuffer<T>& buf, py::any_cref any_value) {
         return;
     }
 
-    if (Py_TYPE(as_ob.get()) == &PyUnicode_Type) {
-        buf.write_quoted(py::util::pystring_to_string_view(as_ob));
-    }
-    else {
-        char* cs;
-        Py_ssize_t size;
-        if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
-            throw py::exception{};
-        }
-        buf.write_quoted(std::string_view{cs, static_cast<std::size_t>(size)});
-    }
+    write_stringlike_quoted<T>(buf, as_ob);
 }
 
 template<typename T>
@@ -261,18 +308,7 @@ void format_pyobject_preformatted(iobuffer<T>& buf, py::any_cref any_value) {
     if (as_ob.get() == Py_None) {
         return;
     }
-
-    if (Py_TYPE(as_ob.get()) == &PyUnicode_Type) {
-        buf.write(py::util::pystring_to_string_view(as_ob));
-    }
-    else {
-        char* cs;
-        Py_ssize_t size;
-        if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
-            throw py::exception{};
-        }
-        buf.write(std::string_view{cs, static_cast<std::size_t>(size)});
-    }
+    write_stringlike_quoted(buf, as_ob);
 }
 
 template<typename T, typename F>
