@@ -10,8 +10,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "libpy/char_sequence.h"
 #include "libpy/detail/python.h"
 #include "libpy/scoped_ref.h"
+#include "libpy/str_convert.h"
 
 namespace py {
 namespace dispatch {
@@ -314,4 +316,40 @@ struct to_object<std::optional<T>> {
     }
 };
 }  // namespace dispatch
+
+/** Convert a compile-time string into a Python string-like value.
+
+    @param s Char sequence whose type encodes a compile-time string.
+    @param type Python type into which to convert `s`.
+
+    If the requested output py::str_type::str or py::str_type::unicode, the input string
+    will be must be valid utf-8.
+ */
+template<char... cs>
+constexpr scoped_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_type type) {
+    const auto& as_null_terminated_array = py::cs::to_array(s);
+    const char* data = as_null_terminated_array.data();
+    Py_ssize_t size = sizeof...(cs);
+
+    switch (type) {
+    case py::str_type::bytes: {
+#if PY_MAJOR_VERSION == 2
+        return scoped_ref<>{PyString_FromStringAndSize(data, size)};
+#else
+        return scoped_ref<>{PyBytes_FromStringAndSize(data, size)};
+#endif
+    }
+    case py::str_type::str: {
+#if PY_MAJOR_VERSION == 2
+        return scoped_ref<>{PyString_FromStringAndSize(data, size)};
+#else
+        return scoped_ref<>{PyUnicode_FromStringAndSize(data, size)};
+#endif
+    }
+    case py::str_type::unicode: {
+        return scoped_ref<>{PyUnicode_FromStringAndSize(data, size)};
+    }
+    }
+    __builtin_unreachable();
+}
 }  // namespace py
