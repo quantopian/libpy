@@ -310,7 +310,14 @@ void format_pyobject_preformatted(iobuffer<T>& buf, py::any_cref any_value) {
     if (as_ob.get() == Py_None) {
         return;
     }
-    write_stringlike_quoted(buf, as_ob);
+
+    // We only support bytes for preformatted strings.
+    char* cs;
+    Py_ssize_t size;
+    if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
+        throw py::exception{};
+    }
+    buf.write(std::string_view{cs, static_cast<std::size_t>(size)});
 }
 
 template<typename T, typename F>
