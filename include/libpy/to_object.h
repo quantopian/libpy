@@ -320,7 +320,7 @@ struct to_object<std::optional<T>> {
 /** Convert a compile-time string into a Python string-like value.
 
     @param s Char sequence whose type encodes a compile-time string.
-    @param type Python type into which to convert `s`.
+    @param type Enum representing the type into which to convert `s`.
 
     If the requested output py::str_type::str or py::str_type::unicode, the input string
     will be must be valid utf-8.
