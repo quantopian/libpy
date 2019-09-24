@@ -648,11 +648,7 @@ TEST(table, to_python_dict_types) {
     {
         T table;
         expect_key_types(std::move(table).to_python_dict(py::str_type::bytes),
-#if PY_MAJOR_VERSION == 2
-                         &PyString_Type);
-#else
                          &PyBytes_Type);
-#endif
     }
     {
         T table;
