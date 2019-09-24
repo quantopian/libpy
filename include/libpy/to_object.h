@@ -333,11 +333,7 @@ constexpr scoped_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_typ
 
     switch (type) {
     case py::str_type::bytes: {
-#if PY_MAJOR_VERSION == 2
-        return scoped_ref<>{PyString_FromStringAndSize(data, size)};
-#else
         return scoped_ref<>{PyBytes_FromStringAndSize(data, size)};
-#endif
     }
     case py::str_type::str: {
 #if PY_MAJOR_VERSION == 2
