@@ -249,12 +249,8 @@ void format_any(iobuffer<T>& buf, py::any_cref value) {
     @param buf Buffer into which to write the quoted value.
     @param any_value String-like value to write.
 
-    In Python 2, any_value must hold a Python value of type ``str``.
-    In Python 3, any_value may hold a Python value of type ``bytes`` or ``str``.
-
-    We don't support unicode in Python 2 because this function might be called in a
-    multi-threaded context, and there's no thread-safe Python API that would allow us to
-    encode the string as utf-8.
+    Values can be of type `bytes`, `str`, or `unicode`. Unicode values will be encoded as
+    utf-8 before writing.
 */
 template<typename T>
 void write_stringlike_quoted(iobuffer<T>& buf, const py::scoped_ref<>& ob) {
@@ -294,6 +290,8 @@ void write_stringlike_quoted(iobuffer<T>& buf, const py::scoped_ref<>& ob) {
         string_view_type view{data_copy.data(), size};
         buf.write_quoted(view);
 #else
+        // Python 3's unicode object caches a utf-8 representation on the object itself,
+        // so we can construct a string view directly.
         buf.write_quoted(py::util::pystring_to_string_view(ob.get()));
 #endif
     }
