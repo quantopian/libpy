@@ -8,4 +8,4 @@ enum class str_type {
     unicode,  // unicode in py2, str in py3.
 };
 
-}
+}  // namespace py
