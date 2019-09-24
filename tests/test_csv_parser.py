@@ -422,10 +422,11 @@ def test_fuzz_parser(request):
 
         try:
             check_parse(csv_data, schema, expected, num_threads)
-        except AssertionError:
+        except AssertionError as e:
             raise AssertionError(
                 "Parse result did not match expectations for "
-                "root_seed=%s, iteration=%s." % (root_seed, i)
+                "root_seed=%s, iteration=%s.\n\n"
+                "Error was:%s" % (root_seed, i, e)
             )
 
 
