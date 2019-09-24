@@ -260,18 +260,39 @@ template<typename T>
 void write_stringlike_quoted(iobuffer<T>& buf, const py::scoped_ref<>& ob) {
     if (Py_TYPE(ob.get()) == &PyUnicode_Type) {
 #if PY_MAJOR_VERSION == 2
-        Py_ssize_t size = PyUnicode_GET_SIZE(ob.get());
+        // Python 2's unicode object uses either uint16 or uint32 to represent UCS2 or
+        // UCS4 unicode. The C++ stdlib uses char16_t and char32_t for the same purpose.
+        // According to the C++ standard, these values have the same underlying
+        // representation, but are "distinct types", which means it's undefined behavior
+        // to just cast a pointer from uint16_t to char16_t or vice versa. However, it's
+        // well-defined to do a conversion between the individual values.
+        //
+        // In the code below, we copy the data from the unicode object's underlying
+        // integral-type buffer into a char-typed buffer of the appropriate size, and then
+        // pass that on to write_quoted, which will do the appropriate utf-8 conversion.
 #ifdef Py_UNICODE_WIDE
         // UCS-4. This is the default on Linux.
-        static_assert(sizeof(Py_UNICODE) == sizeof(char32_t));
-        const char32_t* cs = reinterpret_cast<const char32_t*>(PyUnicode_AS_UNICODE(ob.get()));
-        buf.write_quoted(std::u32string_view{cs, static_cast<std::size_t>(size)});
+        using char_type = char32_t;
+        using integral_type = std::uint_least32_t;
+        using string_view_type = std::u32string_view;
 #else
         // UCS-2. This seems to be the default on OSX.
-        static_assert(sizeof(Py_UNICODE) == sizeof(char16_t));
-        const char16_t* cs = reinterpret_cast<const char16_t*>(PyUnicode_AS_UNICODE(ob.get()));
-        buf.write_quoted(std::u16string_view{cs, static_cast<std::size_t>(size)});
+        using char_type = char16_t;
+        using integral_type = std::uint_least16_t;
+        using string_view_type = std::u16string_view;
 #endif
+        static_assert(std::is_same_v<Py_UNICODE, integral_type>);
+
+        size_t size = static_cast<std::size_t>(PyUnicode_GET_SIZE(ob.get()));
+        integral_type* data = PyUnicode_AS_UNICODE(ob.get());
+
+        std::vector<char_type> data_copy(size);
+        for (size_t i = 0; i < size; ++i) {
+            data_copy[i] = data[i];
+        }
+
+        string_view_type view{data_copy.data(), size};
+        buf.write_quoted(view);
 #else
         buf.write_quoted(py::util::pystring_to_string_view(ob.get()));
 #endif
