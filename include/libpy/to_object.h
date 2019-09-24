@@ -326,8 +326,8 @@ struct to_object<std::optional<T>> {
     will be must be valid utf-8.
  */
 template<char... cs>
-constexpr scoped_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_type type) {
-    const auto& as_null_terminated_array = py::cs::to_array(s);
+scoped_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_type type) {
+    const auto as_null_terminated_array = py::cs::to_array(s);
     const char* data = as_null_terminated_array.data();
     Py_ssize_t size = sizeof...(cs);
 

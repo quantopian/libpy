@@ -266,9 +266,10 @@ TEST(to_stringlike, bytes) {
     const char* expected = "foobar";
 
     py::scoped_ref<> s_py = py::to_stringlike(s, py::str_type::bytes);
+    ASSERT_TRUE(s_py);
 
     ASSERT_TRUE(PyBytes_CheckExact(s_py.get()));
-    ASSERT_STREQ(PyBytes_AS_STRING(s_py.get()), expected);
+    EXPECT_STREQ(PyBytes_AS_STRING(s_py.get()), expected);
 }
 
 TEST(to_stringlike, str) {
@@ -284,7 +285,7 @@ TEST(to_stringlike, str) {
     ASSERT_TRUE(PyUnicode_CheckExact(s_py.get()));
     py::scoped_ref<> decoded(PyUnicode_AsEncodedString(s_py.get(), "utf-8", "strict"));
     ASSERT_TRUE(decoded);
-    ASSERT_STREQ(PyBytes_AS_STRING(decoded.get()), expected);
+    EXPECT_STREQ(PyBytes_AS_STRING(decoded.get()), expected);
 #endif
 }
 
@@ -297,7 +298,7 @@ TEST(to_stringlike, unicode) {
     ASSERT_TRUE(PyUnicode_CheckExact(s_py.get()));
     py::scoped_ref<> decoded(PyUnicode_AsEncodedString(s_py.get(), "utf-8", "strict"));
     ASSERT_TRUE(decoded);
-    ASSERT_STREQ(PyBytes_AS_STRING(decoded.get()), expected);
+    EXPECT_STREQ(PyBytes_AS_STRING(decoded.get()), expected);
 }
 
 }  // namespace test_to_object

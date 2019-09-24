@@ -638,7 +638,6 @@ void expect_key_types(py::scoped_ref<> dict, PyTypeObject* expected_key_type) {
     ASSERT_TRUE(dict);
     for (auto [key, value] : py::dict_range::checked(dict)) {
         EXPECT_EQ(Py_TYPE(key), expected_key_type);
-        py::scoped_ref<> as_str{PyObject_Str(key)};
     }
 }
 
@@ -646,13 +645,12 @@ TEST(table, to_python_dict_types) {
     using T = py::table<py::C<std::int64_t>("a"_cs), py::C<double>("b"_cs)>;
 
     {
-        T table;
-        expect_key_types(std::move(table).to_python_dict(py::str_type::bytes),
+        expect_key_types(T{}.to_python_dict(py::str_type::bytes),
                          &PyBytes_Type);
     }
     {
         T table;
-        expect_key_types(std::move(table).to_python_dict(py::str_type::str),
+        expect_key_types(T{}.to_python_dict(py::str_type::str),
 #if PY_MAJOR_VERSION == 2
                          &PyString_Type);
 #else
@@ -661,7 +659,7 @@ TEST(table, to_python_dict_types) {
     }
     {
         T table;
-        expect_key_types(std::move(table).to_python_dict(py::str_type::unicode),
+        expect_key_types(T{}.to_python_dict(py::str_type::unicode),
                          &PyUnicode_Type);
     }
 }
