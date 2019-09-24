@@ -263,42 +263,41 @@ TEST_F(to_object, object_map_key) {
 
 TEST(to_stringlike, bytes) {
     auto s = "foobar"_cs;
-    py::scoped_ref<> s_py = py::to_stringlike(s, py::str_type::bytes);
     const char* expected = "foobar";
-#if PY_MAJOR_VERSION == 2
-    ASSERT_TRUE(PyString_CheckExact(s_py.get()));
-    ASSERT_STREQ(PyString_AS_STRING(s_py.get()), expected);
-#else
+
+    py::scoped_ref<> s_py = py::to_stringlike(s, py::str_type::bytes);
+
     ASSERT_TRUE(PyBytes_CheckExact(s_py.get()));
     ASSERT_STREQ(PyBytes_AS_STRING(s_py.get()), expected);
-#endif
 }
 
 TEST(to_stringlike, str) {
     auto s = "foobar"_cs;
-    py::scoped_ref<> s_py = py::to_stringlike(s, py::str_type::str);
     const char* expected = "foobar";
+
+    py::scoped_ref<> s_py = py::to_stringlike(s, py::str_type::str);
+
 #if PY_MAJOR_VERSION == 2
     ASSERT_TRUE(PyString_CheckExact(s_py.get()));
     ASSERT_STREQ(PyString_AS_STRING(s_py.get()), expected);
 #else
     ASSERT_TRUE(PyUnicode_CheckExact(s_py.get()));
     py::scoped_ref<> decoded(PyUnicode_AsEncodedString(s_py.get(), "utf-8", "strict"));
+    ASSERT_TRUE(decoded);
     ASSERT_STREQ(PyBytes_AS_STRING(decoded.get()), expected);
 #endif
 }
 
 TEST(to_stringlike, unicode) {
     auto s = "foobar"_cs;
-    py::scoped_ref<> s_py = py::to_stringlike(s, py::str_type::unicode);
     const char* expected = "foobar";
+
+    py::scoped_ref<> s_py = py::to_stringlike(s, py::str_type::unicode);
+
     ASSERT_TRUE(PyUnicode_CheckExact(s_py.get()));
     py::scoped_ref<> decoded(PyUnicode_AsEncodedString(s_py.get(), "utf-8", "strict"));
-#if PY_MAJOR_VERSION == 2
-    ASSERT_STREQ(PyString_AS_STRING(decoded.get()), expected);
-#else
+    ASSERT_TRUE(decoded);
     ASSERT_STREQ(PyBytes_AS_STRING(decoded.get()), expected);
-#endif
 }
 
 }  // namespace test_to_object
