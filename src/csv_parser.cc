@@ -787,10 +787,8 @@ void split_into_lines_loop(std::vector<std::size_t>& lines,
                            std::string_view::size_type end_ix,
                            std::string_view line_ending,
                            bool handle_tail) {
-    std::string_view::size_type end;
-
     // crawl the start back to the beginning of the line that we begin inside
-    auto line_start = data.rfind(line_ending, *pos_ptr);
+    auto line_start = data.substr(0, *pos_ptr).rfind(line_ending);
     if (line_start == std::string_view::npos) {
         // there is no newline prior to `*pos_ptr`, so we must be in the middle
         // of the first line, set the `*pos_ptr` back to 0.
@@ -803,6 +801,7 @@ void split_into_lines_loop(std::vector<std::size_t>& lines,
     }
 
     auto pos = *pos_ptr;
+    std::string_view::size_type end;
     while ((end = data.find(line_ending, pos)) != std::string_view::npos) {
         if (end > end_ix) {
             return;
@@ -877,6 +876,8 @@ split_into_lines(std::string_view data,
         // advance past line ending
         pos = end + line_ending.size();
     }
+    data = data.substr(pos);
+    pos = 0;
 
     if (num_threads == 1) {
         split_into_lines_loop(lines_per_thread[0],
