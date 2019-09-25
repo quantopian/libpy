@@ -47,6 +47,13 @@ constexpr inline bool all_equal() {
     return true;
 }
 
+/** Extract a C-style string from a `str` object.
+
+    In Python 2, the result will be a view into the underlying buffer owned by `ob`.
+    In Python 3, the result will be a view into a cached utf-8 representation of `ob`.
+
+    In both cases, the lifetime of the returned value is the same as the lifetime of `ob`.
+*/
 inline const char* pystring_to_cstring(PyObject* ob) {
 #if PY_MAJOR_VERSION == 2
     if (!PyString_Check(ob)) {
@@ -58,16 +65,31 @@ inline const char* pystring_to_cstring(PyObject* ob) {
 #endif
 }
 
+/** Extract a C-style string from a `str` object.
+
+    In Python 2, the result will be a view into the underlying buffer owned by `ob`.
+    In Python 3, the result will be a view into a cached utf-8 representation of `ob`.
+
+    In both cases, the lifetime of the returned value is the same as the lifetime of `ob`.
+*/
 inline const char* pystring_to_cstring(const py::scoped_ref<>& ob) {
     return pystring_to_cstring(ob.get());
 }
 
+/** Get a view over the contents of a `str`.
+
+    In Python 2, the view will be over the unmodified contents of `ob`.
+    In Python 3, the view will be over a cached utf-8 representation of `ob`.
+
+    In both cases, the lifetime of the returned value is the same as the lifetime of `ob`.
+*/
 inline std::string_view pystring_to_string_view(PyObject* ob) {
     Py_ssize_t size;
     const char* cs;
 #if PY_MAJOR_VERSION == 2
     if (!PyString_Check(ob)) {
-        throw std::runtime_error("ob is not a string");
+        throw formatted_error<std::runtime_error>("expected a string, got: ",
+                                                  Py_TYPE(ob)->tp_name);
     }
     size = PyString_GET_SIZE(ob);
     cs = PyString_AS_STRING(ob);
@@ -81,6 +103,13 @@ inline std::string_view pystring_to_string_view(PyObject* ob) {
     return {cs, static_cast<std::size_t>(size)};
 }
 
+/** Get a non-owning view over the contents of a ``str``.
+
+    In Python 2, the view will be over the unmodified contents of `ob`.
+    In Python 3, the view will be over a cached utf-8 representation of `ob`.
+
+    In both cases, the lifetime of the returned value is the same as the lifetime of `ob`.
+*/
 inline std::string_view pystring_to_string_view(const py::scoped_ref<>& ob) {
     return pystring_to_string_view(ob.get());
 }

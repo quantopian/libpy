@@ -10,8 +10,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "libpy/char_sequence.h"
 #include "libpy/detail/python.h"
 #include "libpy/scoped_ref.h"
+#include "libpy/str_convert.h"
 
 namespace py {
 namespace dispatch {

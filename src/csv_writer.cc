@@ -1,17 +1,20 @@
+#include <codecvt>
 #include <cstring>
 #include <fstream>
+#include <locale>
 #include <mutex>
 #include <thread>
 
 #include "libpy/char_sequence.h"
 #include "libpy/detail/csv_writer.h"
 #include "libpy/itertools.h"
-#include "libpy/stream.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/stream.h"
 #include "libpy/util.h"
 
 namespace py::csv::writer {
 
+// Ensure that the numpy array API is set up correctly.
 IMPORT_ARRAY_MODULE_SCOPE()
 
 namespace {
@@ -143,6 +146,20 @@ public:
         write('"');
     }
 
+    /** Write a UTF-16 string view, converting to utf-8.
+     */
+    void write_quoted(const std::u16string_view& view) {
+        std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> converter;
+        write_quoted(converter.to_bytes(view.begin(), view.end()));
+    }
+
+    /** Write a UTF-32 string view, converting to utf-8.
+     */
+    void write_quoted(const std::u32string_view& view) {
+        std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+        write_quoted(converter.to_bytes(view.begin(), view.end()));
+    }
+
     void write(const std::string_view& data) {
         if (space_left() < data.size()) {
             flush();
@@ -227,6 +244,67 @@ void format_any(iobuffer<T>& buf, py::any_cref value) {
     buf.write(stream.str());
 }
 
+/** Write a quoted string-like value into @buf.
+
+    @param buf Buffer into which to write the quoted value.
+    @param any_value String-like value to write.
+
+    Values can be of type `bytes`, `str`, or `unicode`. Unicode values will be encoded as
+    utf-8 before writing.
+*/
+template<typename T>
+void write_stringlike_quoted(iobuffer<T>& buf, const py::scoped_ref<>& ob) {
+    if (Py_TYPE(ob.get()) == &PyUnicode_Type) {
+#if PY_MAJOR_VERSION == 2
+        // Python 2's unicode object uses either uint16 or uint32 to represent UCS2 or
+        // UCS4 unicode. The C++ stdlib uses char16_t and char32_t for the same purpose.
+        // According to the C++ standard, these values have the same underlying
+        // representation, but are "distinct types", which means it's undefined behavior
+        // to just cast a pointer from uint16_t to char16_t or vice versa. However, it's
+        // well-defined to do a conversion between the individual values.
+        //
+        // In the code below, we copy the data from the unicode object's underlying
+        // integral-type buffer into a char-typed buffer of the appropriate size, and then
+        // pass that on to write_quoted, which will do the appropriate utf-8 conversion.
+#ifdef Py_UNICODE_WIDE
+        // UCS-4. This is the default on Linux.
+        using char_type = char32_t;
+        using integral_type = std::uint_least32_t;
+        using string_view_type = std::u32string_view;
+#else
+        // UCS-2. This seems to be the default on OSX.
+        using char_type = char16_t;
+        using integral_type = std::uint_least16_t;
+        using string_view_type = std::u16string_view;
+#endif
+        static_assert(std::is_same_v<Py_UNICODE, integral_type>);
+
+        size_t size = static_cast<std::size_t>(PyUnicode_GET_SIZE(ob.get()));
+        integral_type* data = PyUnicode_AS_UNICODE(ob.get());
+
+        std::vector<char_type> data_copy(size);
+        for (size_t i = 0; i < size; ++i) {
+            data_copy[i] = data[i];
+        }
+
+        string_view_type view{data_copy.data(), size};
+        buf.write_quoted(view);
+#else
+        // Python 3's unicode object caches a utf-8 representation on the object itself,
+        // so we can construct a string view directly.
+        buf.write_quoted(py::util::pystring_to_string_view(ob.get()));
+#endif
+    }
+    else {
+        char* cs;
+        Py_ssize_t size;
+        if (PyBytes_AsStringAndSize(ob.get(), &cs, &size)) {
+            throw py::exception{};
+        }
+        buf.write_quoted(std::string_view{cs, static_cast<std::size_t>(size)});
+    }
+}
+
 template<typename T>
 void format_pyobject(iobuffer<T>& buf, py::any_cref any_value) {
     const auto& as_ob = *reinterpret_cast<const py::scoped_ref<>*>(any_value.addr());
@@ -242,17 +320,7 @@ void format_pyobject(iobuffer<T>& buf, py::any_cref any_value) {
         return;
     }
 
-    if (Py_TYPE(as_ob.get()) == &PyUnicode_Type) {
-        buf.write_quoted(py::util::pystring_to_string_view(as_ob));
-    }
-    else {
-        char* cs;
-        Py_ssize_t size;
-        if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
-            throw py::exception{};
-        }
-        buf.write_quoted(std::string_view{cs, static_cast<std::size_t>(size)});
-    }
+    write_stringlike_quoted<T>(buf, as_ob);
 }
 
 template<typename T>
@@ -262,17 +330,13 @@ void format_pyobject_preformatted(iobuffer<T>& buf, py::any_cref any_value) {
         return;
     }
 
-    if (Py_TYPE(as_ob.get()) == &PyUnicode_Type) {
-        buf.write(py::util::pystring_to_string_view(as_ob));
+    // We only support bytes for preformatted strings.
+    char* cs;
+    Py_ssize_t size;
+    if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
+        throw py::exception{};
     }
-    else {
-        char* cs;
-        Py_ssize_t size;
-        if (PyBytes_AsStringAndSize(as_ob.get(), &cs, &size)) {
-            throw py::exception{};
-        }
-        buf.write(std::string_view{cs, static_cast<std::size_t>(size)});
-    }
+    buf.write(std::string_view{cs, static_cast<std::size_t>(size)});
 }
 
 template<typename T, typename F>

@@ -5,16 +5,19 @@
 #include "gtest/gtest.h"
 
 #include "libpy/any.h"
+#include "libpy/char_sequence.h"
 #include "libpy/dense_hash_map.h"
 #include "libpy/itertools.h"
 #include "libpy/meta.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/object_map_key.h"
+#include "libpy/str_convert.h"
 #include "libpy/to_object.h"
 #include "test_utils.h"
 
 namespace test_to_object {
 using namespace std::literals;
+using namespace py::cs::literals;
 
 class to_object : public with_python_interpreter {};
 
@@ -257,4 +260,5 @@ TEST_F(to_object, object_map_key) {
     // now owned by both as_ob and key
     EXPECT_EQ(Py_REFCNT(key.get()), starting_ref_count + 1);
 }
+
 }  // namespace test_to_object

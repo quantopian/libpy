@@ -48,7 +48,9 @@
 #include "libpy/meta.h"
 #include "libpy/ndarray_view.h"
 #include "libpy/numpy_utils.h"
+#include "libpy/str_convert.h"
 #include "libpy/table_details.h"
+#include "libpy/to_object.h"
 #include "libpy/util.h"
 
 namespace py {
@@ -649,10 +651,11 @@ private:
     }
 
     template<std::size_t ix>
-    auto move_to_objects() {
-        auto text = py::cs::to_array(std::tuple_element_t<ix, keys_type>{});
-        auto column_name = py::to_object(
-            *reinterpret_cast<std::array<char, text.size() - 1>*>(text.data()));
+    auto move_to_objects(py::str_type key_type) {
+        // Convert compile-time column name into Python value.
+        auto column_name = py::to_stringlike(std::tuple_element_t<ix, keys_type>{},
+                                             key_type);
+
         if (!column_name) {
             throw py::exception();
         }
@@ -665,10 +668,12 @@ private:
     }
 
     template<std::size_t... ix>
-    void move_into_dict(std::index_sequence<ix...>, const py::scoped_ref<>& out) {
+    void move_into_dict(std::index_sequence<ix...>,
+                        const py::scoped_ref<>& out,
+                        py::str_type key_type) {
         std::array<std::tuple<py::scoped_ref<PyObject>, py::scoped_ref<>>,
                    sizeof...(columns)>
-            obs = {this->move_to_objects<ix>()...};
+            obs = {this->move_to_objects<ix>(key_type)...};
 
         for (auto& [key, value] : obs) {
             if (PyDict_SetItem(out.get(), key.get(), value.get())) {
@@ -929,13 +934,13 @@ public:
 
         @return A Python dict of numpy arrays.
      */
-    py::scoped_ref<> to_python_dict() && {
+    py::scoped_ref<> to_python_dict(py::str_type key_type = py::str_type::bytes) && {
         py::scoped_ref out(PyDict_New());
         if (!out) {
             return nullptr;
         }
         try {
-            move_into_dict(std::make_index_sequence<sizeof...(columns)>{}, out);
+            move_into_dict(std::make_index_sequence<sizeof...(columns)>{}, out, key_type);
         }
         catch (py::exception&) {
             return nullptr;

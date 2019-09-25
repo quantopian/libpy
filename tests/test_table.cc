@@ -6,6 +6,8 @@
 #include "gtest/gtest.h"
 
 #include "libpy/char_sequence.h"
+#include "libpy/dict_range.h"
+#include "libpy/str_convert.h"
 #include "libpy/table.h"
 
 namespace test_table {
@@ -628,6 +630,38 @@ TEST(table, reserve) {
     // capacity doesn't go down if reserving a smaller size
     table.reserve(5);
     EXPECT_EQ(table.capacity(), 10ul);
+}
+
+/** Expect that the keys of `dict` are python objects of type `expected_key_type`.
+ */
+void expect_key_types(py::scoped_ref<> dict, PyTypeObject* expected_key_type) {
+    ASSERT_TRUE(dict);
+    for (auto [key, value] : py::dict_range::checked(dict)) {
+        EXPECT_EQ(Py_TYPE(key), expected_key_type);
+    }
+}
+
+TEST(table, to_python_dict_types) {
+    using T = py::table<py::C<std::int64_t>("a"_cs), py::C<double>("b"_cs)>;
+
+    {
+        expect_key_types(T{}.to_python_dict(py::str_type::bytes),
+                         &PyBytes_Type);
+    }
+    {
+        T table;
+        expect_key_types(T{}.to_python_dict(py::str_type::str),
+#if PY_MAJOR_VERSION == 2
+                         &PyString_Type);
+#else
+                         &PyUnicode_Type);
+#endif
+    }
+    {
+        T table;
+        expect_key_types(T{}.to_python_dict(py::str_type::unicode),
+                         &PyUnicode_Type);
+    }
 }
 
 TEST(table_view, relabel) {
