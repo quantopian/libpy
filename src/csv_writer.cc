@@ -365,7 +365,7 @@ void format_datetime64(iobuffer<T>& buf, py::any_cref any_value) {
 
 template<typename T>
 void format_pybool(iobuffer<T>& buf, py::any_cref any_value) {
-    const auto& as_pybool = *reinterpret_cast<py::py_bool*>(any_value.addr());
+    const auto& as_pybool = *reinterpret_cast<const py::py_bool*>(any_value.addr());
     buf.write(as_pybool);
 }
 

@@ -20,6 +20,7 @@ namespace py::csv::parser {
 IMPORT_ARRAY_MODULE_SCOPE();
 
 void cell_parser::set_num_lines(std::size_t) {}
+void cell_parser::set_num_threads(int) {}
 
 namespace {
 // Allow us to configure the parser for a different l1dcache line size at compile time.
@@ -36,8 +37,11 @@ protected:
     std::vector<std::string> m_parsed;
 
 public:
-    std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t, std::string_view row, std::size_t offset) override {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t,
+                                        std::string_view row,
+                                        std::size_t offset,
+                                        int) override {
         auto& cell = m_parsed.emplace_back();
         return std::get<1>(detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
                                                        delim,
@@ -51,8 +55,11 @@ public:
 };
 }  // namespace
 
-std::tuple<std::size_t, bool>
-skip_parser::chomp(char delim, std::size_t, std::string_view row, std::size_t offset) {
+std::tuple<std::size_t, bool> skip_parser::chomp(char delim,
+                                                 std::size_t,
+                                                 std::string_view row,
+                                                 std::size_t offset,
+                                                 int) {
     return std::get<1>(detail::chomp_quoted_string([](char) {}, delim, row, offset));
 }
 
@@ -68,7 +75,8 @@ std::tuple<std::size_t, bool>
 runtime_fixed_width_string_parser::chomp(char delim,
                                          std::size_t ix,
                                          std::string_view row,
-                                         std::size_t offset) {
+                                         std::size_t offset,
+                                         int) {
     char* cell = &this->m_parsed[ix * m_itemsize];
     std::size_t cell_ix = 0;
     auto [mask, ret] = detail::chomp_quoted_string(
@@ -110,7 +118,8 @@ py::scoped_ref<> runtime_fixed_width_string_parser::move_to_python_tuple() && {
 std::tuple<std::size_t, bool> vlen_string_parser::chomp(char delim,
                                                         std::size_t ix,
                                                         std::string_view row,
-                                                        std::size_t offset) {
+                                                        std::size_t offset,
+                                                        int) {
     std::string& cell = this->m_parsed[ix];
     auto [mask, ret] = detail::chomp_quoted_string([&](char c) { cell.push_back(c); },
                                                    delim,
@@ -149,197 +158,457 @@ py::scoped_ref<> vlen_string_parser::move_to_python_tuple() && {
     return py::scoped_ref(PyTuple_Pack(2, values.get(), mask_array.get()));
 }
 
+std::unordered_map<std::string, detail::pcre2_code_ptr>
+    runtime_format_datetime_parser::format_map;
+
 namespace {
-using namespace py::cs::literals;
+detail::pcre2_code_ptr jit_compile(std::string pattern) {
+    int e;
+    std::size_t err_offset;
+    detail::pcre2_code_ptr code{
+        pcre2_compile(reinterpret_cast<PCRE2_SPTR>(pattern.data()),
+                      pattern.size(),
+                      PCRE2_ANCHORED | PCRE2_ENDANCHORED,
+                      &e,
+                      &err_offset,
+                      nullptr)};
+    if (!code) {
+        std::array<char, 4096> buf;
+        int size = pcre2_get_error_message(e,
+                                           reinterpret_cast<PCRE2_UCHAR*>(buf.data()),
+                                           buf.size());
+        std::string_view err_msg;
+        if (size < 0) {
+            using namespace std::literals;
 
-template<typename CheckedPatterns, typename... Ts>
-struct format_type_map_constructor_helper;
-
-template<typename... CheckedPatterns,
-         typename Pattern,
-         typename Template,
-         typename... Tail>
-struct format_type_map_constructor_helper<std::tuple<CheckedPatterns...>,
-                                          std::pair<Pattern, Template>,
-                                          Tail...> {
-    template<typename V>
-    static void f(V& out, std::string_view format) {
-        auto as_array = py::cs::to_array(Pattern{});
-        std::string_view viewed(as_array.data());
-
-        if (format == viewed) {
-            out = Template{};
+            err_msg = " <failed to get error message>"sv;
         }
         else {
-            format_type_map_constructor_helper<std::tuple<CheckedPatterns..., Pattern>,
-                                               Tail...>::f(out, format);
+            err_msg = std::string_view{buf.data(), static_cast<std::size_t>(size)};
         }
+        throw util::formatted_error<std::invalid_argument>("invalid regex: \"",
+                                                           pattern,
+                                                           "\" reason: ",
+                                                           err_msg);
     }
-};
-
-template<typename... Patterns>
-struct format_type_map_constructor_helper<std::tuple<Patterns...>> {
-private:
-    template<typename P>
-    struct quoted;
-
-    template<char... cs>
-    struct quoted<py::cs::char_sequence<cs...>> {
-        using type = py::cs::char_sequence<'"', cs..., '"'>;
-    };
-
-public:
-    template<typename V>
-    static void f(V&, std::string_view format) {
-        std::stringstream msg;
-        msg << "unknown format: \"" << format << "\", must one of [";
-        auto quoted_and_joined = py::cs::to_array(
-            py::cs::join(", "_cs, typename quoted<Patterns>::type{}...));
-        msg << std::string_view{quoted_and_joined.data()} << ']';
-        throw std::invalid_argument(msg.str());
+    if (pcre2_jit_compile(code.get(), PCRE2_JIT_COMPLETE)) {
+        throw std::runtime_error{"failed to jit compile pattern"};
     }
-};
 
-template<typename... Pairs>
-using format_type_map_intialize =
-    format_type_map_constructor_helper<std::tuple<>, Pairs...>;
+    return code;
+}
 }  // namespace
 
-column_spec::alloc_info skip_column::cell_parser_alloc_info() const {
-    return column_spec::alloc_info::make<skip_parser>();
+namespace detail {
+struct initialize_runtime_format_datetime_parser_formats {
+    initialize_runtime_format_datetime_parser_formats() {
+        using namespace std::literals;
+
+        std::string year_name = "yyyy";
+        std::string year_pattern = "(?<year>\\d{4})";
+
+        std::string month_name = "mm";
+        std::string month_pattern = "(?<month>\\d{1,2})";
+
+        std::string day_name = "dd";
+        std::string day_pattern = "(?<day>\\d{1,2})";
+
+        std::array time_names = {""s, " hh:mm:ss"s, " hh:mm:ss tz"s};
+        std::array time_patterns = {
+            ""s,
+            "( |T)(?<hour>\\d{2}):(?<min>\\d{2}):(?<sec>\\d{2})(.(?<frac_sec>\\d{1,9}))?"s,
+            "( |T)(?<hour>\\d{2}):(?<min>\\d{2}):(?<sec>\\d{2})(.(?<frac_sec>\\d{1,9}))?"
+            "(?<offset_sign>\\+|-)(?<offset_h>\\d{2}):?(?<offset_m>\\d{2})"s};
+
+        std::array name_delims = {'-', '/', '.'};
+        std::array pattern_delims = {"-"s, "/"s, "\\."s};
+
+        for (const auto& [name_delim, pattern_delim] :
+             py::zip(name_delims, pattern_delims)) {
+            for (const auto& [time_name, time_pattern] :
+                 py::zip(time_names, time_patterns)) {
+
+                // yyyy-mm-dd
+                runtime_format_datetime_parser::format_map[year_name + name_delim +
+                                                           month_name + name_delim +
+                                                           day_name + time_name] =
+                    jit_compile(year_pattern + pattern_delim + month_pattern +
+                                pattern_delim + day_pattern + time_pattern);
+
+                // mm-dd-yyyy
+                runtime_format_datetime_parser::format_map[month_name + name_delim +
+                                                           day_name + name_delim +
+                                                           year_name + time_name] =
+                    jit_compile(month_pattern + pattern_delim + day_pattern +
+                                pattern_delim + year_pattern + time_pattern);
+
+                // dd-mm-yyyy
+                runtime_format_datetime_parser::format_map[day_name + name_delim +
+                                                           month_name + name_delim +
+                                                           year_name + time_name] =
+                    jit_compile(day_pattern + pattern_delim + month_pattern +
+                                pattern_delim + year_pattern + time_pattern);
+            }
+        }
+
+        // yyyymmdd
+        runtime_format_datetime_parser::format_map[year_name + month_name + day_name] =
+            jit_compile(year_pattern + month_pattern + day_pattern);
+    }
+} initialized_datetime_column_formats;
+}  // namespace detail
+
+namespace {
+/** Get the group index for a regex group named `name`.
+
+    @param code The compiled regex.
+    @param name The name of the group to look up.
+    @return The group index, or -1 if the group doesn't exist.
+ */
+int group_ix(const pcre2_code* code, const char* name) {
+    int res = pcre2_substring_number_from_name(code, reinterpret_cast<PCRE2_SPTR>(name));
+    if (res == PCRE2_ERROR_NOSUBSTRING) {
+        return -1;
+    }
+    if (res < 0) {
+        throw std::runtime_error{"failed to get group ix"};
+    }
+    return res;
 }
 
-cell_parser* skip_column::emplace_cell_parser(void* addr) const {
-    return new (addr) skip_parser{};
+/** Get the time since epoch for a date. This function checks that the month exists,
+    and the day is the month in the given year.
+
+    @param year The year.
+    @param month The 1-indexed month.
+    @param day The 1-indexed day.
+    @return The time since the unix epoch.
+ */
+std::chrono::nanoseconds checked_time_since_epoch(int year, int month, int day) {
+    if (month < 1 || month > 12) {
+        throw util::formatted_error<parse_error>("invalid month: ", month);
+    }
+    if (day < 1 ||
+        day > py::chrono::days_in_month[py::chrono::is_leapyear(year)][month - 1]) {
+        throw util::formatted_error<parse_error>(
+            "day is out range for month: month=", month, "; day=", day);
+    }
+
+    return py::chrono::time_since_epoch(year, month, day);
 }
 
-column_spec::alloc_info int8_column::cell_parser_alloc_info() const {
-    return column_spec::alloc_info::make<int8_parser>();
+/** Parse hour, minute, and second information. This function checks that the values are
+    in an appropriate range.
+
+    @param hour The hour of the time.
+    @param minute The minute of the time.
+    @param second The second of the time.
+    @return The time parsed as a duration.
+ */
+std::chrono::seconds checked_hour_minute_second(int hour, int minute, int second) {
+    if (hour > 23) {
+        throw util::formatted_error<parse_error>("hour is out of range: ", hour);
+    }
+    if (minute > 59) {
+        throw util::formatted_error<parse_error>("minute is out of range: ", minute);
+    }
+    if (second > 59) {
+        throw util::formatted_error<parse_error>("second is out of range: ", second);
+    }
+
+    return std::chrono::hours(hour) + std::chrono::minutes(minute) +
+           std::chrono::seconds(second);
 }
 
-cell_parser* int8_column::emplace_cell_parser(void* addr) const {
-    return new (addr) int8_parser{};
+/** Parse a string that is known to contain only digits [0-9] and is at least `ndigits` in
+    size.
+
+    @tparam The number of digits in the string.
+    @param cs The string containing only digits to parse.
+    @return The parsed integer value.
+ */
+template<std::size_t ndigits>
+int parse_int_fixed_string_unchecked(std::string_view cs) {
+    static_assert(ndigits > 0, "parse_int must be at least 1 char wide");
+
+    int result = 0;
+    for (std::size_t n = 0; n < ndigits; ++n) {
+        int c = cs[n] - '0';
+
+        result *= 10;
+        result += c;
+    }
+    return result;
 }
 
-column_spec::alloc_info int16_column::cell_parser_alloc_info() const {
-    return column_spec::alloc_info::make<int16_parser>();
+/** Parse a string that is known to contain only digits [0-9] and is either exactly
+    size 1 or size 2.
+
+    @param cs The string containing only digits to parse.
+    @return The parsed integer value.
+ */
+std::int64_t parse_int_flex_string_unchecked(std::string_view cs) {
+    std::int64_t result = cs[0] - '0';
+    if (cs.size() == 2) {
+        result *= 10;
+        result += cs[1] - '0';
+    }
+    return result;
 }
 
-cell_parser* int16_column::emplace_cell_parser(void* addr) const {
-    return new (addr) int16_parser{};
+/** Parse a string that is known to contain only digits [0-9].
+
+    @param cs The string containing only digits to parse.
+    @return The parsed integer value.
+ */
+std::int64_t parse_int_vlen_string_unchecked(std::string_view cs) {
+    int result = 0;
+    for (char c : cs) {
+        result *= 10;
+        result += c - '0';
+    }
+    return result;
+}
+}  // namespace
+
+const pcre2_code*
+runtime_format_datetime_parser::resolve_format(const std::string& format) {
+    auto search = runtime_format_datetime_parser::format_map.find(format);
+    if (search == runtime_format_datetime_parser::format_map.end()) {
+        throw util::formatted_error<std::invalid_argument>("unknown datetime format: ",
+                                                           format);
+    }
+
+    return search->second.get();
 }
 
-column_spec::alloc_info int32_column::cell_parser_alloc_info() const {
-    return column_spec::alloc_info::make<int32_parser>();
+runtime_format_datetime_parser::runtime_format_datetime_parser(const std::string& format)
+    : runtime_format_datetime_parser::runtime_format_datetime_parser(
+          resolve_format(format)) {}
+
+runtime_format_datetime_parser::runtime_format_datetime_parser(const pcre2_code* code)
+    : m_code(code) {
+    m_year_group = group_ix(m_code, "year");
+    m_month_group = group_ix(m_code, "month");
+    m_day_group = group_ix(m_code, "day");
+    if (!(m_year_group > 0 && m_month_group > 0 && m_day_group > 0)) {
+        throw std::invalid_argument{"missing year, month, or day component in pattern: "};
+    }
+
+    m_hour_group = group_ix(m_code, "hour");
+    m_min_group = group_ix(m_code, "min");
+    m_sec_group = group_ix(m_code, "sec");
+    m_frac_sec_group = group_ix(m_code, "frac_sec");
+
+    m_offset_sign_group = group_ix(m_code, "offset_sign");
+    m_offset_h_group = group_ix(m_code, "offset_h");
+    m_offset_m_group = group_ix(m_code, "offset_m");
+
+    if (m_offset_sign_group > 0 && !(m_offset_h_group > 0 && m_offset_m_group > 0)) {
+        throw std::invalid_argument{
+            "offset_sign is provided but not offset_h or offset_m"};
+    }
+
+    if (m_hour_group > 0) {
+        if (!(m_min_group > 0 && m_sec_group > 0 && m_frac_sec_group > 0)) {
+            throw std::invalid_argument{"hour provided but not min, sec, or frac_sec"};
+        }
+        if (m_offset_sign_group > 0) {
+            m_parse_func = parse_func::datetime_tz;
+        }
+        else {
+            m_parse_func = parse_func::datetime;
+        }
+    }
+    else {
+        if (m_offset_sign_group > 0) {
+            throw std::invalid_argument{"cannot have tz offset and no time"};
+        }
+        m_parse_func = parse_func::date;
+    }
 }
 
-cell_parser* int32_column::emplace_cell_parser(void* addr) const {
-    return new (addr) int32_parser{};
+void runtime_format_datetime_parser::set_num_threads(int num_threads) {
+    m_thread_state.resize(num_threads);
+    for (thread_state& st : m_thread_state) {
+        st.match_context = detail::pcre2_match_context_ptr{
+            pcre2_match_context_create(nullptr)};
+        st.match_data = detail::pcre2_match_data_ptr{
+            pcre2_match_data_create_from_pattern(m_code, nullptr)};
+
+        if (!(st.match_context && st.match_data)) {
+            throw std::bad_alloc{};
+        }
+    }
 }
 
-column_spec::alloc_info int64_column::cell_parser_alloc_info() const {
-    return column_spec::alloc_info::make<int64_parser>();
+namespace {
+/** Get a string view over a matched component of a regex.
+
+    @param sub The subject of the regex match.
+    @param ovector The output vector from the match results.
+    @param ix The group index.
+    @return The view over the subject of the match. An empty view is returned if the
+            section wasn't matched.
+ */
+std::string_view view_group(std::string_view sub, std::size_t* ovector, int ix) {
+    std::size_t start = ovector[2 * ix];
+    if (start == sub.npos) {
+        return {};
+    }
+
+    std::size_t end = ovector[2 * ix + 1];
+    std::size_t size = end - start;
+    return sub.substr(start, size);
+}
+}  // namespace
+
+py::datetime64ns runtime_format_datetime_parser::parse_date(std::size_t* ovector,
+                                                            std::string_view cell) const {
+    return py::datetime64ns{checked_time_since_epoch(
+        parse_int_fixed_string_unchecked<4>(view_group(cell, ovector, m_year_group)),
+        parse_int_flex_string_unchecked(view_group(cell, ovector, m_month_group)),
+        parse_int_flex_string_unchecked(view_group(cell, ovector, m_day_group)))};
 }
 
-cell_parser* int64_column::emplace_cell_parser(void* addr) const {
-    return new (addr) int64_parser{};
+py::datetime64ns
+runtime_format_datetime_parser::parse_datetime(std::size_t* ovector,
+                                               std::string_view cell) const {
+    std::chrono::nanoseconds time = checked_hour_minute_second(
+        parse_int_flex_string_unchecked(view_group(cell, ovector, m_hour_group)),
+        parse_int_flex_string_unchecked(view_group(cell, ovector, m_min_group)),
+        parse_int_flex_string_unchecked(view_group(cell, ovector, m_sec_group)));
+    std::string_view frac_sec = view_group(cell, ovector, m_frac_sec_group);
+    if (frac_sec.size()) {
+        std::chrono::nanoseconds ns = std::chrono::nanoseconds{
+            parse_int_vlen_string_unchecked(frac_sec)};
+        std::ptrdiff_t digits = frac_sec.size();
+        ns *= std::pow(10, 9 - digits);
+        time += ns;
+    }
+
+    return parse_date(ovector, cell) + time;
+}
+
+py::datetime64ns
+runtime_format_datetime_parser::parse_datetime_tz(std::size_t* ovector,
+                                                  std::string_view cell) const {
+    auto offset = std::chrono::hours{parse_int_fixed_string_unchecked<2>(
+                      view_group(cell, ovector, m_offset_h_group))} +
+                  std::chrono::minutes{parse_int_fixed_string_unchecked<2>(
+                      view_group(cell, ovector, m_offset_m_group))};
+
+    py::datetime64ns out = parse_datetime(ovector, cell);
+    if (view_group(cell, ovector, m_offset_sign_group)[0] == '+') {
+        out += offset;
+    }
+    else {
+        out -= offset;
+    }
+    return out;
+}
+
+std::tuple<std::size_t, bool> runtime_format_datetime_parser::chomp(char delim,
+                                                                    std::size_t ix,
+                                                                    std::string_view row,
+                                                                    std::size_t offset,
+                                                                    int thread_ix) {
+    auto [cell, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
+    if (!cell.size()) {
+        return {consumed, more};
+    }
+
+    thread_state& st = m_thread_state[thread_ix];
+
+    int r = pcre2_jit_match(m_code,
+                            reinterpret_cast<PCRE2_SPTR>(cell.data()),
+                            cell.size(),
+                            0,
+                            PCRE2_ANCHORED | PCRE2_ENDANCHORED,
+                            st.match_data.get(),
+                            st.match_context.get());
+    if (r < 0) {
+        if (r == PCRE2_ERROR_NOMATCH) {
+            throw util::formatted_error<parse_error>("failed to parse datetime from: ",
+                                                     cell);
+        }
+        throw std::runtime_error{"failed to match regex"};
+    }
+
+    std::size_t* ovector = pcre2_get_ovector_pointer(st.match_data.get());
+
+    this->m_mask[ix] = true;
+    py::datetime64ns& val = this->m_parsed[ix];
+    switch (m_parse_func) {
+    case parse_func::date:
+        val = parse_date(ovector, cell);
+        break;
+    case parse_func::datetime:
+        val = parse_datetime(ovector, cell);
+        break;
+    case parse_func::datetime_tz:
+        val = parse_datetime_tz(ovector, cell);
+        break;
+    default:
+        __builtin_unreachable();
+    }
+
+    return {consumed, more};
+}
+
+composed_column_spec::composed_column_spec(std::unique_ptr<column_spec>&& option)
+    : m_option(std::move(option)) {}
+
+column_spec::alloc_info composed_column_spec::cell_parser_alloc_info() const {
+    return m_option->cell_parser_alloc_info();
+}
+
+cell_parser* composed_column_spec::emplace_cell_parser(void* addr) const {
+    return m_option->emplace_cell_parser(addr);
 }
 
 float32_column::float32_column(std::string_view mode) {
-    format_type_map_intialize<
-        std::pair<decltype("fast"_cs), fast_float32_parser>,
-        std::pair<decltype("precise"_cs), precise_float32_parser>>::f(m_parser_template,
-                                                                      mode);
-}
+    using namespace std::literals;
 
-column_spec::alloc_info float32_column::cell_parser_alloc_info() const {
-    return std::visit(
-        [&](auto template_) {
-            return column_spec::alloc_info::make<decltype(template_)>();
-        },
-        m_parser_template);
-}
-
-cell_parser* float32_column::emplace_cell_parser(void* addr) const {
-    return std::visit([&](auto template_)
-                          -> cell_parser* { return new (addr) decltype(template_){}; },
-                      m_parser_template);
+    if (mode == "fast"sv) {
+        m_option = std::make_unique<fast_float32_column>();
+    }
+    else if (mode == "precise"sv) {
+        m_option = std::make_unique<precise_float32_column>();
+    }
+    else {
+        throw util::formatted_error<std::invalid_argument>(
+            "unknown format: \"", mode, "\", must be one of [\"fast\", \"precise\"]");
+    }
 }
 
 float64_column::float64_column(std::string_view mode) {
-    format_type_map_intialize<
-        std::pair<decltype("fast"_cs), fast_float64_parser>,
-        std::pair<decltype("precise"_cs), precise_float64_parser>>::f(m_parser_template,
-                                                                      mode);
+    using namespace std::literals;
+
+    if (mode == "fast"sv) {
+        m_option = std::make_unique<fast_float64_column>();
+    }
+    else if (mode == "precise"sv) {
+        m_option = std::make_unique<precise_float64_column>();
+    }
+    else {
+        throw util::formatted_error<std::invalid_argument>(
+            "unknown format: \"", mode, "\", must be one of [\"fast\", \"precise\"]");
+    }
 }
 
-column_spec::alloc_info float64_column::cell_parser_alloc_info() const {
-    return std::visit(
-        [&](auto template_) {
-            return column_spec::alloc_info::make<decltype(template_)>();
-        },
-        m_parser_template);
-}
-
-cell_parser* float64_column::emplace_cell_parser(void* addr) const {
-    return std::visit([&](auto template_)
-                          -> cell_parser* { return new (addr) decltype(template_){}; },
-                      m_parser_template);
-}
-
-datetime_column::datetime_column(std::string_view format) {
-    format_type_map_intialize<
-        std::pair<decltype("y-m-d"_cs), hyphen_ymd_date>,
-        std::pair<decltype("y-m-d h:m:s"_cs), hyphen_ymd_second>,
-        std::pair<decltype("y-m-d h:m:s.s"_cs), hyphen_ymd_nano>,
-        std::pair<decltype("y/m/d"_cs), slash_ymd_date>,
-        std::pair<decltype("y/m/d h:m:s"_cs), slash_ymd_second>,
-        std::pair<decltype("y/m/d h:m:s.s"_cs), slash_ymd_nano>,
-        std::pair<decltype("m/d/y"_cs), slash_mdy_date>,
-        std::pair<decltype("m/d/y h:m:s"_cs), slash_mdy_second>,
-        std::pair<decltype("m/d/y h:m:s.s"_cs), slash_mdy_nano>,
-        std::pair<decltype("d/m/y"_cs), slash_dmy_date>,
-        std::pair<decltype("d/m/y h:m:s"_cs), slash_dmy_second>,
-        std::pair<decltype("d/m/y h:m:s.s"_cs), slash_dmy_nano>>::f(m_parser_template,
-                                                                    format);
-}
+datetime_column::datetime_column(std::string_view format)
+    : m_code(runtime_format_datetime_parser::resolve_format(std::string{format})) {}
 
 column_spec::alloc_info datetime_column::cell_parser_alloc_info() const {
-    return std::visit(
-        [&](auto template_) {
-            return column_spec::alloc_info::make<decltype(template_)>();
-        },
-        m_parser_template);
+    return column_spec::alloc_info::make<runtime_format_datetime_parser>();
 }
 
 cell_parser* datetime_column::emplace_cell_parser(void* addr) const {
-    return std::visit([&](auto template_)
-                          -> cell_parser* { return new (addr) decltype(template_){}; },
-                      m_parser_template);
+    return new (addr) runtime_format_datetime_parser{m_code};
 }
 
-bool_column::bool_column(std::string_view format) {
-    format_type_map_intialize<
-        std::pair<decltype("0/1"_cs), bool_01_parser>,
-        std::pair<decltype("f/t"_cs), bool_ft_parser>,
-        std::pair<decltype("F/T"_cs), bool_FT_parser>,
-        std::pair<decltype("fF/tT"_cs),
-                  bool_ft_case_insensitive_parser>>::f(m_parser_template, format);
-}
-
-column_spec::alloc_info bool_column::cell_parser_alloc_info() const {
-    return std::visit(
-        [&](auto template_) {
-            return column_spec::alloc_info::make<decltype(template_)>();
-        },
-        m_parser_template);
-}
-
-cell_parser* bool_column::emplace_cell_parser(void* addr) const {
-    return std::visit([&](auto template_)
-                          -> cell_parser* { return new (addr) decltype(template_){}; },
-                      m_parser_template);
-}
+bool_column::bool_column(std::string_view) {}
 
 string_column::string_column(std::int64_t size) : m_size(size) {}
 
@@ -402,7 +671,8 @@ template<template<typename> typename ptr_type>
 void parse_row(std::size_t row,
                char delim,
                std::string_view data,
-               parser_types<ptr_type>& parsers) {
+               parser_types<ptr_type>& parsers,
+               int thread_ix) {
 
     std::size_t col = 0;
     std::size_t consumed = 0;
@@ -418,7 +688,8 @@ void parse_row(std::size_t row,
                                                      parsers.size());
         }
         try {
-            auto [new_consumed, new_more] = parser->chomp(delim, row, data, consumed);
+            auto [new_consumed,
+                  new_more] = parser->chomp(delim, row, data, consumed, thread_ix);
             consumed += new_consumed;
             more = new_more;
         }
@@ -442,14 +713,15 @@ void parse_lines(std::string_view data,
                  const std::vector<std::size_t>& line_sizes,
                  std::size_t line_end_size,
                  std::size_t offset,
-                 parser_types<ptr_type>& parsers) {
+                 parser_types<ptr_type>& parsers,
+                 int thread_ix) {
     std::size_t ix = offset;
     for (const auto& size : line_sizes) {
         auto row = data.substr(data_offset, size);
         LIBPY_CSV_PREFETCH(row.data() + size, 0, 0);
         LIBPY_CSV_PREFETCH(row.data() + size + l1dcache_line_size, 0, 0);
         LIBPY_CSV_PREFETCH(row.data() + size + 2 * l1dcache_line_size, 0, 0);
-        parse_row<ptr_type>(ix, delim, row, parsers);
+        parse_row<ptr_type>(ix, delim, row, parsers, thread_ix);
         data_offset += size + line_end_size;
         ++ix;
     }
@@ -464,10 +736,17 @@ void parse_lines_worker(std::mutex* exception_mutex,
                         const std::vector<std::size_t>* line_sizes,
                         std::size_t line_end_size,
                         std::size_t offset,
-                        parser_types<ptr_type>* parsers) {
+                        parser_types<ptr_type>* parsers,
+                        int thread_ix) {
     try {
-        parse_lines<ptr_type>(
-            data, delim, data_offset, *line_sizes, line_end_size, offset, *parsers);
+        parse_lines<ptr_type>(data,
+                              delim,
+                              data_offset,
+                              *line_sizes,
+                              line_end_size,
+                              offset,
+                              *parsers,
+                              thread_ix);
     }
     catch (const std::exception&) {
         std::lock_guard<std::mutex> guard(*exception_mutex);
@@ -636,6 +915,7 @@ void parse_from_header(std::string_view data,
 
     for (auto& parser : parsers) {
         parser->set_num_lines(lines);
+        parser->set_num_threads((line_sizes_per_thread.size() == 1) ? 1 : num_threads);
     }
 
     if (line_sizes_per_thread.size() == 1) {
@@ -645,7 +925,8 @@ void parse_from_header(std::string_view data,
                               line_sizes_per_thread[0],
                               line_ending.size(),
                               0,
-                              parsers);
+                              parsers,
+                              0);
     }
     else {
         std::mutex exception_mutex;
@@ -663,7 +944,8 @@ void parse_from_header(std::string_view data,
                                              &line_sizes_per_thread[n],
                                              line_ending.size(),
                                              start,
-                                             &parsers));
+                                             &parsers,
+                                             n));
             start += line_sizes_per_thread[n].size();
         }
 
@@ -678,14 +960,14 @@ void parse_from_header(std::string_view data,
 }
 
 template<typename T>
-PyObject* lookup_type() {
-    PyTypeObject* out = py::autoclass<T>::lookup_type();
+auto lookup_type() {
+    auto out = py::autoclass<T>::lookup_type();
     if (!out) {
         throw py::exception(PyExc_ValueError,
                             py::util::type_name<T>().get(),
                             " was not autoclassed");
     }
-    return reinterpret_cast<PyObject*>(out);
+    return out;
 }
 
 template<typename... Ts>
@@ -694,7 +976,8 @@ struct unbox_spec_helper;
 template<typename Head, typename... Tail>
 struct unbox_spec_helper<Head, Tail...> {
     static column_spec* f(PyObject* value) {
-        if (PyObject_IsInstance(value, lookup_type<Head>())) {
+        if (PyObject_IsInstance(value,
+                                reinterpret_cast<PyObject*>(lookup_type<Head>().get()))) {
             return &py::autoclass<Head>::unbox(value);
         }
         return unbox_spec_helper<Tail...>::f(value);
@@ -734,7 +1017,8 @@ std::string_view parse_header(std::string_view data,
 
     header_parser header_parser;
     for (auto [consumed, more] = std::make_tuple(0, true); more;) {
-        auto [new_consumed, new_more] = header_parser.chomp(delimiter, 0, line, consumed);
+        auto [new_consumed,
+              new_more] = header_parser.chomp(delimiter, 0, line, consumed, 0);
         consumed += new_consumed;
         more = new_more;
     }

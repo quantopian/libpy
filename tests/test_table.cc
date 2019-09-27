@@ -644,10 +644,7 @@ void expect_key_types(py::scoped_ref<> dict, PyTypeObject* expected_key_type) {
 TEST(table, to_python_dict_types) {
     using T = py::table<py::C<std::int64_t>("a"_cs), py::C<double>("b"_cs)>;
 
-    {
-        expect_key_types(T{}.to_python_dict(py::str_type::bytes),
-                         &PyBytes_Type);
-    }
+    { expect_key_types(T{}.to_python_dict(py::str_type::bytes), &PyBytes_Type); }
     {
         T table;
         expect_key_types(T{}.to_python_dict(py::str_type::str),
@@ -659,8 +656,7 @@ TEST(table, to_python_dict_types) {
     }
     {
         T table;
-        expect_key_types(T{}.to_python_dict(py::str_type::unicode),
-                         &PyUnicode_Type);
+        expect_key_types(T{}.to_python_dict(py::str_type::unicode), &PyUnicode_Type);
     }
 }
 

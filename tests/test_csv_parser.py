@@ -1,4 +1,5 @@
 import io
+from itertools import product
 import random
 import string
 import sys
@@ -361,9 +362,9 @@ DTYPES = sorted(set(MISSING_VALUES.keys()) - {np.dtype('datetime64[ns]')})
 COLNAMES = list(string.ascii_uppercase[:20])
 
 DTYPE_TO_COLUMN_SPEC = {
-    np.dtype('datetime64[D]'): cxx.DateTime(b'y-m-d'),
-    np.dtype('datetime64[s]'): cxx.DateTime(b'y-m-d h:m:s'),
-    np.dtype('datetime64[ns]'): cxx.DateTime(b'y-m-d h:m:s.s'),
+    np.dtype('datetime64[D]'): cxx.DateTime(b'yyyy-mm-dd'),
+    np.dtype('datetime64[s]'): cxx.DateTime(b'yyyy-mm-dd hh:mm:ss'),
+    np.dtype('datetime64[ns]'): cxx.DateTime(b'yyyy-mm-dd hh:mm:ss'),
     np.dtype('float64'): cxx.Float64(b'precise'),
     np.dtype('int8'): cxx.Int8(),
     np.dtype('S1'): cxx.String(1),
@@ -500,3 +501,239 @@ def test_empty_string_vs_missing_string_fixed():
 
         np.testing.assert_array_equal(expected_data, actual_data)
         np.testing.assert_array_equal(expected_mask, actual_mask)
+
+
+def test_yyyymmdd_date_format():
+    data = dedent(
+        """\
+        "a"
+        20140102
+        20141112
+        """,
+    ).encode()
+
+    schema = {
+        b'a': cxx.DateTime(b'yyyymmdd')
+    }
+
+    result = cxx.parse_csv(
+        data,
+        column_specs=schema,
+        delimiter=b',',
+        line_ending=b'\n',
+        num_threads=1,
+    )
+    expected_data = np.array(['2014-01-02', '2014-11-12'], dtype='M8[ns]')
+    expected_mask = np.array([True, True])
+
+    assert result.keys() == schema.keys()
+    data, mask = result[b'a']
+
+    np.testing.assert_array_equal(data, expected_data)
+    np.testing.assert_array_equal(mask, expected_mask)
+
+
+
+def test_combinatation_date_formats():
+    expected_scalar = np.datetime64('2014-01-02', 'ns')
+    year = '2014'
+    month_parts = ['01', '1']
+    day_parts = ['02', '2']
+    delims = ['-', '/', '.']
+
+    zip_delims = []
+    ymds = []
+    mdys = []
+    dmys = []
+
+    for month, day, delim in product(month_parts, day_parts, delims):
+        zip_delims.append(delim)
+        ymds.append(delim.join([year, month, day]))
+        mdys.append(delim.join([month, day, year]))
+        dmys.append(delim.join([day, month, year]))
+
+    expected_mask = np.array([True])
+    expected_data = np.array([expected_scalar])
+
+    for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
+        schema = {
+            b'ymd': cxx.DateTime(f'yyyy{delim}mm{delim}dd'.encode()),
+            b'mdy': cxx.DateTime(f'mm{delim}dd{delim}yyyy'.encode()),
+            b'dmy': cxx.DateTime(f'dd{delim}mm{delim}yyyy'.encode()),
+        }
+
+        data = dedent(
+            f"""\
+            "ymd","mdy","dmy"
+            {ymd},{mdy},{dmy}
+            """
+        ).encode()
+
+        result = cxx.parse_csv(
+            data,
+            column_specs=schema,
+            delimiter=b',',
+            line_ending=b'\n',
+            num_threads=1,
+        )
+
+        assert result.keys() == schema.keys()
+        for k, (data, mask) in result.items():
+            np.testing.assert_array_equal(data, expected_data)
+            np.testing.assert_array_equal(mask, expected_mask)
+
+
+def test_combinatation_datetime_formats():
+    expected_scalar = np.datetime64('2014-01-02 01:02:03', 'ns')
+    year = '2014'
+    month_parts = ['01', '1']
+    day_parts = ['02', '2']
+    delims = ['-', '/', '.']
+    time_parts = ['01:02:03', '01:02:03.0']
+
+    zip_delims = []
+    ymds = []
+    mdys = []
+    dmys = []
+
+    for m, d, t, delim in product(month_parts, day_parts, time_parts, delims):
+        zip_delims.append(delim)
+        ymds.append(delim.join([year, m, d]) + ' ' + t)
+        mdys.append(delim.join([m, d, year]) + ' ' + t)
+        dmys.append(delim.join([d, m, year]) + ' ' + t)
+
+    expected_mask = np.array([True])
+    expected_data = np.array([expected_scalar])
+
+    for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
+        schema = {
+            b'ymd': cxx.DateTime(f'yyyy{delim}mm{delim}dd hh:mm:ss'.encode()),
+            b'mdy': cxx.DateTime(f'mm{delim}dd{delim}yyyy hh:mm:ss'.encode()),
+            b'dmy': cxx.DateTime(f'dd{delim}mm{delim}yyyy hh:mm:ss'.encode()),
+        }
+
+        data = dedent(
+            f"""\
+            "ymd","mdy","dmy"
+            {ymd},{mdy},{dmy}
+            """
+        ).encode()
+
+        result = cxx.parse_csv(
+            data,
+            column_specs=schema,
+            delimiter=b',',
+            line_ending=b'\n',
+            num_threads=1,
+        )
+
+        assert result.keys() == schema.keys()
+        for k, (data, mask) in result.items():
+            np.testing.assert_array_equal(data, expected_data)
+            np.testing.assert_array_equal(mask, expected_mask)
+
+
+def test_combinatation_datetime_formats_ns_resolution():
+    expected_scalar = np.datetime64('2014-01-02 01:02:03.456789', 'ns')
+    year = '2014'
+    month_parts = ['01', '1']
+    day_parts = ['02', '2']
+    time_part = ' 01:02:03.456789'
+    delims = ['-', '/', '.']
+
+    zip_delims = []
+    ymds = []
+    mdys = []
+    dmys = []
+
+    for month, day, delim in product(month_parts, day_parts, delims):
+        zip_delims.append(delim)
+        ymds.append(delim.join([year, month, day]) + time_part)
+        mdys.append(delim.join([month, day, year]) + time_part)
+        dmys.append(delim.join([day, month, year]) + time_part)
+
+    expected_mask = np.array([True])
+    expected_data = np.array([expected_scalar])
+
+    for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
+        schema = {
+            b'ymd': cxx.DateTime(f'yyyy{delim}mm{delim}dd hh:mm:ss'.encode()),
+            b'mdy': cxx.DateTime(f'mm{delim}dd{delim}yyyy hh:mm:ss'.encode()),
+            b'dmy': cxx.DateTime(f'dd{delim}mm{delim}yyyy hh:mm:ss'.encode()),
+        }
+
+        data = dedent(
+            f"""\
+            "ymd","mdy","dmy"
+            {ymd},{mdy},{dmy}
+            """
+        ).encode()
+
+        result = cxx.parse_csv(
+            data,
+            column_specs=schema,
+            delimiter=b',',
+            line_ending=b'\n',
+            num_threads=1,
+        )
+
+        assert result.keys() == schema.keys()
+        for k, (data, mask) in result.items():
+            np.testing.assert_array_equal(data, expected_data)
+            np.testing.assert_array_equal(mask, expected_mask)
+
+
+def test_combinatation_datetime_tz_formats():
+    expected_scalar = np.datetime64('2014-01-02 06:07:08', 'ns')
+    year = '2014'
+    month_parts = ['01', '1']
+    day_parts = ['02', '2']
+    delims = ['-', '/', '.']
+    time_parts = ['01:37:08+04:30', '14:32:08.0-08:25']
+
+    zip_delims = []
+    ymds = []
+    mdys = []
+    dmys = []
+
+    for m, d, t, delim in product(month_parts, day_parts, time_parts, delims):
+        zip_delims.append(delim)
+        ymds.append(delim.join([year, m, d]) + ' ' + t)
+        mdys.append(delim.join([m, d, year]) + ' ' + t)
+        dmys.append(delim.join([d, m, year]) + ' ' + t)
+
+    expected_mask = np.array([True])
+    expected_data = np.array([expected_scalar])
+
+    for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
+        schema = {
+            b'ymd': cxx.DateTime(
+                f'yyyy{delim}mm{delim}dd hh:mm:ss tz'.encode(),
+            ),
+            b'mdy': cxx.DateTime(
+                f'mm{delim}dd{delim}yyyy hh:mm:ss tz'.encode(),
+            ),
+            b'dmy': cxx.DateTime(
+                f'dd{delim}mm{delim}yyyy hh:mm:ss tz'.encode(),
+            ),
+        }
+
+        data = dedent(
+            f"""\
+            "ymd","mdy","dmy"
+            {ymd},{mdy},{dmy}
+            """
+        ).encode()
+
+        result = cxx.parse_csv(
+            data,
+            column_specs=schema,
+            delimiter=b',',
+            line_ending=b'\n',
+            num_threads=1,
+        )
+
+        assert result.keys() == schema.keys()
+        for k, (data, mask) in result.items():
+            np.testing.assert_array_equal(data, expected_data)
+            np.testing.assert_array_equal(mask, expected_mask)

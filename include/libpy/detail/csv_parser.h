@@ -2,6 +2,9 @@
 
 #include <variant>
 
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
 #include "libpy/automethod.h"
 #include "libpy/datetime64.h"
 #include "libpy/exception.h"
@@ -113,17 +116,26 @@ public:
      */
     virtual void set_num_lines(std::size_t);
 
+    /** Initialize any data that depends on the number of threads.
+     */
+    virtual void set_num_threads(int);
+
     /** "chomp" text from a row and parse the given cell.
 
         @param delim The delimiter.
         @param row_ix The row number (0-indexed) being parsed.
         @param row The entire row being parsed.
         @param offset The offset into `row` where the cell starts.
+        @param thread_ix The thread index. This is used when a parser requires some thread
+               local storage.
         @return A tuple of the number of characters consumed from the row and a boolean
                 which is true if we expect there to be more columns to parse in this row.
      */
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t row_ix, std::string_view row, std::size_t offset) = 0;
+    virtual std::tuple<std::size_t, bool> chomp(char delim,
+                                                std::size_t row_ix,
+                                                std::string_view row,
+                                                std::size_t offset,
+                                                int thread_ix) = 0;
 
     /** Move the state of this column to a Python tuple of numpy arrays.
 
@@ -140,8 +152,11 @@ public:
  */
 class skip_parser : public cell_parser {
 public:
-    std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t, std::string_view row, std::size_t offset) override;
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t,
+                                        std::string_view row,
+                                        std::size_t offset,
+                                        int) override;
 };
 
 /** Base class for cell parsers that produce statically typed vectors of values.
@@ -217,8 +232,11 @@ class fundamental_parser : public typed_cell_parser<parse_result<scalar_parse>> 
 public:
     using type = typename typed_cell_parser<parse_result<scalar_parse>>::type;
 
-    std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        std::string_view row,
+                                        std::size_t offset,
+                                        int) override {
         const char* first = &row.data()[offset];
         const char* last;
         type parsed = scalar_parse(first, &last);
@@ -444,6 +462,31 @@ class fast_float32_parser : public detail::float_parser<detail::fast_strtod<floa
 class fast_float64_parser : public detail::float_parser<detail::fast_strtod<double>> {};
 
 namespace detail {
+struct pcre2_code_deleter {
+    inline void operator()(pcre2_code* p) const noexcept {
+        pcre2_code_free(p);
+    }
+};
+
+using pcre2_code_ptr = std::unique_ptr<pcre2_code, pcre2_code_deleter>;
+
+struct pcre2_match_context_deleter {
+    inline void operator()(pcre2_match_context* p) const noexcept {
+        pcre2_match_context_free(p);
+    }
+};
+
+using pcre2_match_context_ptr =
+    std::unique_ptr<pcre2_match_context, pcre2_match_context_deleter>;
+
+struct pcre2_match_data_deleter {
+    inline void operator()(pcre2_match_data* p) const noexcept {
+        pcre2_match_data_free(p);
+    }
+};
+
+using pcre2_match_data_ptr = std::unique_ptr<pcre2_match_data, pcre2_match_data_deleter>;
+
 inline std::tuple<std::string_view, std::size_t, bool>
 isolate_unquoted_cell(std::string_view row, std::size_t offset, char delim) {
     auto subrow = row.substr(offset);
@@ -460,255 +503,76 @@ isolate_unquoted_cell(std::string_view row, std::size_t offset, char delim) {
         size = consumed = subrow.size();
         more = false;
     }
-
     return {subrow.substr(0, size), consumed, more};
 }
 
-enum class datetime_resolution {
-    day,
-    second,
-    nanosecond,
-};
-
-template<typename parser_core>
-class datetime_parser : public typed_cell_parser<py::datetime64ns> {
-private:
-public:
-    std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
-        auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
-        if (!raw.size()) {
-            return {consumed, more};
-        }
-
-        constexpr bool expect_time = parser_core::resolution != datetime_resolution::day;
-        std::chrono::nanoseconds value =
-            std::apply(py::chrono::time_since_epoch,
-                       parser_core::parse_year_month_day(raw, expect_time));
-        if constexpr (expect_time) {
-            value += parser_core::parse_time(raw);
-        }
-
-        this->m_parsed[ix] = py::datetime64ns(value);
-        this->m_mask[ix] = true;
-        return {consumed, more};
-    }
-};
-
-using namespace py::cs::literals;
-
-template<typename format>
-struct datetime_parser_core;
-
-template<char ymd_sep,
-         char first,
-         char second,
-         char third,
-         datetime_resolution dt_resolution>
-class base_datetime_parser_core {
-public:
-    static constexpr bool is_valid_order_char(char c) {
-        return c == 'y' || c == 'm' || c == 'd';
-    }
-
-    static_assert(is_valid_order_char(first) && is_valid_order_char(second) &&
-                      is_valid_order_char(third),
-                  "invalid year month day ordering");
-
-    static constexpr datetime_resolution resolution = dt_resolution;
-
-private:
-    /** In order to validate the values, we always parse in year, month, day
-        order, but the actual datetime may be laid out in a different order, so
-        we need to know the offsets where the components begin as well as the
-        offsets for the two separators.
-     */
-    struct ymd_offsets {
-        int year;
-        int month;
-        int day;
-        int first_sep;
-        int second_sep;
-    };
-
-    static constexpr ymd_offsets offsets() {
-        switch (first) {
-        case 'y':
-            switch (second) {
-            case 'm':
-                return {0, 5, 8, 4, 7};
-            case 'd':
-                return {0, 8, 5, 4, 7};
-            }
-        case 'm':
-            switch (second) {
-            case 'y':
-                return {3, 0, 8, 2, 7};
-            case 'd':
-                return {6, 0, 3, 2, 5};
-            }
-        case 'd':
-            switch (second) {
-            case 'y':
-                return {3, 8, 0, 2, 7};
-            case 'm':
-                return {6, 3, 0, 2, 5};
-            }
-        }
-    }
-
-    template<std::size_t ndigits>
-    static int parse_int(std::string_view cs) {
-        static_assert(ndigits > 0, "parse_int must be at least 1 char wide");
-
-        int result = 0;
-        for (std::size_t n = 0; n < ndigits; ++n) {
-            int c = cs[n] - '0';
-
-            if (c < 0 || c > 9) {
-                throw util::formatted_error<parse_error>("invalid digit in int: ",
-                                                         cs.substr(ndigits));
-            }
-
-            result *= 10;
-            result += c;
-        }
-        return result;
-    }
-
-    template<typename... Cs>
-    static void expect_char(std::string_view raw, std::size_t ix, Cs... cs) {
-        if (((raw[ix] != cs) && ...)) {
-            throw util::formatted_error<parse_error>((sizeof...(cs) == 1)
-                                                         ? "expected \""
-                                                         : "expected one of: \"",
-                                                     cs...,
-                                                     "\" at index ",
-                                                     ix,
-                                                     ": ",
-                                                     raw);
-        }
-    }
-
-public:
-    static std::tuple<int, int, int> parse_year_month_day(std::string_view raw,
-                                                          bool expect_time) {
-        if (expect_time) {
-            if (raw.size() < 10) {
-                throw util::formatted_error<parse_error>(
-                    "date string is not at least 10 characters: ", raw);
-            }
-        }
-        else if (raw.size() != 10) {
-            throw util::formatted_error<parse_error>(
-                "date string is not exactly 10 characters: ", raw);
-        }
-
-        constexpr ymd_offsets off = offsets();
-        expect_char(raw, off.first_sep, ymd_sep);
-        expect_char(raw, off.second_sep, ymd_sep);
-
-        int year = parse_int<4>(raw.substr(off.year));
-        int month = parse_int<2>(raw.substr(off.month));
-        if (month < 1 || month > 12) {
-            throw util::formatted_error<parse_error>("month not in range [1, 12]: ", raw);
-        }
-
-        int day = parse_int<2>(raw.substr(off.day));
-        int max_day = py::chrono::days_in_month[py::chrono::is_leapyear(year)][month - 1];
-        if (day < 1 || day > max_day) {
-            throw util::formatted_error<parse_error>(
-                "day out of bounds for month (max=", max_day, "): ", raw);
-        }
-
-        return {year, month, day};
-    }
-
-    static std::chrono::nanoseconds parse_time(std::string_view raw) {
-        std::chrono::nanoseconds time(0);
-        if (raw.size() == 10) {
-            return time;
-        }
-        constexpr std::size_t no_fractional_second_size = 19;
-        if (resolution == datetime_resolution::second) {
-            if (raw.size() != no_fractional_second_size) {
-                throw util::formatted_error<parse_error>(
-                    "datetime string is not exactly 19 characters: ", raw);
-            }
-        }
-        else if (raw.size() < no_fractional_second_size) {
-            throw util::formatted_error<parse_error>(
-                "datetime string is not at least 19 characters: ", raw);
-        }
-
-        expect_char(raw, 10, ' ', 'T');
-        std::chrono::hours hours(parse_int<2>(raw.substr(11)));
-        if (hours < std::chrono::hours(0) || hours > std::chrono::hours(23)) {
-            throw util::formatted_error<parse_error>("hour not in range [0, 24): ", raw);
-        }
-        time += hours;
-
-        expect_char(raw, 13, ':');
-        std::chrono::minutes minutes(parse_int<2>(raw.substr(14)));
-        if (minutes < std::chrono::minutes(0) || minutes > std::chrono::minutes(59)) {
-            throw util::formatted_error<parse_error>("minutes not in range [0, 59): ",
-                                                     raw);
-        }
-        time += minutes;
-
-        expect_char(raw, 16, ':');
-        std::chrono::seconds seconds(parse_int<2>(raw.substr(17)));
-        if (seconds < std::chrono::seconds(0) || seconds > std::chrono::seconds(60)) {
-            throw util::formatted_error<parse_error>("seconds not in range [0, 60): ",
-                                                     raw);
-        }
-        time += seconds;
-
-        std::chrono::nanoseconds nanoseconds(0);
-        if (resolution == datetime_resolution::nanosecond &&
-            raw.size() > no_fractional_second_size) {
-            expect_char(raw, 19, '.');
-            const char* end;
-            const char* begin = raw.begin() + 20;
-            nanoseconds = std::chrono::nanoseconds(
-                detail::fast_unsigned_strtol<int>(begin, &end));
-            if (end != raw.end()) {
-                throw util::formatted_error<parse_error>(
-                    "couldn't parse fractional seconds component: ", raw);
-            }
-            std::ptrdiff_t digits = end - begin;
-            nanoseconds *= std::pow(10, 9 - digits);
-        }
-        time += nanoseconds;
-
-        return time;
-    }
-};
+class initialize_runtime_format_datetime_parser_formats;
 }  // namespace detail
 
-class basic_date_parser
-    : public detail::datetime_parser<
-          detail::base_datetime_parser_core<'-',
-                                            'y',
-                                            'm',
-                                            'd',
-                                            detail::datetime_resolution::day>> {};
+class runtime_format_datetime_parser : public typed_cell_parser<py::datetime64ns> {
+private:
+    struct thread_state {
+        detail::pcre2_match_context_ptr match_context;
+        detail::pcre2_match_data_ptr match_data;
+    };
 
-class basic_datetime_seconds_parser
-    : public detail::datetime_parser<
-          detail::base_datetime_parser_core<'-',
-                                            'y',
-                                            'm',
-                                            'd',
-                                            detail::datetime_resolution::second>> {};
+    enum class parse_func {
+        date,
+        datetime,
+        datetime_tz,
+    };
 
-class basic_datetime_nanoseconds_parser
-    : public detail::datetime_parser<
-          detail::base_datetime_parser_core<'-',
-                                            'y',
-                                            'm',
-                                            'd',
-                                            detail::datetime_resolution::nanosecond>> {};
+private:
+    friend class detail::initialize_runtime_format_datetime_parser_formats;
+
+    // global map from format string to regex
+    static std::unordered_map<std::string, detail::pcre2_code_ptr> format_map;
+
+private:
+    // borrowed reference out of `format_map`
+    const pcre2_code* m_code;
+    std::vector<thread_state> m_thread_state;
+
+    int m_year_group;
+    int m_month_group;
+    int m_day_group;
+    int m_hour_group;
+    int m_min_group;
+    int m_sec_group;
+    int m_frac_sec_group;
+    int m_offset_sign_group;
+    int m_offset_h_group;
+    int m_offset_m_group;
+
+    parse_func m_parse_func;
+
+    py::datetime64ns parse_date(std::size_t* ovector, std::string_view cell) const;
+    py::datetime64ns parse_datetime(std::size_t* ovector, std::string_view cell) const;
+    py::datetime64ns parse_datetime_tz(std::size_t* ovector, std::string_view cell) const;
+
+    friend class datetime_column;
+
+    /** resolve a string into a borrowed reference to the compiled pattern.
+
+        @param format The format string.
+        @return The compiled pattern. If no such pattern exists, an exception is thrown.
+    */
+    static const pcre2_code* resolve_format(const std::string& format);
+
+    // private constructor for `datetime_column` to use
+    runtime_format_datetime_parser(const pcre2_code* pattern);
+
+public:
+    runtime_format_datetime_parser(const std::string& format);
+
+    void set_num_threads(int) override;
+
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        std::string_view row,
+                                        std::size_t offset,
+                                        int thread_ix) override;
+};
 
 namespace detail {
 template<typename falses, typename trues>
@@ -720,8 +584,11 @@ private:
     }
 
 public:
-    std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        std::string_view row,
+                                        std::size_t offset,
+                                        int) override {
         auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
         if (raw.size() == 0) {
             return {consumed, more};
@@ -772,8 +639,11 @@ public:
 
     virtual void set_num_lines(std::size_t nrows) override;
 
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override;
+    virtual std::tuple<std::size_t, bool> chomp(char delim,
+                                                std::size_t ix,
+                                                std::string_view row,
+                                                std::size_t offset,
+                                                int) override;
 
     virtual py::scoped_ref<> move_to_python_tuple() && override;
 };
@@ -849,8 +719,11 @@ chomp_quoted_string(F&& f, char delim, std::string_view row, std::size_t offset)
 template<std::size_t itemsize>
 class fixed_width_string_parser : public typed_cell_parser<std::array<char, itemsize>> {
 public:
-    std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override {
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        std::string_view row,
+                                        std::size_t offset,
+                                        int) override {
         auto& cell = this->m_parsed[ix];
         std::size_t cell_ix = 0;
         auto [mask, ret] = detail::chomp_quoted_string(
@@ -869,177 +742,77 @@ public:
 
 class vlen_string_parser : public typed_cell_parser<std::string> {
 public:
-    virtual std::tuple<std::size_t, bool>
-    chomp(char delim, std::size_t ix, std::string_view row, std::size_t offset) override;
+    virtual std::tuple<std::size_t, bool> chomp(char delim,
+                                                std::size_t ix,
+                                                std::string_view row,
+                                                std::size_t offset,
+                                                int) override;
 
     virtual py::scoped_ref<> move_to_python_tuple() && override;
 };
 
+template<typename Parser>
+class simple_column_spec : public column_spec {
+public:
+    virtual column_spec::alloc_info cell_parser_alloc_info() const override {
+        return column_spec::alloc_info::make<Parser>();
+    }
+
+    virtual cell_parser* emplace_cell_parser(void* addr) const override {
+        return new (addr) Parser{};
+    }
+};
+
+class composed_column_spec : public column_spec {
+protected:
+    std::unique_ptr<column_spec> m_option;
+
+public:
+    composed_column_spec() = default;
+    composed_column_spec(std::unique_ptr<column_spec>&& option);
+
+    virtual column_spec::alloc_info cell_parser_alloc_info() const override;
+    virtual cell_parser* emplace_cell_parser(void* addr) const override;
+};
+
 /** Column spec for indicating that a column should be skipped.
  */
-class skip_column : public column_spec {
+using skip_column = simple_column_spec<skip_parser>;
+
+using int8_column = simple_column_spec<int8_parser>;
+using int16_column = simple_column_spec<int16_parser>;
+using int32_column = simple_column_spec<int32_parser>;
+using int64_column = simple_column_spec<int64_parser>;
+
+using precise_float32_column = simple_column_spec<precise_float32_parser>;
+using fast_float32_column = simple_column_spec<fast_float32_parser>;
+class float32_column : public composed_column_spec {
 public:
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
+    float32_column(std::string_view);
 };
 
-class int8_column : public column_spec {
+using precise_float64_column = simple_column_spec<precise_float64_parser>;
+using fast_float64_column = simple_column_spec<fast_float64_parser>;
+class float64_column : public composed_column_spec {
 public:
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
-};
-
-class int16_column : public column_spec {
-public:
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
-};
-
-class int32_column : public column_spec {
-public:
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
-};
-
-class int64_column : public column_spec {
-public:
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
-};
-
-class float32_column : public column_spec {
-private:
-    std::variant<fast_float32_parser, precise_float32_parser> m_parser_template;
-
-public:
-    float32_column(std::string_view mode);
-
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
-};
-
-class float64_column : public column_spec {
-private:
-    std::variant<fast_float64_parser, precise_float64_parser> m_parser_template;
-
-public:
-    float64_column(std::string_view mode);
-
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
+    float64_column(std::string_view);
 };
 
 class datetime_column : public column_spec {
 private:
-    using hyphen_ymd_date = detail::datetime_parser<
-        detail::base_datetime_parser_core<'-',
-                                          'y',
-                                          'm',
-                                          'd',
-                                          detail::datetime_resolution::day>>;
-    using hyphen_ymd_second = detail::datetime_parser<
-        detail::base_datetime_parser_core<'-',
-                                          'y',
-                                          'm',
-                                          'd',
-                                          detail::datetime_resolution::second>>;
-    using hyphen_ymd_nano = detail::datetime_parser<
-        detail::base_datetime_parser_core<'-',
-                                          'y',
-                                          'm',
-                                          'd',
-                                          detail::datetime_resolution::nanosecond>>;
-
-    using slash_ymd_date = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'y',
-                                          'm',
-                                          'd',
-                                          detail::datetime_resolution::day>>;
-    using slash_ymd_second = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'y',
-                                          'm',
-                                          'd',
-                                          detail::datetime_resolution::second>>;
-    using slash_ymd_nano = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'y',
-                                          'm',
-                                          'd',
-                                          detail::datetime_resolution::nanosecond>>;
-
-    using slash_mdy_date = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'm',
-                                          'd',
-                                          'y',
-                                          detail::datetime_resolution::day>>;
-    using slash_mdy_second = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'm',
-                                          'd',
-                                          'y',
-                                          detail::datetime_resolution::second>>;
-    using slash_mdy_nano = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'm',
-                                          'd',
-                                          'y',
-                                          detail::datetime_resolution::nanosecond>>;
-
-    using slash_dmy_date = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'd',
-                                          'm',
-                                          'y',
-                                          detail::datetime_resolution::day>>;
-    using slash_dmy_second = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'd',
-                                          'm',
-                                          'y',
-                                          detail::datetime_resolution::second>>;
-    using slash_dmy_nano = detail::datetime_parser<
-        detail::base_datetime_parser_core<'/',
-                                          'd',
-                                          'm',
-                                          'y',
-                                          detail::datetime_resolution::nanosecond>>;
-    std::variant<hyphen_ymd_date,
-                 hyphen_ymd_second,
-                 hyphen_ymd_nano,
-                 slash_ymd_date,
-                 slash_ymd_second,
-                 slash_ymd_nano,
-                 slash_mdy_date,
-                 slash_mdy_second,
-                 slash_mdy_nano,
-                 slash_dmy_date,
-                 slash_dmy_second,
-                 slash_dmy_nano>
-        m_parser_template;
+    // borrowed reference into `runtime_format_datetime_parser::format_map`
+    const pcre2_code* m_code;
 
 public:
-    datetime_column(std::string_view format);
+    datetime_column(std::string_view);
 
     column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
+    cell_parser* emplace_cell_parser(void* addr) const override;
 };
 
-class bool_column : public column_spec {
-private:
-    std::variant<bool_01_parser,
-                 bool_ft_parser,
-                 bool_FT_parser,
-                 bool_ft_case_insensitive_parser>
-        m_parser_template;
-
+class bool_column : public composed_column_spec {
 public:
-    bool_column(std::string_view format);
-
-    column_spec::alloc_info cell_parser_alloc_info() const override;
-    cell_parser* emplace_cell_parser(void*) const override;
+    bool_column(std::string_view);
 };
 
 class string_column : public column_spec {

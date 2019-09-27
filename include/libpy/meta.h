@@ -77,7 +77,7 @@ struct print_t;
     It doesn't matter what member is requested, `::a` is chosen because it is short and
     easy to type, any other name will work.
  */
-template<auto>
+template<const auto&>
 struct print_v;
 
 /** Remove reference then cv-qualifiers.
@@ -261,4 +261,65 @@ DEFINE_UNOP(~, inv)
 
 #undef DEFINE_UNOP
 }  // namespace op
+
+namespace detail {
+/** Recursive base case for flattening a tuple that forms a deep right tree. For example:
+
+    (0, (1, (2, (3, (4, 5))))) -> (0, 1, 2, 3, 4, 5)
+
+    @param t The tree to flatten.
+    @return The flat tuple.
+ */
+template<typename T>
+constexpr auto flatten_right_tree(const T& v) noexcept {
+    return std::make_tuple(v);
+}
+
+/** Flatten a tuple that forms a deep right tree. For example:
+
+    (0, (1, (2, (3, (4, 5))))) -> (0, 1, 2, 3, 4, 5)
+
+    @param t The tree to flatten.
+    @return The flat tuple.
+ */
+template<typename L, typename R>
+constexpr auto flatten_right_tree(const std::tuple<L, R>& t) noexcept {
+    const auto& [l, r] = t;
+    return std::tuple_cat(std::make_tuple(l), flatten_right_tree(r));
+}
+}  // namespace detail
+
+/** Cartesian product of two `std::tuple` objects.
+
+    @param a The first tuple.
+    @param b The second tuple.
+    @return A `std::tuple` of length 2 tuples containing the pairwise combinations from
+            `a` and `b`.
+ */
+template<typename A, typename B>
+constexpr auto tuple_prod(const A& a, const B& b) noexcept {
+    return std::apply(
+        [&](const auto&... as) {
+            return std::tuple_cat(std::apply(
+                [&](const auto& a_scalar, const auto&... bs) {
+                    return std::make_tuple(std::make_tuple(a_scalar, bs)...);
+                },
+                std::tuple_cat(std::make_tuple(as), b))...);
+        },
+        a);
+}
+
+/** Cartesian product of two or more `std::tuple` objects.
+
+    @param head The first tuple.
+    @param tail The rest of the tuples.
+    @return A `std::tuple` of length `sizeof...(tail) + 1` tuples containing the n-wise
+            combinations from each input tuple.
+ */
+template<typename Head, typename... Tail>
+constexpr auto tuple_prod(const Head& head, const Tail&... tail) noexcept {
+    return std::apply(
+        [](auto... ts) { return std::make_tuple(detail::flatten_right_tree(ts)...); },
+        tuple_prod(head, tuple_prod(tail...)));
+}
 }  // namespace py::meta

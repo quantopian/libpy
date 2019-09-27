@@ -10,23 +10,24 @@ RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
 RUN add-apt-repository ppa:deadsnakes/ppa
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update && apt-get install -y \
+    clang-tools-6.0 \
     doxygen \
     g++-8 \
     gcc-8 \
-    clang-tools-6.0 \
     gfortran \
     git \
     libatlas-base-dev \
     libblas-dev \
     libffi-dev \
+    libpcre2-dev \
     libsparsehash-dev \
     libssl-dev \
     make \
     openssh-client \
     python-dev \
+    python-tox \
     python3.6-dev \
     python3.6-venv \
-    python-tox \
     tzdata \
     util-linux \
     valgrind \

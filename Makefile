@@ -51,7 +51,7 @@ else
 	CXXFLAGS += -fstack-protector-strong
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
-	LDFLAGS += $(shell $(PYTHON)-config --ldflags)
+	LDFLAGS += $(shell $(PYTHON)-config --ldflags) -lpcre2-8
 	LD_PRELOAD_VAR := LD_PRELOAD
 endif
 
@@ -72,6 +72,17 @@ ifneq ($(OPTLEVEL),0)
 	CXXFLAGS += -flto
 	LDFLAGS += -flto
 endif
+
+GCC_TIME_REPORT ?= 0
+ifneq ($(GCC_TIME_REPORT),0)
+	CXXFLAGS += -ftime-report -ftime-report-details
+endif
+
+GCC_TRACE ?= 0
+ifneq ($(GCC_TRACE),0)
+	CXXFLAGS += -Q
+endif
+
 
 SANITIZE_UNDEFINED ?= 0
 ifneq ($(SANITIZE_UNDEFINED),0)
