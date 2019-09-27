@@ -475,13 +475,34 @@ void parse_lines_worker(std::mutex* exception_mutex,
     }
 }
 
+/** Split a buffer into a vector of lines.
+
+    The lines are to be processed in order, so only the line lengths are recorded. The
+    line lengths do *not* include the length of the line delimiter.
+
+    The in-out parameter `pos_ptr` indicates the index into `data` to start counting.
+    To ensure consistent counting multithreaded counting, line searching will begin
+    by looking backwards from `*pos_ptr` to find the previous line delimiter, then lines
+    will be counted until the end of the line is > `end_ix`. `pos_ptr` will be overwritten
+    with the new starting location.
+
+    @param lines The output vector for the lines.
+    @param data The buffer to cut into lines.
+    @param pos_ptr The in-out param indicating where to start searching for lines. This
+           will be overwritten to be the starting point from which to interpret `lines`.
+    @param end_ix The end ix for searching for lines.
+    @param line_ending The line ending to split on.
+    @param handle_tail Should we count anything after the last newline? This should be
+           true for the invocation that is counting up to the end of the buffer.
+ */
 void split_into_lines_loop(std::vector<std::size_t>& lines,
                            std::string_view data,
                            std::string_view::size_type* pos_ptr,
                            std::string_view::size_type end_ix,
                            std::string_view line_ending,
                            bool handle_tail) {
-    // crawl the start back to the beginning of the line that we begin inside
+    // Crawl the start back to the beginning of the line that we begin inside. This is
+    // done by searching for the newline strictly before `*pos_ptr`.
     auto line_start = data.substr(0, *pos_ptr).rfind(line_ending);
     if (line_start == std::string_view::npos) {
         // there is no newline prior to `*pos_ptr`, so we must be in the middle
