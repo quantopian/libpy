@@ -205,9 +205,11 @@ TEST_P(parse_csv, parse_simple) {
 
     auto int64_parser = std::make_shared<py::csv::parser::int64_parser>();
     auto float64_parser = std::make_shared<py::csv::parser::precise_float64_parser>();
-    auto date_parser = std::make_shared<py::csv::parser::basic_date_parser>();
-    auto datetime_parser =
-        std::make_shared<py::csv::parser::basic_datetime_seconds_parser>();
+    auto date_parser = std::make_shared<py::csv::parser::runtime_format_datetime_parser>(
+        "yyyy-mm-dd");
+    auto runtime_format_datetime_parser =
+        std::make_shared<py::csv::parser::runtime_format_datetime_parser>(
+            "yyyy-mm-dd hh:mm:ss");
     auto string_parser =
         std::make_shared<py::csv::parser::fixed_width_string_parser<4>>();
 
@@ -217,7 +219,8 @@ TEST_P(parse_csv, parse_simple) {
           std::static_pointer_cast<py::csv::parser::cell_parser>(float64_parser)},
          {"date", std::static_pointer_cast<py::csv::parser::cell_parser>(date_parser)},
          {"datetime",
-          std::static_pointer_cast<py::csv::parser::cell_parser>(datetime_parser)},
+          std::static_pointer_cast<py::csv::parser::cell_parser>(
+              runtime_format_datetime_parser)},
          {"string",
           std::static_pointer_cast<py::csv::parser::cell_parser>(string_parser)}};
 
@@ -252,8 +255,8 @@ TEST_P(parse_csv, parse_simple) {
     EXPECT_EQ(actual_date, expected_date);
     EXPECT_EQ(actual_date_mask, expected_mask);
 
-    auto [actual_datetime,
-          actual_datetime_mask] = std::move(*datetime_parser).move_to_tuple();
+    auto [actual_datetime, actual_datetime_mask] =
+        std::move(*runtime_format_datetime_parser).move_to_tuple();
     EXPECT_EQ(actual_datetime, expected_datetime);
     EXPECT_EQ(actual_datetime_mask, expected_mask);
 
