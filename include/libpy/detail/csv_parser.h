@@ -593,8 +593,37 @@ public:
         if (raw.size() == 0) {
             return {consumed, more};
         }
+
+        auto raise_invalid = [&]() {
+            std::string valid_values;
+            for (char c : py::cs::to_array(falses{})) {
+                if (c) {
+                    valid_values.push_back('"');
+                    valid_values.push_back(c);
+                    valid_values.push_back('"');
+                    valid_values.push_back(',');
+                    valid_values.push_back(' ');
+                }
+            }
+            for (char c : py::cs::to_array(trues{})) {
+                if (c) {
+                    valid_values.push_back('"');
+                    valid_values.push_back(c);
+                    valid_values.push_back('"');
+                    valid_values.push_back(',');
+                    valid_values.push_back(' ');
+                }
+            }
+            valid_values.pop_back();
+            valid_values.pop_back();
+            throw util::formatted_error<parse_error>("invalid boolean value: \"",
+                                                     raw,
+                                                     "\", valid values: {",
+                                                     valid_values,
+                                                     '}');
+        };
         if (raw.size() != 1) {
-            throw util::formatted_error<parse_error>("bool is not 0 or 1: ", raw);
+            raise_invalid();
         }
 
         bool value;
@@ -605,7 +634,7 @@ public:
             value = true;
         }
         else {
-            throw util::formatted_error<parse_error>("bool is not 0 or 1: ", raw);
+            raise_invalid();
         }
 
         this->m_parsed[ix] = value;
@@ -615,18 +644,74 @@ public:
 };
 }  // namespace detail
 
-class bool_01_parser : public detail::single_char_bool_parser<cs::char_sequence<'0'>,
-                                                              cs::char_sequence<'1'>> {};
+using bool_01_parser =
+    detail::single_char_bool_parser<cs::char_sequence<'0'>, cs::char_sequence<'1'>>;
 
-class bool_ft_parser : public detail::single_char_bool_parser<cs::char_sequence<'f'>,
-                                                              cs::char_sequence<'t'>> {};
+using bool_ft_parser =
+    detail::single_char_bool_parser<cs::char_sequence<'f'>, cs::char_sequence<'t'>>;
 
-class bool_FT_parser : public detail::single_char_bool_parser<cs::char_sequence<'F'>,
-                                                              cs::char_sequence<'T'>> {};
+using bool_FT_parser =
+    detail::single_char_bool_parser<cs::char_sequence<'F'>, cs::char_sequence<'T'>>;
 
 class bool_ft_case_insensitive_parser
     : public detail::single_char_bool_parser<cs::char_sequence<'f', 'F'>,
                                              cs::char_sequence<'t', 'T'>> {};
+
+namespace detail {
+template<typename false_cs, typename true_cs>
+class multi_char_bool_parser : public typed_cell_parser<py::py_bool> {
+private:
+    constexpr static std::array false_arr = py::cs::to_array(false_cs{});
+    constexpr static std::string_view false_view = std::string_view{false_arr.data(),
+                                                                    false_arr.size() - 1};
+
+    constexpr static std::array true_arr = py::cs::to_array(true_cs{});
+    constexpr static std::string_view true_view = std::string_view{true_arr.data(),
+                                                                   true_arr.size() - 1};
+
+public:
+    std::tuple<std::size_t, bool> chomp(char delim,
+                                        std::size_t ix,
+                                        std::string_view row,
+                                        std::size_t offset,
+                                        int) override {
+        auto [raw, consumed, more] = detail::isolate_unquoted_cell(row, offset, delim);
+        if (raw.size() == 0) {
+            return {consumed, more};
+        }
+
+        bool value;
+        if (raw == false_view) {
+            value = false;
+        }
+        else if (raw == true_view) {
+            value = true;
+        }
+        else {
+            throw util::formatted_error<parse_error>("invalid boolean value: \"",
+                                                     raw,
+                                                     "\", valid values: {\"",
+                                                     false_view,
+                                                     "\", \"",
+                                                     true_view,
+                                                     "\"}");
+        }
+
+        this->m_parsed[ix] = value;
+        this->m_mask[ix] = true;
+        return {consumed, more};
+    }
+
+};
+}  // namespace detail
+
+using namespace py::cs::literals;
+
+using bool_FALSE_TRUE_parser =
+    detail::multi_char_bool_parser<decltype("FALSE"_cs), decltype("TRUE"_cs)>;
+
+using bool_False_True_parser =
+    detail::multi_char_bool_parser<decltype("False"_cs), decltype("True"_cs)>;
 
 class runtime_fixed_width_string_parser : public cell_parser {
 private:

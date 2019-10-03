@@ -612,7 +612,30 @@ cell_parser* datetime_column::emplace_cell_parser(void* addr) const {
     return new (addr) runtime_format_datetime_parser{m_code};
 }
 
-bool_column::bool_column(std::string_view) {}
+bool_column::bool_column(std::string_view fmt) {
+    if (fmt == "0/1") {
+        m_option = std::make_unique<simple_column_spec<bool_01_parser>>();
+    }
+    else if (fmt == "f/t") {
+        m_option = std::make_unique<simple_column_spec<bool_ft_parser>>();
+    }
+    else if (fmt == "F/T") {
+        m_option = std::make_unique<simple_column_spec<bool_FT_parser>>();
+    }
+    else if (fmt == "fF/tT") {
+        m_option = std::make_unique<simple_column_spec<bool_ft_case_insensitive_parser>>();
+    }
+    else if (fmt == "FALSE/TRUE") {
+        m_option = std::make_unique<simple_column_spec<bool_FALSE_TRUE_parser>>();
+    }
+    else if (fmt == "False/True") {
+        m_option = std::make_unique<simple_column_spec<bool_False_True_parser>>();
+    }
+    else {
+        throw util::formatted_error<std::invalid_argument>("invalid boolean format: ",
+                                                           fmt);
+    }
+}
 
 string_column::string_column(std::int64_t size) : m_size(size) {}
 
