@@ -777,3 +777,35 @@ def test_combinatation_datetime_tz_formats():
         for k, (data, mask) in result.items():
             np.testing.assert_array_equal(data, expected_data)
             np.testing.assert_array_equal(mask, expected_mask)
+
+
+def test_bool_formats():
+    data = dedent(
+        """\
+        "0/1","f/t","F/T","fF/tT","FALSE/TRUE","False/True"
+        0,f,F,f,FALSE,False
+        1,t,T,t,TRUE,True
+        0,f,F,F,FALSE,False
+        1,t,T,T,TRUE,True
+        """,
+    ).encode()
+    expected_data = np.array([False, True, False, True])
+    expected_mask = np.array([True, True, True, True])
+
+    schema = {
+        k: cxx.Bool(k)
+        for k in (
+            b'0/1', b'f/t', b'F/T', b'fF/tT', b'FALSE/TRUE', b'False/True'
+        )
+    }
+    result = cxx.parse_csv(
+        data,
+        column_specs=schema,
+        delimiter=b',',
+        line_ending=b'\n',
+        num_threads=1,
+    )
+    assert result.keys() == schema.keys()
+    for k, (data, mask) in result.items():
+        np.testing.assert_array_equal(data, expected_data)
+        np.testing.assert_array_equal(mask, expected_mask)
