@@ -165,10 +165,12 @@ namespace {
 detail::pcre2_code_ptr jit_compile(std::string pattern) {
     int e;
     std::size_t err_offset;
+
+    pattern.push_back('$');
     detail::pcre2_code_ptr code{
         pcre2_compile(reinterpret_cast<PCRE2_SPTR>(pattern.data()),
                       pattern.size(),
-                      PCRE2_ANCHORED | PCRE2_ENDANCHORED,
+                      PCRE2_ANCHORED,
                       &e,
                       &err_offset,
                       nullptr)};
@@ -524,13 +526,15 @@ std::tuple<std::size_t, bool> runtime_format_datetime_parser::chomp(char delim,
                             reinterpret_cast<PCRE2_SPTR>(cell.data()),
                             cell.size(),
                             0,
-                            PCRE2_ANCHORED | PCRE2_ENDANCHORED,
+                            PCRE2_ANCHORED,  // | PCRE2_ENDANCHORED, not available on
+                                             // ubuntu 16.04
                             st.match_data.get(),
                             st.match_context.get());
     if (r < 0) {
         if (r == PCRE2_ERROR_NOMATCH) {
-            throw util::formatted_error<parse_error>("failed to parse datetime from: ",
-                                                     cell);
+            throw util::formatted_error<parse_error>("failed to parse datetime from: \"",
+                                                     cell,
+                                                     '"');
         }
         throw std::runtime_error{"failed to match regex"};
     }

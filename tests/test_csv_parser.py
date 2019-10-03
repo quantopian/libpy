@@ -7,6 +7,7 @@ from operator import and_
 from textwrap import dedent
 
 import numpy as np
+import pytest
 
 from . import cxx
 
@@ -503,6 +504,34 @@ def test_empty_string_vs_missing_string_fixed():
         np.testing.assert_array_equal(expected_mask, actual_mask)
 
 
+def test_datetime_anchors():
+    schema = {
+        b'a': cxx.DateTime(b'yyyymmdd')
+    }
+
+    for broken in [' 20140101', '20140101 ']:
+        data = dedent(
+            f"""\
+            "a"
+            {broken}
+            """,
+        ).encode()
+
+        with pytest.raises(RuntimeError) as e:
+            cxx.parse_csv(
+                data,
+                column_specs=schema,
+                delimiter=b',',
+                line_ending=b'\n',
+                num_threads=1,
+            )
+
+        assert str(e.value) == (
+            f'a C++ exception was raised: line 2 column 0:'
+            f' failed to parse datetime from: "{broken}"'
+        )
+
+
 def test_yyyymmdd_date_format():
     data = dedent(
         """\
@@ -531,7 +560,6 @@ def test_yyyymmdd_date_format():
 
     np.testing.assert_array_equal(data, expected_data)
     np.testing.assert_array_equal(mask, expected_mask)
-
 
 
 def test_combinatation_date_formats():
