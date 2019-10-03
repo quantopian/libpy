@@ -511,10 +511,10 @@ def test_datetime_anchors():
 
     for broken in [' 20140101', '20140101 ']:
         data = dedent(
-            f"""\
+            """\
             "a"
             {broken}
-            """,
+            """.format(broken=broken),
         ).encode()
 
         with pytest.raises(RuntimeError) as e:
@@ -527,8 +527,8 @@ def test_datetime_anchors():
             )
 
         assert str(e.value) == (
-            f'a C++ exception was raised: line 2 column 0:'
-            f' failed to parse datetime from: "{broken}"'
+            'a C++ exception was raised: line 2 column 0:'
+            ' failed to parse datetime from: "{broken}"'.format(broken=broken)
         )
 
 
@@ -585,16 +585,16 @@ def test_combinatation_date_formats():
 
     for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
         schema = {
-            b'ymd': cxx.DateTime(f'yyyy{delim}mm{delim}dd'.encode()),
-            b'mdy': cxx.DateTime(f'mm{delim}dd{delim}yyyy'.encode()),
-            b'dmy': cxx.DateTime(f'dd{delim}mm{delim}yyyy'.encode()),
+            b'ymd': cxx.DateTime('yyyy{d}mm{d}dd'.format(d=delim).encode()),
+            b'mdy': cxx.DateTime('mm{d}dd{d}yyyy'.format(d=delim).encode()),
+            b'dmy': cxx.DateTime('dd{d}mm{d}yyyy'.format(d=delim).encode()),
         }
 
         data = dedent(
-            f"""\
+            """\
             "ymd","mdy","dmy"
             {ymd},{mdy},{dmy}
-            """
+            """.format(ymd=ymd, mdy=mdy, dmy=dmy)
         ).encode()
 
         result = cxx.parse_csv(
@@ -635,16 +635,22 @@ def test_combinatation_datetime_formats():
 
     for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
         schema = {
-            b'ymd': cxx.DateTime(f'yyyy{delim}mm{delim}dd hh:mm:ss'.encode()),
-            b'mdy': cxx.DateTime(f'mm{delim}dd{delim}yyyy hh:mm:ss'.encode()),
-            b'dmy': cxx.DateTime(f'dd{delim}mm{delim}yyyy hh:mm:ss'.encode()),
+            b'ymd': cxx.DateTime(
+                'yyyy{d}mm{d}dd hh:mm:ss'.format(d=delim).encode(),
+            ),
+            b'mdy': cxx.DateTime(
+                'mm{d}dd{d}yyyy hh:mm:ss'.format(d=delim).encode(),
+            ),
+            b'dmy': cxx.DateTime(
+                'dd{d}mm{d}yyyy hh:mm:ss'.format(d=delim).encode(),
+            ),
         }
 
         data = dedent(
-            f"""\
+            """\
             "ymd","mdy","dmy"
             {ymd},{mdy},{dmy}
-            """
+            """.format(ymd=ymd, mdy=mdy, dmy=dmy)
         ).encode()
 
         result = cxx.parse_csv(
@@ -685,16 +691,22 @@ def test_combinatation_datetime_formats_ns_resolution():
 
     for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
         schema = {
-            b'ymd': cxx.DateTime(f'yyyy{delim}mm{delim}dd hh:mm:ss'.encode()),
-            b'mdy': cxx.DateTime(f'mm{delim}dd{delim}yyyy hh:mm:ss'.encode()),
-            b'dmy': cxx.DateTime(f'dd{delim}mm{delim}yyyy hh:mm:ss'.encode()),
+            b'ymd': cxx.DateTime(
+                'yyyy{d}mm{d}dd hh:mm:ss'.format(d=delim).encode(),
+            ),
+            b'mdy': cxx.DateTime(
+                'mm{d}dd{d}yyyy hh:mm:ss'.format(d=delim).encode(),
+            ),
+            b'dmy': cxx.DateTime(
+                'dd{d}mm{d}yyyy hh:mm:ss'.format(d=delim).encode(),
+            ),
         }
 
         data = dedent(
-            f"""\
+            """\
             "ymd","mdy","dmy"
             {ymd},{mdy},{dmy}
-            """
+            """.format(ymd=ymd, mdy=mdy, dmy=dmy)
         ).encode()
 
         result = cxx.parse_csv(
@@ -736,21 +748,21 @@ def test_combinatation_datetime_tz_formats():
     for delim, ymd, mdy, dmy in zip(zip_delims, ymds, mdys, dmys):
         schema = {
             b'ymd': cxx.DateTime(
-                f'yyyy{delim}mm{delim}dd hh:mm:ss tz'.encode(),
+                'yyyy{d}mm{d}dd hh:mm:ss tz'.format(d=delim).encode(),
             ),
             b'mdy': cxx.DateTime(
-                f'mm{delim}dd{delim}yyyy hh:mm:ss tz'.encode(),
+                'mm{d}dd{d}yyyy hh:mm:ss tz'.format(d=delim).encode(),
             ),
             b'dmy': cxx.DateTime(
-                f'dd{delim}mm{delim}yyyy hh:mm:ss tz'.encode(),
+                'dd{d}mm{d}yyyy hh:mm:ss tz'.format(d=delim).encode(),
             ),
         }
 
         data = dedent(
-            f"""\
+            """\
             "ymd","mdy","dmy"
             {ymd},{mdy},{dmy}
-            """
+            """.format(ymd=ymd, mdy=mdy, dmy=dmy)
         ).encode()
 
         result = cxx.parse_csv(
