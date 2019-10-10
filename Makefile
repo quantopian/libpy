@@ -45,7 +45,7 @@ ifeq ($(OS),Darwin)
 	SONAME_PATH := @rpath/$(SONAME)
 	AR := libtool
 	ARFLAGS := -static -o
-	LDFLAGS += -undefined dynamic_lookup
+	LDFLAGS += -undefined dynamic_lookup -lpcre2-8
 	LD_PRELOAD_VAR := DYLD_INSERT_LIBRARIES
 else
 	CXXFLAGS += -fstack-protector-strong
