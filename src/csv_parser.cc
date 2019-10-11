@@ -787,7 +787,7 @@ void parse_lines_worker(std::mutex* exception_mutex,
     line lengths do *not* include the length of the line delimiter.
 
     The in-out parameter `pos_ptr` indicates the index into `data` to start counting.
-    To ensure consistent counting multithreaded counting, line searching will begin
+    To ensure consistent multithreaded counting, line searching will begin
     by looking backwards from `*pos_ptr` to find the previous line delimiter, then lines
     will be counted until the end of the line is > `end_ix`. `pos_ptr` will be overwritten
     with the new starting location.
