@@ -897,6 +897,8 @@ split_into_lines(std::string_view data,
         // advance past line ending
         pos = end + line_ending.size();
     }
+
+    // advance past the skipped rows
     data = data.substr(pos);
     pos = 0;
 
