@@ -527,8 +527,9 @@ def test_datetime_anchors():
             )
 
         assert str(e.value) == (
-            'a C++ exception was raised: line 2 column 0:'
-            ' failed to parse datetime from: "{broken}"'.format(broken=broken)
+            'line 2 column 0: failed to parse datetime from: "{}"'.format(
+                broken,
+            )
         )
 
 

@@ -22,6 +22,37 @@ IMPORT_ARRAY_MODULE_SCOPE();
 void cell_parser::set_num_lines(std::size_t) {}
 void cell_parser::set_num_threads(int) {}
 
+class positional_parse_error : public parse_error {
+private:
+    std::size_t m_row;
+    std::size_t m_col;
+
+    template<typename... MsgArgs>
+    static std::string format_msg(std::size_t line, std::size_t col, MsgArgs&&... msg_args) {
+        std::stringstream ss;
+        ss << "line " << line << " column " << col << ": ";
+        (ss << ... << msg_args);
+        return ss.str();
+    }
+
+public:
+    positional_parse_error(const positional_parse_error&) = default;
+
+    template<typename... MsgArgs>
+    positional_parse_error(std::size_t line, std::size_t col, MsgArgs&&... msg_args)
+        : parse_error(format_msg(line, col, std::forward<MsgArgs>(msg_args)...)),
+          m_row(line),
+          m_col(col) {}
+
+    std::size_t row() const {
+        return m_row;
+    }
+
+    std::size_t col() const {
+        return m_col;
+    }
+};
+
 namespace {
 // Allow us to configure the parser for a different l1dcache line size at compile time.
 #ifndef LIBPY_L1DCACHE_LINE_SIZE
@@ -162,6 +193,18 @@ std::unordered_map<std::string, detail::pcre2_code_ptr>
     runtime_format_datetime_parser::format_map;
 
 namespace {
+std::string convert_err_message(int e) {
+    std::array<char, 4096> buf;
+    int size = pcre2_get_error_message(e,
+                                       reinterpret_cast<PCRE2_UCHAR*>(buf.data()),
+                                       buf.size());
+    std::string_view err_msg;
+    if (size < 0) {
+        return " <failed to get error message>";
+    }
+    return std::string{buf.data(), static_cast<std::size_t>(size)};
+}
+
 detail::pcre2_code_ptr jit_compile(std::string pattern) {
     int e;
     std::size_t err_offset;
@@ -175,26 +218,14 @@ detail::pcre2_code_ptr jit_compile(std::string pattern) {
                       &err_offset,
                       nullptr)};
     if (!code) {
-        std::array<char, 4096> buf;
-        int size = pcre2_get_error_message(e,
-                                           reinterpret_cast<PCRE2_UCHAR*>(buf.data()),
-                                           buf.size());
-        std::string_view err_msg;
-        if (size < 0) {
-            using namespace std::literals;
-
-            err_msg = " <failed to get error message>"sv;
-        }
-        else {
-            err_msg = std::string_view{buf.data(), static_cast<std::size_t>(size)};
-        }
         throw util::formatted_error<std::invalid_argument>("invalid regex: \"",
                                                            pattern,
                                                            "\" reason: ",
-                                                           err_msg);
+                                                           convert_err_message(e));
     }
-    if (pcre2_jit_compile(code.get(), PCRE2_JIT_COMPLETE)) {
-        throw std::runtime_error{"failed to jit compile pattern"};
+    if ((e = pcre2_jit_compile(code.get(), PCRE2_JIT_COMPLETE))) {
+        throw util::formatted_error<std::runtime_error>("failed to jit compile pattern: ",
+                                                        convert_err_message(e));
     }
 
     return code;
@@ -679,16 +710,6 @@ using destruct_only_unique_ptr = std::unique_ptr<T, destruct_but_not_free<T>>;
 template<template<typename> typename ptr_type>
 using parser_types = std::vector<ptr_type<cell_parser>>;
 
-template<typename Exc, typename... Ts>
-Exc position_formatted_error(std::size_t row, std::size_t col, Ts&&... msg) {
-    return util::formatted_error<Exc>("line ",
-                                      row,
-                                      " column ",
-                                      col,
-                                      ": ",
-                                      std::forward<Ts>(msg)...);
-}
-
 /** Parse a single row and store the values in the vectors.
     @param row The row index.
     @param data The view over the row to parse.
@@ -721,7 +742,7 @@ void parse_row(std::size_t row,
             more = new_more;
         }
         catch (const std::exception& e) {
-            throw position_formatted_error<parse_error>(row + 2, col, e.what());
+            throw positional_parse_error(row + 2, col, e.what());
         }
 
         ++col;
@@ -1197,6 +1218,26 @@ void parse(std::string_view data,
     parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
 }
 
+class named_positional_parse_error : public positional_parse_error {
+    py::scoped_ref<> m_col_name;
+
+public:
+    named_positional_parse_error(const std::vector<py::scoped_ref<>>& columns,
+                                 const positional_parse_error& e) :
+        positional_parse_error(e),
+        m_col_name(columns.at(e.col())) {}
+
+    const py::scoped_ref<>& col_name() const {
+        return m_col_name;
+    }
+};
+
+std::ostream& operator<<(std::ostream& stream, const named_positional_parse_error& e) {
+    return stream << e.what();
+}
+
+using named_positional_parse_error_autoclass = py::exception_autoclass<named_positional_parse_error>;
+
 using namespace py::cs::literals;
 
 PyObject*
@@ -1244,11 +1285,26 @@ py_parse(PyObject*,
     auto parsers = allocate_parsers(specs);
 
     verify_column_specs_dict(column_specs.get(), header);
-    parse_from_header<destruct_only_unique_ptr>(to_parse,
-                                                parsers.ptrs(),
-                                                delimiter.get(),
-                                                line_ending.get(),
-                                                num_threads.get());
+    try {
+        parse_from_header<destruct_only_unique_ptr>(to_parse,
+                                                    parsers.ptrs(),
+                                                    delimiter.get(),
+                                                    line_ending.get(),
+                                                    num_threads.get());
+    }
+    catch (const positional_parse_error& e) {
+        static auto tp =
+            named_positional_parse_error_autoclass("<libpy>.ParseError",
+                                                   0,
+                                                   reinterpret_cast<PyTypeObject*>(
+                                                       PyExc_RuntimeError))
+                .def<&named_positional_parse_error::row>("row")
+                .def<&named_positional_parse_error::col>("col")
+                .def<&named_positional_parse_error::col_name>("col_name")
+                .str()
+                .type();
+        return named_positional_parse_error_autoclass::raise(header, e);
+    }
 
     py::scoped_ref out(PyDict_New());
     if (!out) {

@@ -11,7 +11,8 @@
 #include "libpy/detail/autoclass_py2.h"
 
 namespace py::detail {
-no_destruct_wrapper<std::unordered_map<std::type_index, autoclass_storage>>
+no_destruct_wrapper<
+    std::unordered_map<std::type_index, std::unique_ptr<autoclass_storage>>>
     autoclass_type_cache{};
 }  // namespace py::detail
 
