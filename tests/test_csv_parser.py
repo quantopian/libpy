@@ -517,7 +517,7 @@ def test_datetime_anchors():
             """.format(broken=broken),
         ).encode()
 
-        with pytest.raises(RuntimeError) as e:
+        with pytest.raises(cxx.CoordParseError) as e:
             cxx.parse_csv(
                 data,
                 column_specs=schema,
@@ -531,6 +531,9 @@ def test_datetime_anchors():
                 broken,
             )
         )
+        assert e.value.line() == 2
+        assert e.value.col() == 0
+        assert e.value.col_name() == b'a'
 
 
 def test_yyyymmdd_date_format():
@@ -810,3 +813,53 @@ def test_bool_formats():
     for k, (data, mask) in result.items():
         np.testing.assert_array_equal(data, expected_data)
         np.testing.assert_array_equal(mask, expected_mask)
+
+
+def test_line_too_many_cols():
+    data = dedent(
+        """\
+        a,b,c
+        0,1,2
+        4,5,6
+        7,7,9,10
+        11,12,13
+        """,
+    ).encode()
+
+    with pytest.raises(cxx.LineParseError) as e:
+        cxx.parse_csv(
+            data,
+            column_specs=dict.fromkeys([b'a', b'b', b'c'], cxx.Int8()),
+            delimiter=b',',
+            line_ending=b'\n',
+            num_threads=1,
+        )
+
+    assert str(e.value) == 'line 4: more columns than expected, expected 3'
+    assert e.value.line() == 4
+
+
+def test_line_too_few_cols():
+    data = dedent(
+        """\
+        a,b,c,d
+        0,1,2,3
+        4,5
+        6,7,8,9
+        10,11,12,13
+        """,
+    ).encode()
+
+    with pytest.raises(cxx.LineParseError) as e:
+        cxx.parse_csv(
+            data,
+            column_specs=dict.fromkeys([b'a', b'b', b'c', b'd'], cxx.Int8()),
+            delimiter=b',',
+            line_ending=b'\n',
+            num_threads=1,
+        )
+
+    assert str(e.value) == (
+        'line 3: less columns than expected, got 2 but expected 4'
+    )
+    assert e.value.line() == 3

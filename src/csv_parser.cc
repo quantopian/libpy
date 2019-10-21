@@ -22,9 +22,40 @@ IMPORT_ARRAY_MODULE_SCOPE();
 void cell_parser::set_num_lines(std::size_t) {}
 void cell_parser::set_num_threads(int) {}
 
-class positional_parse_error : public parse_error {
+class line_parse_error : public parse_error {
 private:
-    std::size_t m_row;
+    std::size_t m_line;
+
+    template<typename... MsgArgs>
+    static std::string format_msg(std::size_t line, MsgArgs&&... msg_args) {
+        std::stringstream ss;
+        ss << "line " << line << ": ";
+        (ss << ... << msg_args);
+        return ss.str();
+    }
+
+public:
+    line_parse_error(const line_parse_error&) = default;
+
+    template<typename... MsgArgs>
+    line_parse_error(std::size_t line, MsgArgs&&... msg_args)
+        : parse_error(format_msg(line, std::forward<MsgArgs>(msg_args)...)),
+          m_line(line) {}
+
+    std::size_t line() const {
+        return m_line;
+    }
+};
+
+std::ostream& operator<<(std::ostream& stream, const line_parse_error& e) {
+    return stream << e.what();
+}
+
+using line_parse_error_autoclass = py::exception_autoclass<line_parse_error>;
+
+class coord_parse_error : public parse_error {
+private:
+    std::size_t m_line;
     std::size_t m_col;
 
     template<typename... MsgArgs>
@@ -36,22 +67,42 @@ private:
     }
 
 public:
-    positional_parse_error(const positional_parse_error&) = default;
+    coord_parse_error(const coord_parse_error&) = default;
 
     template<typename... MsgArgs>
-    positional_parse_error(std::size_t line, std::size_t col, MsgArgs&&... msg_args)
+    coord_parse_error(std::size_t line, std::size_t col, MsgArgs&&... msg_args)
         : parse_error(format_msg(line, col, std::forward<MsgArgs>(msg_args)...)),
-          m_row(line),
+          m_line(line),
           m_col(col) {}
-
-    std::size_t row() const {
-        return m_row;
-    }
 
     std::size_t col() const {
         return m_col;
     }
+
+    std::size_t line() const {
+        return m_line;
+    }
 };
+
+class named_coord_parse_error : public coord_parse_error {
+    py::scoped_ref<> m_col_name;
+
+public:
+    named_coord_parse_error(const std::vector<py::scoped_ref<>>& columns,
+                            const coord_parse_error& e)
+        : coord_parse_error(e), m_col_name(columns.at(e.col())) {}
+
+    const py::scoped_ref<>& col_name() const {
+        return m_col_name;
+    }
+};
+
+std::ostream& operator<<(std::ostream& stream, const named_coord_parse_error& e) {
+    return stream << e.what();
+}
+
+using named_coord_parse_error_autoclass = py::exception_autoclass<named_coord_parse_error>;
+
 
 namespace {
 // Allow us to configure the parser for a different l1dcache line size at compile time.
@@ -728,12 +779,11 @@ void parse_row(std::size_t row,
 
     for (auto& parser : parsers) {
         if (!more) {
-            throw util::formatted_error<parse_error>("line ",
-                                                     row + 2,
-                                                     ": less columns than expected, got ",
-                                                     col,
-                                                     " but expected ",
-                                                     parsers.size());
+            throw line_parse_error(row + 2,
+                                   "less columns than expected, got ",
+                                   col,
+                                   " but expected ",
+                                   parsers.size());
         }
         try {
             auto [new_consumed,
@@ -742,15 +792,16 @@ void parse_row(std::size_t row,
             more = new_more;
         }
         catch (const std::exception& e) {
-            throw positional_parse_error(row + 2, col, e.what());
+            throw coord_parse_error(row + 2, col, e.what());
         }
 
         ++col;
     }
 
     if (consumed != data.size()) {
-        throw util::formatted_error<parse_error>(
-            "line ", row + 2, ": more columns than expected, expected ", parsers.size());
+        throw line_parse_error(row + 2,
+                               "more columns than expected, expected ",
+                               parsers.size());
     }
 }
 
@@ -1218,26 +1269,6 @@ void parse(std::string_view data,
     parse_from_header(to_parse, parsers, delimiter, line_ending, num_threads);
 }
 
-class named_positional_parse_error : public positional_parse_error {
-    py::scoped_ref<> m_col_name;
-
-public:
-    named_positional_parse_error(const std::vector<py::scoped_ref<>>& columns,
-                                 const positional_parse_error& e) :
-        positional_parse_error(e),
-        m_col_name(columns.at(e.col())) {}
-
-    const py::scoped_ref<>& col_name() const {
-        return m_col_name;
-    }
-};
-
-std::ostream& operator<<(std::ostream& stream, const named_positional_parse_error& e) {
-    return stream << e.what();
-}
-
-using named_positional_parse_error_autoclass = py::exception_autoclass<named_positional_parse_error>;
-
 using namespace py::cs::literals;
 
 PyObject*
@@ -1292,18 +1323,11 @@ py_parse(PyObject*,
                                                     line_ending.get(),
                                                     num_threads.get());
     }
-    catch (const positional_parse_error& e) {
-        static auto tp =
-            named_positional_parse_error_autoclass("<libpy>.ParseError",
-                                                   0,
-                                                   reinterpret_cast<PyTypeObject*>(
-                                                       PyExc_RuntimeError))
-                .def<&named_positional_parse_error::row>("row")
-                .def<&named_positional_parse_error::col>("col")
-                .def<&named_positional_parse_error::col_name>("col_name")
-                .str()
-                .type();
-        return named_positional_parse_error_autoclass::raise(header, e);
+    catch (const coord_parse_error& e) {
+        return named_coord_parse_error_autoclass::raise(header, e);
+    }
+    catch (const line_parse_error& e) {
+        return line_parse_error_autoclass::raise(e);
     }
 
     py::scoped_ref out(PyDict_New());
@@ -1355,7 +1379,22 @@ bool add_parser_pytypes(PyObject* module) {
                 .type(),
             py::autoclass<bool_column>(modname + ".Bool").new_<std::string_view>().type(),
             py::autoclass<string_column>(modname + ".String").new_<std::int64_t>().type(),
-        };
+            named_coord_parse_error_autoclass(modname + ".CoordParseError",
+                                              0,
+                                              reinterpret_cast<PyTypeObject*>(
+                                                  PyExc_RuntimeError))
+                .def<&named_coord_parse_error::line>("line")
+                .def<&named_coord_parse_error::col>("col")
+                .def<&named_coord_parse_error::col_name>("col_name")
+                .str()
+                .type(),
+            line_parse_error_autoclass(modname + ".LineParseError",
+                                       0,
+                                       reinterpret_cast<PyTypeObject*>(
+                                           PyExc_RuntimeError))
+                .def<&line_parse_error::line>("line")
+                .str()
+                .type()};
 
         for (const auto& type : types) {
             const char* name = std::strrchr(type->tp_name, '.');
