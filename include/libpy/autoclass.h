@@ -20,7 +20,6 @@ namespace py {
 /** Zero the memory that is not part of the base PyObject.
 
     @param b The object to zero the non-PyObject component.
-    @return 0.
  */
 template<typename T>
 constexpr void zero_non_base(T* b) {
@@ -40,6 +39,7 @@ constexpr void nop_clear_base(T*) {}
     @tparam T The C++ type to be wrapped.
     @tparam base The base type of the Python instances created.
     @tparam initialize_base A function used to initialize the Python base object.
+    @tparam clear_base A function used to clear the Python base object fields.
  */
 template<typename T,
          typename base = PyObject,
