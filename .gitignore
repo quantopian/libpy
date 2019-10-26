@@ -55,3 +55,7 @@ libpy_report.xml
 
 # pytest artifact
 .coverage
+
+# python support artifacts
+libpy.egg-info/*
+dist/*

@@ -41,7 +41,7 @@ using demangled_cstring = std::unique_ptr<char, detail::demangle_deleter>;
  */
 inline demangled_cstring demangle_string(const char* cs) {
     int status;
-    char* demangled = abi::__cxa_demangle(cs, nullptr, nullptr, &status);
+    char* demangled = ::abi::__cxa_demangle(cs, nullptr, nullptr, &status);
 
     switch (status) {
     case 0:
