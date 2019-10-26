@@ -5,7 +5,6 @@
 #include "libpy/numpy_utils.h"
 
 #include "libpy/automethod.h"
-#include "libpy/csv.h"
 
 namespace test {
 PyObject* run_tests(PyObject*, PyObject* py_argv) {
@@ -35,7 +34,6 @@ PyObject* run_tests(PyObject*, PyObject* py_argv) {
 
 PyMethodDef methods[] = {
     {"run_tests", run_tests, METH_O, nullptr},
-    py::automethod<py::csv::py_parse>("parse_csv"),
     {nullptr, nullptr, 0, nullptr},
 };
 
@@ -46,7 +44,6 @@ PyMODINIT_FUNC init_runner() {
     if (!mod) {
         return;
     }
-    py::csv::add_parser_pytypes(mod);
 }
 #else
 PyModuleDef module = {
@@ -63,14 +60,7 @@ PyModuleDef module = {
 
 PyMODINIT_FUNC PyInit__runner() {
     import_array();
-    py::scoped_ref mod(PyModule_Create(&module));
-    if (!mod) {
-        return nullptr;
-    }
-    if (py::csv::add_parser_pytypes(mod.get())) {
-        return nullptr;
-    }
-    return std::move(mod).escape();
+    return PyModule_Create(&module);
 }
 #endif
 }  // namespace test
