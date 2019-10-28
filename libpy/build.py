@@ -16,7 +16,7 @@ def get_include():
     return os.path.join(os.path.dirname(__file__), 'include')
 
 
-class LibpyExtension(setuptools.Extension):
+class LibpyExtension(setuptools.Extension, object):
     """A :class:`setuptools.Extension` replacement for libpy based extensions.
 
     Parameters
