@@ -48,11 +48,12 @@ constexpr void nop_clear_base(T*) {}
     - A static C or C++ type that represents the layout of instances in memory.
     - A runtime object that represents the Python type of the object.
 
-    The base Python object, `PyObject`, has a field which contains a `PyTypeObject*`
-    which points to the Python type for the instance. From a C++ perspective, the
-    `PyTypeObject` acts as a virtual function table (vtable) for the Python instance.
-    CPython is written in C, not C++, so instances "subclass" other static types by
-    creating a struct whose first member is the static type of the parent, for example:
+    The base Python object, `PyObject`, has a field which contains a
+    `PyTypeObject*` which points to the Python type for the instance. From a C++
+    perspective, the `PyTypeObject` acts as a virtual function table (vtable)
+    for the Python instance. CPython is written in C, not C++, so instances
+    "subclass" other static types by creating a struct whose first member is the
+    static type of the parent, for example:
 
     ```
     struct sub_type {
@@ -63,28 +64,29 @@ constexpr void nop_clear_base(T*) {}
     };
     ```
 
-    This allows us to cast between `parent_type*` and `sub_type*` as long as the vtable
-    matches the vtable paired with `sub_type`.
+    This allows us to cast between `parent_type*` and `sub_type*` as long as the
+    vtable matches the vtable paired with `sub_type`.
 
-    There is a one to many relationship between static types and possible `PyTypeObject*`
-    vtables. If you only need to override the behavior of an existing method but don't
-    otherwise need extra instance state, you can just create a new `PyTypeObject` that
-    inherits from the type you wish to extend. A common example of this in CPython are
-    the standard exceptions. Most standard Python exceptions share the exact same
-    instance state (`PyBaseExceptionObject`); however, they have different vtables so
-    that users can catch exceptions based on the type alone.
+    There is a one to many relationship between static types and possible
+    `PyTypeObject*` vtables. Methods may be overridden without adding new
+    instance state, in which case the same static type can be used with a
+    different `PyTypeObject*` value. A common example of this in CPython are the
+    standard exceptions. Most standard Python exceptions share the exact same
+    instance state (`PyBaseExceptionObject`); however, they have different
+    vtables so that users can catch exceptions based on the type alone.
 
-    In order to make a subclass of an existing Python object with autoclass, you must
-    specify both the static type of the instances to subclass and the runtime
-    `PyTypeObject` to subclass. Instances created for this new type will be instances
-    of a C++ subclass of `base`, the static type of the instances. From Python's
-    perspective, the runtime `PyTypeObject` generated will also be a subclass of the
-    Python base type. If you provide a custom base, you may need to implement the extra
-    functions `initialize_base` and `clear_base`. These function are responsible for
-    initializing and cleaning up the parent class's state (except for the component owned
-    by the root `PyObject`). By default, the memory will just be zeroed on allocation
-    and no cleanup is performed. This is an advanced autoclass feature and is not
-    guaranteed to be safe. Please use this feature with care.
+    In order to make a subclass of an existing Python object with autoclass, you
+    must specify both the static type of the instances to subclass and the
+    runtime `PyTypeObject` to subclass. Instances created for this new type will
+    be instances of a C++ subclass of `base`, the static type of the instances.
+    From Python's perspective, the runtime `PyTypeObject` generated will also be
+    a subclass of the Python base type. If you provide a custom base, you may
+    need to implement the extra functions `initialize_base` and `clear_base`.
+    These function are responsible for initializing and cleaning up the parent
+    class's state (except for the component owned by the root `PyObject`). By
+    default, the memory will just be zeroed on allocation and no cleanup is
+    performed. This is an advanced autoclass feature and is not guaranteed to be
+    safe. Please use this feature with care.
  */
 template<typename T,
          typename base = PyObject,
