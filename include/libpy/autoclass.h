@@ -43,50 +43,91 @@ constexpr void nop_clear_base(T*) {}
     @tparam initialize_base A function used to initialize the Python base object.
     @tparam clear_base A function used to clear the Python base object fields.
 
-    Python instances are composed of two parts:
+    ### Usage
 
-    - A static C or C++ type that represents the layout of instances in memory.
-    - A runtime object that represents the Python type of the object.
-
-    The base Python object, `PyObject`, has a field which contains a
-    `PyTypeObject*` which points to the Python type for the instance. From a C++
-    perspective, the `PyTypeObject` acts as a virtual function table (vtable)
-    for the Python instance. CPython is written in C, not C++, so instances
-    "subclass" other static types by creating a struct whose first member is the
-    static type of the parent, for example:
+    To create a new Python type for an object that wraps a C++ type, `my_type`,
+    you can write the following:
 
     ```
-    struct sub_type {
-        parent_type base;
-        int extra_field_0;
-        float extra_field_1;
-        /// etc...
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
+    ```
+
+    The resulting type will have a `__name__` of "PythonName", and a
+    `__module__` of "modname".
+
+    By default, types created with `autoclass` expose no functionality to
+    Python, not even a constructor. To add a constructor to your python object,
+    invoke the `.new_` method of the `autoclass`, templated with the C++
+    signature of the constructor. For example, to create a constructor that
+    accepts an int and a double, we would write:
+
+    ```
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+                                         .new_<int, double>()
+                                         .type();
+    ```
+
+    Only one constructor overload may be exposed to Python because Python
+    doesn't support function overloading. If a constructor is not provided,
+    instances can only be constructed from C++ using
+    `py::autoclass<my_type>::construct(Args&&...)`.
+
+    To expose methods of your C++ type to Python, call `.def`, templated on the
+    address of the C++ method you want to expose, and pass the name of the
+    Python method to generate. For example, to expose a C++ method called `foo`
+    as a Python method named `bar`, we would write:
+
+    ```
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+                                         .new_<int, double>()
+                                         .def<&my_type::foo>("bar")
+                                         .type();
+    ```
+
+    ### Subclassing Existing Python Types
+
+    Python instances are composed of two parts:
+
+    - A static C or C++ type that defines the layout of instances in memory. A
+    - runtime value of type `PyTypeObject`, which represents the Python type of
+      the object.
+
+    An object's static type must contain at least the state defined by the base
+    `PyObject` struct, which includes a `PyTypeObject*` that points to the
+    object's python type. In general, there is a one-to-many relationship
+    between static object layouts and Python types (i.e. `PyTypeObject*`s).
+    Objects of a given Python type always have the same layout, but multiple
+    objects of different Python types may have the same layout if they have the
+    same state. For example, the standard Python exceptions all have the same
+    layout (defined by the `PyBaseExceptionObject` struct), but they have
+    different Python types so that users can catch specific exceptions types.
+
+    By default, Python objects defined with `autoclass<T>.type()` will have a
+    layout that looks like:
+
+    ```
+    class autoclass_object : public PyObject {
+        T value;
     };
     ```
 
-    This allows us to cast between `parent_type*` and `sub_type*` as long as the
-    vtable matches the vtable paired with `sub_type`.
+    The `PyTypeObject` returned by `autoclass::type` will be a (Python) subclass
+    of Python's `object` type.
 
-    There is a one to many relationship between static types and possible
-    `PyTypeObject*` vtables. Methods may be overridden without adding new
-    instance state, in which case the same static type can be used with a
-    different `PyTypeObject*` value. A common example of this in CPython are the
-    standard exceptions. Most standard Python exceptions share the exact same
-    instance state (`PyBaseExceptionObject`); however, they have different
-    vtables so that users can catch exceptions based on the type alone.
+    In rare cases, it may be useful to use autoclass to define a type that
+    subclasses from a Python type other than `object`. To support this use-case,
+    `autoclass` allows you to provide a few optional arguments:
 
-    In order to make a subclass of an existing Python object with autoclass, you
-    must specify both the static type of the instances to subclass and the
-    runtime `PyTypeObject` to subclass. Instances created for this new type will
-    be instances of a C++ subclass of `base`, the static type of the instances.
-    From Python's perspective, the runtime `PyTypeObject` generated will also be
-    a subclass of the Python base type. If you provide a custom base, you may
-    need to implement the extra functions `initialize_base` and `clear_base`.
-    These function are responsible for initializing and cleaning up the parent
-    class's state (except for the component owned by the root `PyObject`). By
-    default, the memory will just be zeroed on allocation and no cleanup is
-    performed. This is an advanced autoclass feature and is not guaranteed to be
-    safe. Please use this feature with care.
+    - `base`: the static instance type to subclass instead of `PyObject`.
+    - `initialize_base`: a function which initializes the non-`PyObject` fields
+       of the `base` struct.
+    - `clear_base`: a function which tears down the non-`PyObject` fields of the
+      `base` struct.
+
+    By default, the non-`PyObject` fields of `base` will just be zeroed and no
+    cleanup is performed. Subclassing existing Python types is an advanced
+    autoclass feature and is not guaranteed to be safe in all configurations.
+    Please use this feature with care.
  */
 template<typename T,
          typename base = PyObject,
