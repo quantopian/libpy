@@ -22,6 +22,88 @@ IMPORT_ARRAY_MODULE_SCOPE();
 void cell_parser::set_num_lines(std::size_t) {}
 void cell_parser::set_num_threads(int) {}
 
+class line_parse_error : public parse_error {
+private:
+    std::size_t m_line;
+
+    template<typename... MsgArgs>
+    static std::string format_msg(std::size_t line, MsgArgs&&... msg_args) {
+        std::stringstream ss;
+        ss << "line " << line << ": ";
+        (ss << ... << msg_args);
+        return ss.str();
+    }
+
+public:
+    line_parse_error(const line_parse_error&) = default;
+
+    template<typename... MsgArgs>
+    line_parse_error(std::size_t line, MsgArgs&&... msg_args)
+        : parse_error(format_msg(line, std::forward<MsgArgs>(msg_args)...)),
+          m_line(line) {}
+
+    std::size_t line() const {
+        return m_line;
+    }
+};
+
+std::ostream& operator<<(std::ostream& stream, const line_parse_error& e) {
+    return stream << e.what();
+}
+
+using line_parse_error_autoclass = py::exception_autoclass<line_parse_error>;
+
+class coord_parse_error : public parse_error {
+private:
+    std::size_t m_line;
+    std::size_t m_col;
+
+    template<typename... MsgArgs>
+    static std::string format_msg(std::size_t line, std::size_t col, MsgArgs&&... msg_args) {
+        std::stringstream ss;
+        ss << "line " << line << " column " << col << ": ";
+        (ss << ... << msg_args);
+        return ss.str();
+    }
+
+public:
+    coord_parse_error(const coord_parse_error&) = default;
+
+    template<typename... MsgArgs>
+    coord_parse_error(std::size_t line, std::size_t col, MsgArgs&&... msg_args)
+        : parse_error(format_msg(line, col, std::forward<MsgArgs>(msg_args)...)),
+          m_line(line),
+          m_col(col) {}
+
+    std::size_t col() const {
+        return m_col;
+    }
+
+    std::size_t line() const {
+        return m_line;
+    }
+};
+
+class named_coord_parse_error : public coord_parse_error {
+    py::scoped_ref<> m_col_name;
+
+public:
+    named_coord_parse_error(const std::vector<py::scoped_ref<>>& columns,
+                            const coord_parse_error& e)
+        : coord_parse_error(e), m_col_name(columns.at(e.col())) {}
+
+    const py::scoped_ref<>& col_name() const {
+        return m_col_name;
+    }
+};
+
+std::ostream& operator<<(std::ostream& stream, const named_coord_parse_error& e) {
+    return stream << e.what();
+}
+
+using named_coord_parse_error_autoclass = py::exception_autoclass<named_coord_parse_error>;
+
+
 namespace {
 // Allow us to configure the parser for a different l1dcache line size at compile time.
 #ifndef LIBPY_L1DCACHE_LINE_SIZE
@@ -162,6 +244,18 @@ std::unordered_map<std::string, detail::pcre2_code_ptr>
     runtime_format_datetime_parser::format_map;
 
 namespace {
+std::string convert_err_message(int e) {
+    std::array<char, 4096> buf;
+    int size = pcre2_get_error_message(e,
+                                       reinterpret_cast<PCRE2_UCHAR*>(buf.data()),
+                                       buf.size());
+    std::string_view err_msg;
+    if (size < 0) {
+        return " <failed to get error message>";
+    }
+    return std::string{buf.data(), static_cast<std::size_t>(size)};
+}
+
 detail::pcre2_code_ptr jit_compile(std::string pattern) {
     int e;
     std::size_t err_offset;
@@ -175,26 +269,14 @@ detail::pcre2_code_ptr jit_compile(std::string pattern) {
                       &err_offset,
                       nullptr)};
     if (!code) {
-        std::array<char, 4096> buf;
-        int size = pcre2_get_error_message(e,
-                                           reinterpret_cast<PCRE2_UCHAR*>(buf.data()),
-                                           buf.size());
-        std::string_view err_msg;
-        if (size < 0) {
-            using namespace std::literals;
-
-            err_msg = " <failed to get error message>"sv;
-        }
-        else {
-            err_msg = std::string_view{buf.data(), static_cast<std::size_t>(size)};
-        }
         throw util::formatted_error<std::invalid_argument>("invalid regex: \"",
                                                            pattern,
                                                            "\" reason: ",
-                                                           err_msg);
+                                                           convert_err_message(e));
     }
-    if (pcre2_jit_compile(code.get(), PCRE2_JIT_COMPLETE)) {
-        throw std::runtime_error{"failed to jit compile pattern"};
+    if ((e = pcre2_jit_compile(code.get(), PCRE2_JIT_COMPLETE))) {
+        throw util::formatted_error<std::runtime_error>("failed to jit compile pattern: ",
+                                                        convert_err_message(e));
     }
 
     return code;
@@ -679,16 +761,6 @@ using destruct_only_unique_ptr = std::unique_ptr<T, destruct_but_not_free<T>>;
 template<template<typename> typename ptr_type>
 using parser_types = std::vector<ptr_type<cell_parser>>;
 
-template<typename Exc, typename... Ts>
-Exc position_formatted_error(std::size_t row, std::size_t col, Ts&&... msg) {
-    return util::formatted_error<Exc>("line ",
-                                      row,
-                                      " column ",
-                                      col,
-                                      ": ",
-                                      std::forward<Ts>(msg)...);
-}
-
 /** Parse a single row and store the values in the vectors.
     @param row The row index.
     @param data The view over the row to parse.
@@ -707,12 +779,11 @@ void parse_row(std::size_t row,
 
     for (auto& parser : parsers) {
         if (!more) {
-            throw util::formatted_error<parse_error>("line ",
-                                                     row + 2,
-                                                     ": less columns than expected, got ",
-                                                     col,
-                                                     " but expected ",
-                                                     parsers.size());
+            throw line_parse_error(row + 2,
+                                   "less columns than expected, got ",
+                                   col,
+                                   " but expected ",
+                                   parsers.size());
         }
         try {
             auto [new_consumed,
@@ -721,15 +792,16 @@ void parse_row(std::size_t row,
             more = new_more;
         }
         catch (const std::exception& e) {
-            throw position_formatted_error<parse_error>(row + 2, col, e.what());
+            throw coord_parse_error(row + 2, col, e.what());
         }
 
         ++col;
     }
 
     if (consumed != data.size()) {
-        throw util::formatted_error<parse_error>(
-            "line ", row + 2, ": more columns than expected, expected ", parsers.size());
+        throw line_parse_error(row + 2,
+                               "more columns than expected, expected ",
+                               parsers.size());
     }
 }
 
@@ -1244,11 +1316,19 @@ py_parse(PyObject*,
     auto parsers = allocate_parsers(specs);
 
     verify_column_specs_dict(column_specs.get(), header);
-    parse_from_header<destruct_only_unique_ptr>(to_parse,
-                                                parsers.ptrs(),
-                                                delimiter.get(),
-                                                line_ending.get(),
-                                                num_threads.get());
+    try {
+        parse_from_header<destruct_only_unique_ptr>(to_parse,
+                                                    parsers.ptrs(),
+                                                    delimiter.get(),
+                                                    line_ending.get(),
+                                                    num_threads.get());
+    }
+    catch (const coord_parse_error& e) {
+        return named_coord_parse_error_autoclass::raise(header, e);
+    }
+    catch (const line_parse_error& e) {
+        return line_parse_error_autoclass::raise(e);
+    }
 
     py::scoped_ref out(PyDict_New());
     if (!out) {
@@ -1299,7 +1379,22 @@ bool add_parser_pytypes(PyObject* module) {
                 .type(),
             py::autoclass<bool_column>(modname + ".Bool").new_<std::string_view>().type(),
             py::autoclass<string_column>(modname + ".String").new_<std::int64_t>().type(),
-        };
+            named_coord_parse_error_autoclass(modname + ".CoordParseError",
+                                              0,
+                                              reinterpret_cast<PyTypeObject*>(
+                                                  PyExc_RuntimeError))
+                .def<&named_coord_parse_error::line>("line")
+                .def<&named_coord_parse_error::col>("col")
+                .def<&named_coord_parse_error::col_name>("col_name")
+                .str()
+                .type(),
+            line_parse_error_autoclass(modname + ".LineParseError",
+                                       0,
+                                       reinterpret_cast<PyTypeObject*>(
+                                           PyExc_RuntimeError))
+                .def<&line_parse_error::line>("line")
+                .str()
+                .type()};
 
         for (const auto& type : types) {
             const char* name = std::strrchr(type->tp_name, '.');

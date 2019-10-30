@@ -60,6 +60,17 @@ public:
         return scoped_ref{ref};
     }
 
+    /** Create a scoped ref that is a new reference to `ref` if `ref` is non-null.
+
+        @param ref The Python object to create a new managed reference to. If `ref`
+               is `nullptr`, then the resulting object just holds `nullptr` also.
+     */
+    constexpr static scoped_ref xnew_reference(T* ref) {
+        Py_XINCREF(ref);
+        return scoped_ref{ref};
+    }
+
+
     /** Decref the managed pointer if it is not `nullptr`.
      */
     ~scoped_ref() {

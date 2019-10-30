@@ -599,18 +599,79 @@ TEST_F(autoclass, hash_returns_negative_one) {
     EXPECT_EQ(result, -2);
 }
 
-TEST_F(autoclass, repr) {
-    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().repr().type();
+TEST_F(autoclass, str) {
+    py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().str().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), "ayy lmao");
     ASSERT_TRUE(inst);
     ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
 
-    py::scoped_ref repr_ob(PyObject_Repr(inst.get()));
-    ASSERT_TRUE(repr_ob);
+    py::scoped_ref str_ob(PyObject_Str(inst.get()));
+    ASSERT_TRUE(str_ob);
 
-    EXPECT_EQ(py::util::pystring_to_string_view(repr_ob), "ayy lmao"sv);
+    EXPECT_EQ(py::util::pystring_to_string_view(str_ob), "ayy lmao"sv);
+}
+
+TEST_F(autoclass, python_inheritence) {
+    struct s {
+        std::size_t a;
+        std::vector<int> b;
+
+        s(std::size_t a, const std::vector<int>& b) : a(a), b(b) {}
+    };
+
+    using ac = py::autoclass<s, PyListObject>;
+
+    py::scoped_ref<PyTypeObject> cls =
+        ac("s", 0, &PyList_Type).new_<std::size_t, const std::vector<int>&>().type();
+    ASSERT_TRUE(cls);
+
+    std::size_t val = 1;
+    std::vector<int> vec = {2, 3, 4};
+    py::scoped_ref inst = py::call_function_throws(static_cast<PyObject*>(cls), val, vec);
+    EXPECT_TRUE(PyList_Check(inst.get()));
+    ASSERT_FALSE(PyList_CheckExact(inst.get()));
+
+    s& unboxed = ac::unbox(inst);
+    EXPECT_EQ(unboxed.a, val);
+    EXPECT_EQ(unboxed.b, vec);
+}
+
+TEST_F(autoclass, python_exception) {
+    struct s {
+        std::size_t a;
+        std::vector<int> b;
+
+        s(std::size_t a, const std::vector<int>& b) : a(a), b(b) {}
+    };
+
+    using ac = py::exception_autoclass<s>;
+
+    py::scoped_ref<PyTypeObject> cls =
+        ac("s", 0, reinterpret_cast<PyTypeObject*>(PyExc_ValueError)).type();
+    ASSERT_TRUE(cls);
+
+    std::size_t val = 1;
+    std::vector<int> vec = {2, 3, 4};
+    ac::raise(val, vec);
+
+    ASSERT_TRUE(PyErr_Occurred());
+    PyObject* type;
+    PyObject* value;
+    PyObject* traceback;
+    PyErr_Fetch(&type, &value, &traceback);
+
+    EXPECT_EQ(type, static_cast<PyObject*>(cls));
+    EXPECT_TRUE(PyObject_IsInstance(value, static_cast<PyObject*>(cls)));
+
+    s& unboxed = ac::unbox(value);
+    EXPECT_EQ(unboxed.a, val);
+    EXPECT_EQ(unboxed.b, vec);
+
+    Py_DECREF(type);
+    Py_DECREF(value);
+    Py_XDECREF(traceback);
 }
 
 #if LIBPY_AUTOCLASS_UNSAFE_API
@@ -877,5 +938,5 @@ TEST_F(autoclass, iter_throws) {
     expect_pyerr_type_and_message(PyExc_RuntimeError, "a C++ exception was raised: ayy");
     PyErr_Clear();
 }
-#endif
+#endif  // LIBPY_AUTOCLASS_UNSAFE_API
 }  // namespace test_autoclass

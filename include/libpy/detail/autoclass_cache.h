@@ -40,6 +40,9 @@ struct autoclass_storage {
     // type dies.
     py::scoped_ref<> cleanup_wr;
 
+    // The Python base class for this type.
+    py::scoped_ref<PyTypeObject> m_pybase;
+
     autoclass_storage() = default;
 
     autoclass_storage(std::string&& name)
@@ -50,6 +53,6 @@ struct autoclass_storage {
 
 // A map from a C++ RTTI object to the Python class that was created to wrap it using
 // `py::autoclass`.
-extern no_destruct_wrapper<std::unordered_map<std::type_index, autoclass_storage>>
+extern no_destruct_wrapper<std::unordered_map<std::type_index, std::unique_ptr<autoclass_storage>>>
     autoclass_type_cache;
 }  // namespace py::detail

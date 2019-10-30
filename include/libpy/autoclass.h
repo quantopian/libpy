@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "libpy/automethod.h"
+#include "libpy/build_tuple.h"
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
@@ -16,7 +17,122 @@
 #include "libpy/scope_guard.h"
 
 namespace py {
+/** Zero the memory that is not part of the base PyObject.
+
+    @param b The object to zero the non-PyObject component.
+ */
 template<typename T>
+constexpr void zero_non_pyobject_base(T* b) {
+    static_assert(sizeof(T) >= sizeof(PyObject));
+    static_assert(std::is_pod_v<T>,
+                  "if using zero_non_pyobject_base, base type must a POD type");
+
+    std::byte* as_bytes = reinterpret_cast<std::byte*>(b);
+    std::memset(as_bytes + sizeof(PyObject), 0, sizeof(T) - sizeof(PyObject));
+}
+
+namespace detail {
+template<typename T>
+constexpr void nop_clear_base(T*) {}
+}  // namespace detail
+
+/** A factory for generating a Python class that wraps instances of a C++ type.
+
+    @tparam T The C++ type to be wrapped.
+    @tparam base The static base type of the Python instances created.
+    @tparam initialize_base A function used to initialize the Python base object.
+    @tparam clear_base A function used to clear the Python base object fields.
+
+    ### Usage
+
+    To create a new Python type for an object that wraps a C++ type, `my_type`,
+    you can write the following:
+
+    ```
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
+    ```
+
+    The resulting type will have a `__name__` of "PythonName", and a
+    `__module__` of "modname".
+
+    By default, types created with `autoclass` expose no functionality to
+    Python, not even a constructor. To add a constructor to your python object,
+    invoke the `.new_` method of the `autoclass`, templated with the C++
+    signature of the constructor. For example, to create a constructor that
+    accepts an int and a double, we would write:
+
+    ```
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+                                         .new_<int, double>()
+                                         .type();
+    ```
+
+    Only one constructor overload may be exposed to Python because Python
+    doesn't support function overloading. If a constructor is not provided,
+    instances can only be constructed from C++ using
+    `py::autoclass<my_type>::construct(Args&&...)`.
+
+    To expose methods of your C++ type to Python, call `.def`, templated on the
+    address of the C++ method you want to expose, and pass the name of the
+    Python method to generate. For example, to expose a C++ method called `foo`
+    as a Python method named `bar`, we would write:
+
+    ```
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+                                         .new_<int, double>()
+                                         .def<&my_type::foo>("bar")
+                                         .type();
+    ```
+
+    ### Subclassing Existing Python Types
+
+    Python instances are composed of two parts:
+
+    - A static C or C++ type that defines the layout of instances in memory. A
+    - runtime value of type `PyTypeObject`, which represents the Python type of
+      the object.
+
+    An object's static type must contain at least the state defined by the base
+    `PyObject` struct, which includes a `PyTypeObject*` that points to the
+    object's python type. In general, there is a one-to-many relationship
+    between static object layouts and Python types (i.e. `PyTypeObject*`s).
+    Objects of a given Python type always have the same layout, but multiple
+    objects of different Python types may have the same layout if they have the
+    same state. For example, the standard Python exceptions all have the same
+    layout (defined by the `PyBaseExceptionObject` struct), but they have
+    different Python types so that users can catch specific exceptions types.
+
+    By default, Python objects defined with `autoclass<T>.type()` will have a
+    layout that looks like:
+
+    ```
+    class autoclass_object : public PyObject {
+        T value;
+    };
+    ```
+
+    The `PyTypeObject` returned by `autoclass::type` will be a (Python) subclass
+    of Python's `object` type.
+
+    In rare cases, it may be useful to use autoclass to define a type that
+    subclasses from a Python type other than `object`. To support this use-case,
+    `autoclass` allows you to provide a few optional arguments:
+
+    - `base`: the static instance type to subclass instead of `PyObject`.
+    - `initialize_base`: a function which initializes the non-`PyObject` fields
+       of the `base` struct.
+    - `clear_base`: a function which tears down the non-`PyObject` fields of the
+      `base` struct.
+
+    By default, the non-`PyObject` fields of `base` will just be zeroed and no
+    cleanup is performed. Subclassing existing Python types is an advanced
+    autoclass feature and is not guaranteed to be safe in all configurations.
+    Please use this feature with care.
+ */
+template<typename T,
+         typename base = PyObject,
+         auto initialize_base = zero_non_pyobject_base<base>,
+         auto clear_base = detail::nop_clear_base<base>>
 class autoclass {
 private:
     /** Marker that statically asserts that the unsafe API is enabled.
@@ -42,7 +158,7 @@ private:
     }
 
 public:
-    using object = detail::autoclass_object<T>;
+    using object = detail::autoclass_object<T, base>;
 
     template<typename U>
     static T& unbox(const U& ptr) {
@@ -51,8 +167,10 @@ public:
 
 private:
     std::vector<PyType_Slot> m_slots;
-    detail::autoclass_storage m_storage;
+    std::unique_ptr<detail::autoclass_storage> m_storage;
+    py::scoped_ref<PyTypeObject> m_type;
     PyType_Spec m_spec;
+    py::scoped_ref<PyTypeObject> m_py_basetype;
 
     /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we implement
         at least `Py_tp_traverse`, and will use `PyObject_GC_New` and `PyObject_GC_Del`.
@@ -130,20 +248,20 @@ private:
     struct member_function<R(const T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
-    /** Assert that `m_storage.type` isn't yet initialized. Many operations like adding
+    /** Assert that `m_storage->type` isn't yet initialized. Many operations like adding
        methods will not have any affect after the type is initialized.
 
         @param msg The error message to forward to the `ValueError` thrown if this
         assertion is violated.
      */
     void require_uninitialized(const char* msg) {
-        if (m_storage.type) {
+        if (m_type) {
             throw py::exception(PyExc_ValueError, msg);
         }
     }
 
 protected:
-    template<typename>
+    template<typename, typename, auto, auto>
     friend class autoclass;
 
     /** Add a slot to the spec.
@@ -172,25 +290,30 @@ public:
     static py::scoped_ref<PyTypeObject> lookup_type() {
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
         if (type_search != detail::autoclass_type_cache.get().end()) {
-            PyTypeObject* type = type_search->second.type;
+            PyTypeObject* type = type_search->second->type;
             Py_INCREF(type);
             return py::scoped_ref(type);
         }
         return nullptr;
     }
 
+private:
     /** Construct a new Python object that wraps a `T` without boxing/unboxing the
         constructor arguments.
 
         @param args The arguments to forward to the C++ type's constructor.
-        @return A new reference to a Python wrapped version of `T`, or nullptr on failure.
-     */
+        @return A pair of the Python type for `T` and a new reference to a
+                Python wrapped version of `T`, or nullptr on failure.
+    */
     template<typename... Args>
-    static py::scoped_ref<> construct(Args&&... args) {
+    static std::tuple<py::scoped_ref<PyTypeObject>, py::scoped_ref<>>
+    construct_with_type(Args&&... args) {
         auto cls = lookup_type();
         if (!cls) {
-            py::raise(PyExc_RuntimeError) << "type wasn't created yet";
-            return nullptr;
+            py::raise(PyExc_RuntimeError)
+                << "C++ type " << util::type_name<T>().get()
+                << " does not have a corresponding Python type yet";
+            return {nullptr, nullptr};
         }
 
         PyObject* out;
@@ -201,16 +324,91 @@ public:
             out = constructor_new_impl<false>(cls.get(), std::forward<Args>(args)...);
         }
 
-        return py::scoped_ref(out);
+        return {std::move(cls), py::scoped_ref(out)};
     }
 
-    autoclass(std::string name = util::type_name<T>().get(), int extra_flags = 0)
-        : m_storage(std::move(name)),
-          m_spec({m_storage.strings.front().data(),
+public:
+    /** Construct a new Python object that wraps a `T` without boxing/unboxing the
+        constructor arguments.
+
+        @param args The arguments to forward to the C++ type's constructor.
+        @return A new reference to a Python wrapped version of `T`, or nullptr on failure.
+     */
+    template<typename... Args>
+    static py::scoped_ref<> construct(Args&&... args) {
+        auto [cls, ob] = construct_with_type(std::forward<Args>(args)...);
+        return ob;
+    }
+
+    /** Raise a Python exception with a wrapped version of `T` without
+        boxing/unboxing the constructor arguments.
+
+        @param args The arguments to forward to the C++ type's constructor.
+        @return `nullptr`.
+     */
+    template<typename... Args>
+    static std::nullptr_t raise(Args&&... args) {
+        auto [cls, ob] = construct_with_type(std::forward<Args>(args)...);
+        if (!ob) {
+            return nullptr;
+        }
+        PyErr_SetObject(static_cast<PyObject*>(cls), ob.get());
+        return nullptr;
+    }
+
+private:
+    /** Get the `tp_flags` from the user provided extra flags and Python base type.
+
+        @param extra_flags any extra flags the user explicitly provided.
+        @param base_type A potentially null pointer to the Python base type.
+        @return The `tp_flags` to use for this autoclass generated type.
+     */
+    static unsigned int flags(int extra_flags, PyTypeObject* base_type) {
+        unsigned int out = detail::autoclass_base_flags;
+        out |= extra_flags;
+        if (base_type && base_type->tp_flags & Py_TPFLAGS_HAVE_GC) {
+            out |= Py_TPFLAGS_HAVE_GC;
+        }
+        return out;
+    }
+
+public:
+    autoclass(std::string name = util::type_name<T>().get(),
+              int extra_flags = 0,
+              PyTypeObject* base_type = nullptr)
+        : m_storage(std::make_unique<detail::autoclass_storage>(std::move(name))),
+          m_type(nullptr),
+          m_spec({m_storage->strings.front().data(),
                   static_cast<int>(sizeof(object)),
                   0,
-                  static_cast<unsigned int>(detail::autoclass_base_flags | extra_flags),
-                  nullptr}) {
+                  flags(extra_flags, base_type),
+                  nullptr}),
+          m_py_basetype(py::scoped_ref<PyTypeObject>::xnew_reference(base_type)) {
+        if (base_type) {
+            // Check to make sure that the static base type is not obviously
+            // wrong. This check does not ensure that the static base type is
+            // compatible with `base_type`, but if this check fails, then they
+            // are certainly incompatible.
+            if (base_type->tp_basicsize != sizeof(base)) {
+                throw util::formatted_error<std::invalid_argument>(
+                    "Python base type ",
+                    base_type->tp_name,
+                    " instances do not match the size of `base` template param ",
+                    util::type_name<base>().get(),
+                    ": ",
+                    base_type->tp_basicsize,
+                    " != ",
+                    sizeof(base));
+            }
+
+            if (base_type->tp_itemsize) {
+                throw std::invalid_argument{
+                    "Python base type is a varobject, which is unsupported as an "
+                    "autoclass type's base type"};
+            }
+
+            add_slot(Py_tp_base, base_type);
+        }
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
         if (type_search != detail::autoclass_type_cache.get().end()) {
             throw std::runtime_error{"type was already created"};
@@ -220,12 +418,18 @@ public:
         if (have_gc()) {
             py_dealloc = [](PyObject* self) {
                 PyObject_GC_UnTrack(self);
+                clear_base(reinterpret_cast<base*>(self));
                 unbox(self).~T();
                 dealloc(true, self);
             };
         }
         else {
             py_dealloc = [](PyObject* self) {
+                if (!std::is_same_v<base, PyObject>) {
+                    if (auto clear = self->ob_type->tp_base->tp_clear; clear) {
+                        clear(self);
+                    }
+                }
                 unbox(self).~T();
                 dealloc(false, self);
             };
@@ -293,7 +497,7 @@ public:
     autoclass& doc(std::string doc) {
         require_uninitialized("cannot add docstring after the class has been created");
 
-        std::string& copied_doc = m_storage.strings.emplace_front(std::move(doc));
+        std::string& copied_doc = m_storage->strings.emplace_front(std::move(doc));
         return add_slot(Py_tp_doc, copied_doc.data());
     }
 
@@ -303,6 +507,11 @@ private:
             return PyObject_GC_New(object, cls);
         }
         return PyObject_New(object, cls);
+    }
+
+    template<typename b = base, typename = std::enable_if_t<!std::is_same_v<b, PyObject>>>
+    static void dealloc(bool have_gc, base* ob) {
+        dealloc(have_gc, reinterpret_cast<PyObject*>(ob));
     }
 
     static void dealloc(bool have_gc, PyObject* ob) {
@@ -346,10 +555,19 @@ private:
         if (!self) {
             return nullptr;
         }
+
+        try {
+            initialize_base(self);
+        }
+        catch (...) {
+            dealloc(have_gc, self);
+        }
+
         try {
             new (&unbox(self)) T(std::forward<ConstructorArgs>(args)...);
         }
         catch (...) {
+            clear_base(self);
             dealloc(have_gc, self);
             throw;
         }
@@ -357,7 +575,7 @@ private:
         if (have_gc) {
             PyObject_GC_Track(self);
         }
-        return self;
+        return reinterpret_cast<PyObject*>(self);
     }
 
 public:
@@ -650,7 +868,7 @@ private:
             case Py_NE:
                 return cmp_func<T, meta::op::ne, RHS>(self, other);
             default:
-                raise(PyExc_SystemError) << "invalid richcompare op: " << cmp;
+                py::raise(PyExc_SystemError) << "invalid richcompare op: " << cmp;
                 return nullptr;
             }
         }
@@ -844,12 +1062,12 @@ public:
     autoclass& def(std::string name) {
         require_uninitialized("cannot add methods after the class has been created");
 
-        std::string& name_copy = m_storage.strings.emplace_front(std::move(name));
+        std::string& name_copy = m_storage->strings.emplace_front(std::move(name));
         if constexpr (flags & METH_STATIC) {
-            m_storage.methods.emplace_back(autofunction<impl, flags>(name_copy.data()));
+            m_storage->methods.emplace_back(autofunction<impl, flags>(name_copy.data()));
         }
         else {
-            m_storage.methods.emplace_back(
+            m_storage->methods.emplace_back(
                 automethod<member_function<decltype(impl), impl>::f>(name_copy.data()));
         }
         return *this;
@@ -871,14 +1089,14 @@ public:
     autoclass& def(std::string name, std::string doc) {
         require_uninitialized("cannot add methods after the class has been created");
 
-        std::string& name_copy = m_storage.strings.emplace_front(std::move(name));
-        std::string& doc_copy = m_storage.strings.emplace_front(std::move(doc));
+        std::string& name_copy = m_storage->strings.emplace_front(std::move(name));
+        std::string& doc_copy = m_storage->strings.emplace_front(std::move(doc));
         if constexpr (flags & METH_STATIC || flags & METH_CLASS) {
-            m_storage.methods.emplace_back(
+            m_storage->methods.emplace_back(
                 automethod<impl, flags>(name_copy.data(), doc_copy.data()));
         }
         else {
-            m_storage.methods.emplace_back(
+            m_storage->methods.emplace_back(
                 automethod<member_function<decltype(impl), impl>::f>(name_copy.data(),
                                                                      doc_copy.data()));
         }
@@ -1033,7 +1251,7 @@ public:
 
 private:
     template<typename U>
-    reprfunc get_repr_func() {
+    reprfunc get_str_func() {
         return [](PyObject* self) -> PyObject* {
             try {
                 std::stringstream s;
@@ -1064,12 +1282,12 @@ private:
     }
 
 public:
-    /** Add a `__repr__` method which uses `operator<<(std::ostrea&, T)`.
+    /** Add a `__str__` method which uses `operator<<(std::ostrea&, T)`.
      */
-    autoclass& repr() {
-        require_uninitialized("cannot add a repr method after class has been created");
+    autoclass& str() {
+        require_uninitialized("cannot add a str method after class has been created");
 
-        return add_slot(Py_tp_repr, get_repr_func<T>());
+        return add_slot(Py_tp_str, get_str_func<T>());
     }
 
 private:
@@ -1089,13 +1307,13 @@ public:
               unspecified.
      */
     scoped_ref<PyTypeObject> type() {
-        if (m_storage.type) {
-            Py_INCREF(m_storage.type);
-            return scoped_ref(m_storage.type);
+        if (m_type) {
+            return m_type;
         }
 
         bool have_new = false;
         bool have_traverse = false;
+        bool have_clear = false;
         for (PyType_Slot& sl : m_slots) {
             if (sl.slot == Py_tp_new) {
                 have_new = true;
@@ -1104,19 +1322,40 @@ public:
             if (sl.slot == Py_tp_traverse) {
                 have_traverse = true;
             }
+
+            if (sl.slot == Py_tp_clear) {
+                have_clear = true;
+            }
         }
 
-        if (have_gc() && !have_traverse) {
+        if (have_gc() && !have_traverse &&
+            !(m_py_basetype && m_py_basetype->tp_traverse)) {
             throw py::exception(PyExc_ValueError,
                                 "if (flags & Py_TPFLAGS_HAVE_GC), a Py_tp_traverse "
-                                "slot must be added");
+                                "slot must be added or be present on the py_basetype");
+        }
+        if (have_gc()) {
+            if (!have_traverse) {
+                traverseproc impl =
+                    [](PyObject* self, visitproc visit, void* arg) -> int {
+                    return self->ob_type->tp_base->tp_traverse(self, visit, arg);
+                };
+                add_slot(Py_tp_traverse, impl);
+            }
+
+            if (!have_clear) {
+                inquiry impl = [](PyObject* self) -> int {
+                    return self->ob_type->tp_base->tp_clear(self);
+                };
+                add_slot(Py_tp_clear, impl);
+            }
         }
 
         // cap off our methods
-        m_storage.methods.emplace_back(end_method_list);
+        m_storage->methods.emplace_back(end_method_list);
 
-        // Move our type storage into this persistent storage. `m_storage.methods` has
-        // pointers into `m_storage.strings`, so we need to move the list as well to
+        // Move our type storage into this persistent storage. `m_storage->methods` has
+        // pointers into `m_storage->strings`, so we need to move the list as well to
         // maintain these references.
         auto [it, inserted] =
             detail::autoclass_type_cache.get().try_emplace(typeid(T),
@@ -1124,7 +1363,7 @@ public:
         if (!inserted) {
             throw py::exception(PyExc_RuntimeError, "type already constructed");
         }
-        detail::autoclass_storage& storage = it->second;
+        std::unique_ptr<detail::autoclass_storage>& storage = it->second;
 
         // if we need to exit early, evict this cache entry
         py::util::scope_guard release_type_cache(
@@ -1132,7 +1371,7 @@ public:
 
         // Make the `Py_tp_methods` the newly created vector's data, not the original
         // data.
-        add_slot(Py_tp_methods, storage.methods.data());
+        add_slot(Py_tp_methods, storage->methods.data());
         finalize_slots();
         m_spec.slots = m_slots.data();
 
@@ -1140,39 +1379,37 @@ public:
         if (!type) {
             throw py::exception{};
         }
-        storage.type = type.get();  // borrowed reference held in the cache
+        storage->type = type.get();  // borrowed reference held in the cache
 
         if (!have_new) {
             // explicitly delete the new (don't inherit from Python's `object`)
             type.get()->tp_new = nullptr;
         }
-
-        // mark that we have initialized the type already so that
-        // `require_uninitialized()` can fail
-        m_storage.type = storage.type;
+        // don't inherit init
+        type.get()->tp_init = nullptr;
 
         // Create a `PyCFunctionObject` that will call `cache_cleanup`.
         // `PyCFunctionObject` has a pointer to the input `PyMethodDef` which is why
         // we need to store the methoddef on the type cache storage itself.
-        storage.callback_method = automethod<cache_cleanup>("cache_cleanup");
+        storage->callback_method = automethod<cache_cleanup>("cache_cleanup");
         py::scoped_ref callback_func(
-            PyCFunction_NewEx(&storage.callback_method, nullptr, nullptr));
+            PyCFunction_NewEx(&storage->callback_method, nullptr, nullptr));
         if (!callback_func) {
             throw py::exception{};
         }
         // Create a weakref that calls `callback_func` (A Python function) when `type`
         // dies. This will take a reference to `callback_func`, and after we leave this
         // scope, it will be the sole owner of that function.
-        storage.cleanup_wr = py::scoped_ref(
+        storage->cleanup_wr = py::scoped_ref(
             PyWeakref_NewRef(static_cast<PyObject*>(type), callback_func.get()));
-        if (!storage.cleanup_wr) {
+        if (!storage->cleanup_wr) {
             throw py::exception{};
         }
 
         // We didn't need to exit early, don't evict `T` from the type cache.
         release_type_cache.dismiss();
 
-        // Return the only reference we have, `storage` has a borrowed reference.
+        m_type = type;
         return type;
     }
 
@@ -1204,4 +1441,29 @@ public:
         }
     };
 };
+
+template<typename T>
+int tp_clear(T* ob) {
+    return Py_TYPE(ob)->tp_clear(reinterpret_cast<PyObject*>(ob));
+}
+
+namespace detail {
+/** Initialize the PyBaseExceptionObject component of an autoclass generated
+    Python object.
+ */
+inline void initialize_exception_base(PyBaseExceptionObject* self) {
+    zero_non_pyobject_base(self);
+    if (!(self->args = PyTuple_New(0))) {
+        throw py::exception{};
+    }
+}
+}  // namespace detail
+
+/** A helper for creating autoclasses that are subclasses of a Python exception.
+ */
+template<typename T>
+using exception_autoclass = autoclass<T,
+                                      PyBaseExceptionObject,
+                                      detail::initialize_exception_base,
+                                      tp_clear<PyBaseExceptionObject>>;
 }  // namespace py
