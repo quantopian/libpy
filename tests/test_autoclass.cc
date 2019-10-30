@@ -603,7 +603,7 @@ TEST_F(autoclass, str) {
     py::scoped_ref cls = py::autoclass<std::string>().new_<std::string>().str().type();
     ASSERT_TRUE(cls);
 
-    py::scoped_ref inst = py::call_function(static_cast<PyObject*>(cls), "ayy lmao");
+    py::scoped_ref inst = py::autoclass<std::string>::construct("ayy lmao");
     ASSERT_TRUE(inst);
     ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
 
@@ -611,6 +611,47 @@ TEST_F(autoclass, str) {
     ASSERT_TRUE(str_ob);
 
     EXPECT_EQ(py::util::pystring_to_string_view(str_ob), "ayy lmao"sv);
+}
+
+std::string string_repr_free_func(const std::string& val) {
+    return "<std::string: " + val + ">";
+};
+
+TEST_F(autoclass, repr_free_func) {
+    py::scoped_ref cls = py::autoclass<std::string>()
+                             .repr<string_repr_free_func>()
+                             .type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::autoclass<std::string>::construct("ayy lmao");
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    py::scoped_ref str_ob(PyObject_Repr(inst.get()));
+    ASSERT_TRUE(str_ob);
+
+    EXPECT_EQ(py::util::pystring_to_string_view(str_ob), "<std::string: ayy lmao>"sv);
+}
+
+TEST_F(autoclass, repr_member_func) {
+    struct my_string : public std::string {
+        using std::string::string;
+
+        std::string repr() const {
+            return "<my_string: " + *this + ">";
+        }
+    };
+    py::scoped_ref cls = py::autoclass<my_string>().repr<&my_string::repr>().type();
+    ASSERT_TRUE(cls);
+
+    py::scoped_ref inst = py::autoclass<my_string>::construct("ayy lmao");
+    ASSERT_TRUE(inst);
+    ASSERT_EQ(Py_TYPE(inst.get()), cls.get());
+
+    py::scoped_ref str_ob(PyObject_Repr(inst.get()));
+    ASSERT_TRUE(str_ob);
+
+    EXPECT_EQ(py::util::pystring_to_string_view(str_ob), "<my_string: ayy lmao>"sv);
 }
 
 TEST_F(autoclass, python_inheritence) {
