@@ -50,6 +50,11 @@ public:
             gil::release();
         }
 
+        inline void dismiss() {
+            m_acquire = false;
+            gil::acquire();
+        }
+
         inline ~release_block() {
             if (m_acquire) {
                 gil::acquire();
@@ -68,6 +73,11 @@ public:
     public:
         inline hold_block() : m_release(!gil::held()) {
             gil::acquire();
+        }
+
+        inline void dismiss() {
+            m_release = false;
+            gil::release();
         }
 
         inline ~hold_block() {
