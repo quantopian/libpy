@@ -22,8 +22,10 @@ namespace py {
     @param b The object to zero the non-PyObject component.
  */
 template<typename T>
-constexpr void zero_non_base(T* b) {
+constexpr void zero_non_pyobject_base(T* b) {
     static_assert(sizeof(T) >= sizeof(PyObject));
+    static_assert(std::is_pod_v<T>,
+                  "if using zero_non_pyobject_base, base type must a POD type");
 
     std::byte* as_bytes = reinterpret_cast<std::byte*>(b);
     std::memset(as_bytes + sizeof(PyObject), 0, sizeof(T) - sizeof(PyObject));
@@ -37,13 +39,56 @@ constexpr void nop_clear_base(T*) {}
 /** A factory for generating a Python class that wraps instances of a C++ type.
 
     @tparam T The C++ type to be wrapped.
-    @tparam base The base type of the Python instances created.
+    @tparam base The static base type of the Python instances created.
     @tparam initialize_base A function used to initialize the Python base object.
     @tparam clear_base A function used to clear the Python base object fields.
+
+    Python instances are composed of two parts:
+
+    - A static C or C++ type that represents the layout of instances in memory.
+    - A runtime object that represents the Python type of the object.
+
+    The base Python object, `PyObject`, has a field which contains a `PyTypeObject*`
+    which points to the Python type for the instance. From a C++ perspective, the
+    `PyTypeObject` acts as a virtual function table (vtable) for the Python instance.
+    CPython is written in C, not C++, so instances "subclass" other static types by
+    creating a struct whose first member is the static type of the parentt, for example:
+
+    ```
+    struct sub_type {
+        parent_type base;
+        int extra_field_0;
+        float extra_field_1;
+        /// etc...
+    };
+    ```
+
+    This allows us to cast between `parent_type*` and `sub_type*` as long as the vtable
+    matches the vtable paired with `sub_type`.
+
+    There is a one to many relationship between static types and possible `PyTypeObject*`
+    vtables. If you only need to override the behavior of an existing method but don't
+    otherwise need extra instance state, you can just create a new `PyTypeObject` that
+    inherits from the type you wish to extend. A common example of this in CPython are
+    the standard exceptions. Most standard Python exceptions share the exact same
+    instance state (`PyBaseExceptionObject`); however, they have different vtables so
+    that users can catch exceptions based on the type alone.
+
+    In order to make a subclass of an existing Python object with autoclass, you must
+    specify both the static type of the instances to subclass and the runtime
+    `PyTypeObject` to subclass. Instances created for this new type will be instances
+    of a C++ subclass of `base`, the static type of the instances. From Python's
+    perspective, the runtime `PyTypeObject` generated will also be a subclass of the
+    Python base type. If you provide a custom base, you may need to implement the extra
+    functions `initialize_base` and `clear_base`. These function are responsible for
+    initializing and cleaning up the parent class's state (except for the component owned
+    by the root `PyObject`). By default, the memory will just be zeroed on allocation
+    and no cleanup is performed. This is an advanced autoclass feature and is not
+    guaranteed to be safe. Please use this feature with care.
  */
 template<typename T,
          typename base = PyObject,
-         auto initialize_base = zero_non_base<base>,
+         auto initialize_base = zero_non_pyobject_base<base>,
          auto clear_base = detail::nop_clear_base<base>>
 class autoclass {
 private:
@@ -80,9 +125,9 @@ public:
 private:
     std::vector<PyType_Slot> m_slots;
     std::unique_ptr<detail::autoclass_storage> m_storage;
-    PyTypeObject* m_type;
+    py::scoped_ref<PyTypeObject> m_type;
     PyType_Spec m_spec;
-    PyTypeObject* m_py_basetype;
+    py::scoped_ref<PyTypeObject> m_py_basetype;
 
     /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we implement
         at least `Py_tp_traverse`, and will use `PyObject_GC_New` and `PyObject_GC_Del`.
@@ -268,6 +313,23 @@ public:
         return nullptr;
     }
 
+private:
+    /** Get the `tp_flags` from the user provided extra flags and Python base type.
+
+        @param extra_flags any extra flags the user explicitly provided.
+        @param base_type A potentially null pointer to the Python base type.
+        @return The `tp_flags` to use for this autoclass generated type.
+     */
+    static unsigned int flags(int extra_flags, PyTypeObject* base_type) {
+        unsigned int out = detail::autoclass_base_flags;
+        out |= extra_flags;
+        if (base_type && base_type->tp_flags & Py_TPFLAGS_HAVE_GC) {
+            out |= Py_TPFLAGS_HAVE_GC;
+        }
+        return out;
+    }
+
+public:
     autoclass(std::string name = util::type_name<T>().get(),
               int extra_flags = 0,
               PyTypeObject* base_type = nullptr)
@@ -276,12 +338,14 @@ public:
           m_spec({m_storage->strings.front().data(),
                   static_cast<int>(sizeof(object)),
                   0,
-                  static_cast<unsigned int>(
-                      detail::autoclass_base_flags | extra_flags |
-                      (base_type ? base_type->tp_flags & Py_TPFLAGS_HAVE_GC : 0)),
+                  flags(extra_flags, base_type),
                   nullptr}),
-          m_py_basetype(base_type) {
+          m_py_basetype(py::scoped_ref<PyTypeObject>::xnew_reference(base_type)) {
         if (base_type) {
+            // Check to make sure that the static base type is not obviously
+            // wrong. This check does not ensure that the static base type is
+            // compatible with `base_type`, but if this check fails, then they
+            // are certainly incompatible.
             if (base_type->tp_basicsize != sizeof(base)) {
                 throw util::formatted_error<std::invalid_argument>(
                     "Python base type ",
@@ -1201,8 +1265,7 @@ public:
      */
     scoped_ref<PyTypeObject> type() {
         if (m_type) {
-            Py_INCREF(m_type);
-            return scoped_ref(m_type);
+            return m_type;
         }
 
         bool have_new = false;
@@ -1303,7 +1366,7 @@ public:
         // We didn't need to exit early, don't evict `T` from the type cache.
         release_type_cache.dismiss();
 
-        // Return the only reference we have, `storage` has a borrowed reference.
+        m_type = type;
         return type;
     }
 
@@ -1346,7 +1409,7 @@ namespace detail {
     Python object.
  */
 inline void initialize_exception_base(PyBaseExceptionObject* self) {
-    zero_non_base(self);
+    zero_non_pyobject_base(self);
     if (!(self->args = PyTuple_New(0))) {
         throw py::exception{};
     }

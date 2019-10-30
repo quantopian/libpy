@@ -621,7 +621,7 @@ TEST_F(autoclass, python_inheritence) {
         s(std::size_t a, const std::vector<int>& b) : a(a), b(b) {}
     };
 
-    using ac = py::autoclass<s, PyListObject, py::zero_non_base<PyListObject>>;
+    using ac = py::autoclass<s, PyListObject>;
 
     py::scoped_ref<PyTypeObject> cls =
         ac("s", 0, &PyList_Type).new_<std::size_t, const std::vector<int>&>().type();
@@ -630,6 +630,8 @@ TEST_F(autoclass, python_inheritence) {
     std::size_t val = 1;
     std::vector<int> vec = {2, 3, 4};
     py::scoped_ref inst = py::call_function_throws(static_cast<PyObject*>(cls), val, vec);
+    EXPECT_TRUE(PyList_Check(inst.get()));
+    ASSERT_FALSE(PyList_CheckExact(inst.get()));
 
     s& unboxed = ac::unbox(inst);
     EXPECT_EQ(unboxed.a, val);
