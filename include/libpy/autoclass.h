@@ -52,7 +52,7 @@ constexpr void nop_clear_base(T*) {}
     which points to the Python type for the instance. From a C++ perspective, the
     `PyTypeObject` acts as a virtual function table (vtable) for the Python instance.
     CPython is written in C, not C++, so instances "subclass" other static types by
-    creating a struct whose first member is the static type of the parentt, for example:
+    creating a struct whose first member is the static type of the parent, for example:
 
     ```
     struct sub_type {
