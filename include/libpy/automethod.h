@@ -83,6 +83,7 @@ private:
     std::optional<T> m_value;
 
 public:
+    using name = Name;
     using type = T;
 
     template<typename... Args>
@@ -101,6 +102,17 @@ public:
         return m_value;
     }
 };
+
+// helper aliases
+
+template<typename Name, typename T>
+using kwd = keyword<Name, T>;
+
+template<typename T>
+using opt = optional<T>;
+
+template<typename Name, typename T>
+using opt_kwd = opt<kwd<Name, T>>;
 }  // namespace arg
 
 namespace dispatch {
@@ -159,7 +171,7 @@ private:
     using R = optionals_and_keywords<ix + 1, Ts...>;
 
 public:
-    using optionals = typename R::optionals;
+    constexpr static std::size_t noptionals = R::noptionals;
     using keywords = typename R::keywords;
 };
 
@@ -172,7 +184,7 @@ private:
                   "non-optional follows optional argument");
 
 public:
-    using optionals = meta::type_cat<std::tuple<T>, typename R::optionals>;
+    constexpr static std::size_t noptionals = R::noptionals + 1;
     using keywords = typename R::keywords;
 };
 
@@ -185,7 +197,7 @@ private:
                   "non-keyword follows keyword argument");
 
 public:
-    using optionals = typename R::optionals;
+    constexpr static std::size_t noptionals = R::noptionals;
     using keywords = meta::type_cat<std::tuple<keyword<Name, ix>>, typename R::keywords>;
 };
 
@@ -194,19 +206,19 @@ struct optionals_and_keywords<ix, arg::optional<arg::keyword<Name, T>>, Ts...> {
 private:
     using R = optionals_and_keywords<ix + 1, Ts...>;
 
-    static_assert(std::tuple_size_v<typename R::optionals> == sizeof...(Ts),
+    static_assert(R::noptionals == sizeof...(Ts),
                   "non-optional follows optional argument");
     static_assert(std::tuple_size_v<typename R::keywords> == sizeof...(Ts),
                   "non-keyword follows keyword argument");
 
 public:
-    using optionals = meta::type_cat<std::tuple<T>, typename R::optionals>;
+    constexpr static std::size_t noptionals = R::noptionals + 1;
     using keywords = meta::type_cat<std::tuple<keyword<Name, ix>>, typename R::keywords>;
 };
 
 template<std::size_t ix>
 struct optionals_and_keywords<ix> {
-    using optionals = std::tuple<>;
+    constexpr static std::size_t noptionals = 0;
     using keywords = std::tuple<>;
 };
 
@@ -221,8 +233,7 @@ private:
     static constexpr std::size_t arity = sizeof...(Args);
     static constexpr std::size_t nkeywords = std::tuple_size_v<typename parsed::keywords>;
     static constexpr std::size_t nposonly = arity - nkeywords;
-    static constexpr std::size_t nrequired =
-        arity - std::tuple_size_v<typename parsed::optionals>;
+    static constexpr std::size_t nrequired = arity - parsed::noptionals;
 
     template<typename Arg, std::size_t ix>
     static decltype(py::from_object<Arg>(nullptr)) positional_arg(PyObject* args) {
