@@ -1316,7 +1316,7 @@ public:
                 if (!out) {
                     return nullptr;
                 }
-                buf = PyString_AS_STRING(out);
+                buf = PyString_AS_STRING(out.get());
 #else
                 out = py::scoped_ref(PyUnicode_New(size, PyUnicode_1BYTE_KIND));
                 if (!out) {
