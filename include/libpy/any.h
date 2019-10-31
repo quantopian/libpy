@@ -288,7 +288,7 @@ public:
     /** Free memory allocated with `alloc` or `default_construct_alloc`.
      */
     inline void free(std::byte* addr) const {
-        delete[] addr;
+        operator delete[](addr, std::align_val_t{align()});
     }
 
     constexpr inline bool operator==(const any_vtable& other) const {
