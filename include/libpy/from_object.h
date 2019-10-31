@@ -28,9 +28,7 @@ namespace py {
  */
 class invalid_conversion : public py::exception {
 private:
-    std::string m_msg;
-
-    inline invalid_conversion(const std::string& msg) : m_msg(msg) {}
+    inline invalid_conversion(const std::string& msg) : py::exception(msg) {}
 
 public:
     template<typename ConvertTo>
@@ -49,10 +47,6 @@ public:
           << " to a C++ object of type " << py::util::type_name<ConvertTo>().get()
           << ": ob=" << data;
         return invalid_conversion(s.str());
-    }
-
-    inline const char* what() const noexcept override {
-        return m_msg.data();
     }
 };
 
