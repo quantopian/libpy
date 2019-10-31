@@ -12,6 +12,7 @@ private:
 public:
     gil() = delete;
 
+
     /** Release the GIL if it is not already released.
      */
     static inline void release() {
@@ -29,12 +30,13 @@ public:
         }
     }
 
-    /** Check if the GIL is currently held by this thread.
-
-        @return Is the GIL held by this thread?
-     */
     static inline bool held() {
+#if PY_MAJOR_VERSION > 2
         return PyGILState_Check();
+#else
+        PyThreadState* tstate = PyGILState_GetThisThreadState();
+        return tstate && (tstate == PyGILState_GetThisThreadState());
+#endif
     }
 
     /** RAII resource for ensuring that the gil is released in a given block.
