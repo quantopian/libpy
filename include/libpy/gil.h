@@ -2,6 +2,18 @@
 
 #include "libpy/detail/python.h"
 
+#if PY_MAJOR_VERSION == 2
+#include <exception>
+#define DISABLE_PY2(feature, signature, body)                                            \
+    template<typename T = void>                                                          \
+    [[noreturn]] signature {                                                             \
+        static_assert(!std::is_same_v<T, T>, "cannot use " #feature "in Python 2");      \
+        std::terminate();                                                                \
+    }
+#else
+#define DISABLE_PY2(feature, signature, body) signature body
+#endif
+
 namespace py {
 /** A wrapper around the threadstate.
  */
@@ -12,50 +24,66 @@ private:
 public:
     gil() = delete;
 
+    /** Release the GIL. The GIL must be held.
 
-    /** Release the GIL if it is not already released.
+        @note `release` is a low-level utility. Please see `release_block` for
+              a safer alternative.
      */
     static inline void release() {
-        if (held()) {
-            m_save = PyEval_SaveThread();
-        }
+        m_save = PyEval_SaveThread();
     }
 
-    /** Acquire the GIL if we do not already hold it.
+    /** Acquire the GIL. The GIL must not be held.
+
+        @note `acquire` is a low-level utility. Please see `hold_block` for
+              a safer alternative.
      */
     static inline void acquire() {
-        if (!held()) {
-            PyEval_RestoreThread(m_save);
-            m_save = nullptr;
-        }
+        PyEval_RestoreThread(m_save);
+        m_save = nullptr;
     }
 
-    static inline bool held() {
-#if PY_MAJOR_VERSION > 2
-        return PyGILState_Check();
-#else
-        PyThreadState* tstate = PyGILState_GetThisThreadState();
-        return tstate && (tstate == PyGILState_GetThisThreadState());
-#endif
-    }
+    /** Release the GIL if it is not already released.
+
+        @note `ensure_released` is a low-level utility. Please see
+              `release_block` for a safer alternative.
+     */
+    DISABLE_PY2(ensure_released, static inline void ensure_released(), {
+        if (held()) {
+            release();
+        }
+    })
+
+    /** Acquire the GIL if we do not already hold it.
+
+        @note `ensure_acquired` is a low-level utility. Please see `hold_block`
+              for a safer alternative.
+     */
+    DISABLE_PY2(ensure_acquired, static inline void ensure_acquired(), {
+        if (!held()) {
+            acquire();
+        }
+    })
+
+    DISABLE_PY2(held, static inline bool held(), { return PyGILState_Check(); })
 
     /** RAII resource for ensuring that the gil is released in a given block.
 
-        For example: `auto released = py::gil::release_block{};`
+        For example: `py::gil::release_block released;`
      */
     struct release_block final {
     private:
         bool m_acquire;
 
     public:
-        inline release_block() : m_acquire(gil::held()) {
-            gil::release();
-        }
+        DISABLE_PY2(
+            inline release_block, release_block(),
+            : m_acquire(gil::held()) { gil::ensure_released(); })
 
-        inline void dismiss() {
+        DISABLE_PY2(dismiss, inline void dismiss(), {
             m_acquire = false;
-            gil::acquire();
-        }
+            gil::ensure_acquired();
+        })
 
         inline ~release_block() {
             if (m_acquire) {
@@ -66,21 +94,21 @@ public:
 
     /** RAII resource for ensuring that the gil is held in a given block.
 
-        For example: `auto held = py::gil::hold_block{};`
+        For example: `py::gil::hold_block held;`
      */
     struct hold_block final {
     private:
         bool m_release;
 
     public:
-        inline hold_block() : m_release(!gil::held()) {
-            gil::acquire();
-        }
+        DISABLE_PY2(
+            hold_block, inline hold_block(),
+            : m_release(!gil::held()) { gil::ensure_acquired(); })
 
-        inline void dismiss() {
+        DISABLE_PY2(dismiss, inline void dismiss(), {
             m_release = false;
-            gil::release();
-        }
+            gil::ensure_released();
+        })
 
         inline ~hold_block() {
             if (m_release) {
@@ -89,4 +117,6 @@ public:
         }
     };
 };
+
+#undef DISABLE_PY2
 }  // namespace py
