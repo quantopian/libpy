@@ -8,7 +8,7 @@ _so = ctypes.CDLL(
 )
 
 
-class _version_info(ctypes.Structure):
+class VersionInfo(ctypes.Structure):
     _fields_ = [
         ('major', ctypes.c_int),
         ('minor', ctypes.c_int),
@@ -17,13 +17,13 @@ class _version_info(ctypes.Structure):
 
     def __repr__(self):
         return (
-            'libpy._version_info(major={0.major},'
+            '{type_name}(major={0.major},'
             ' minor={0.minor}, patch={0.patch})'
-        ).format(self)
+        ).format(self, type_name=type(self).__name__)
 
     def __str__(self):
         return '{0.major}.{0.minor}.{0.patch}'.format(self)
 
 
-version_info = _version_info.in_dll(_so, 'libpy_abi_version')
+version_info = VersionInfo.in_dll(_so, 'libpy_abi_version')
 __version__ = str(version_info)
