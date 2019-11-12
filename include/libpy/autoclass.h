@@ -461,9 +461,15 @@ public:
                                 "Py_TPFLAGS_HAVE_GC to extra_flags");
         }
 
-        // bind the result of `member_function` to a `traverseproc` to ensure we have
-        // a properly typed function before casting to `void*`.
-        traverseproc p = member_function<decltype(impl), impl>::f;
+        traverseproc p = [](PyObject* self, visitproc visit, void* arg) -> int {
+            try {
+                return std::invoke(impl, unbox(self), visit, arg);
+            }
+            catch (const std::exception& e) {
+                py::raise_from_cxx_exception(e);
+                return -1;
+            }
+        };
         return add_slot(Py_tp_traverse, p);
     }
 
@@ -483,9 +489,15 @@ public:
                                 "Py_TPFLAGS_HAVE_GC to extra_flags");
         }
 
-        // bind the result of `member_function` to an `inquiry` to ensure we have
-        // a properly typed function before casting to `void*`.
-        inquiry p = member_function<decltype(impl), impl>::f;
+        inquiry p = [](PyObject* self) -> int {
+            try {
+                return std::invoke(impl, unbox(self));
+            }
+            catch (const std::exception& e) {
+                py::raise_from_cxx_exception(e);
+                return -1;
+            }
+        };
         return add_slot(Py_tp_clear, p);
     }
 
@@ -1288,6 +1300,50 @@ public:
         require_uninitialized("cannot add a str method after class has been created");
 
         return add_slot(Py_tp_str, get_str_func<T>());
+    }
+
+    private:
+    template<auto impl>
+    reprfunc get_repr_func() {
+        return [](PyObject* self) -> PyObject* {
+            try {
+                auto res = std::invoke(impl, unbox(self));
+                std::size_t size = std::size(res);
+                py::scoped_ref<> out;
+                char* buf;
+#if PY_MAJOR_VERSION == 2
+                out = py::scoped_ref(PyString_FromStringAndSize(nullptr, size));
+                if (!out) {
+                    return nullptr;
+                }
+                buf = PyString_AS_STRING(out.get());
+#else
+                out = py::scoped_ref(PyUnicode_New(size, PyUnicode_1BYTE_KIND));
+                if (!out) {
+                    return nullptr;
+                }
+                buf = PyUnicode_AsUTF8(out.get());
+#endif
+                std::copy(std::begin(res), std::end(res), buf);
+                return std::move(out).escape();
+            }
+            catch (const std::exception& e) {
+                return raise_from_cxx_exception(e);
+            }
+        };
+    }
+
+public:
+    /** Add a `__repr__` method which uses the user provided function. The
+        function may either be a member function of `T`, or a free function that
+        takes a `T&`. The function must return an iterable of characters to be
+        interpreted as utf-8.
+     */
+    template<auto impl>
+    autoclass& repr() {
+        require_uninitialized("cannot add a str method after class has been created");
+
+        return add_slot(Py_tp_repr, get_repr_func<impl>());
     }
 
 private:

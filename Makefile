@@ -45,13 +45,13 @@ ifeq ($(OS),Darwin)
 	SONAME_PATH := @rpath/$(SONAME)
 	AR := libtool
 	ARFLAGS := -static -o
-	LDFLAGS += -undefined dynamic_lookup -lpcre2-8
+	LDFLAGS += -undefined dynamic_lookup
 	LD_PRELOAD_VAR := DYLD_INSERT_LIBRARIES
 else
 	CXXFLAGS += -fstack-protector-strong
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
-	LDFLAGS += $(shell $(PYTHON)-config --ldflags) -lpcre2-8
+	LDFLAGS += $(shell $(PYTHON)-config --ldflags)
 	LD_PRELOAD_VAR := LD_PRELOAD
 endif
 
@@ -125,7 +125,7 @@ endif
 ALL_FLAGS := 'CC=$(CC) CXX=$(CXX) CFLAGS=$(CFLAGS) CXXFLAGS=$(CXXFLAGS) LDFLAGS=$(LDFLAGS)'
 
 .PHONY: all
-all: $(SHORT_SONAME)
+all: libpy/libpy.so
 
 # Empty rule that should always trigger a build
 .make/force:
@@ -142,10 +142,14 @@ endif
 $(SONAME): $(OBJECTS)
 	$(CXX) $(OBJECTS) -shared -Wl,-$(SONAME_FLAG),$(SONAME_PATH) \
 		-o $@ $(LDFLAGS)
-	@rm -f $(SHORT_SONAME)
 
 $(SHORT_SONAME): $(SONAME)
-	ln -s $(SONAME) $(SHORT_SONAME)
+	@rm -f $@
+	ln -s $< $@
+
+libpy/libpy.so: $(SHORT_SONAME)
+	@rm -f $@
+	ln -s ../$< $@
 
 src/%.o: src/%.cc .make/all-flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@

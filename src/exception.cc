@@ -37,6 +37,11 @@ std::nullptr_t raise_from_cxx_exception(const std::exception& e) {
         py::raise(PyExc_RuntimeError) << "a C++ exception was raised: " << deep_what(e);
         return nullptr;
     }
+    if (dynamic_cast<const py::exception*>(&e)) {
+        // this already raised an exception with the message we want to show to
+        // Python
+        return nullptr;
+    }
     PyObject* type;
     PyObject* value;
     PyObject* tb;
