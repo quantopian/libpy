@@ -180,7 +180,7 @@ struct optionals_and_keywords<ix, arg::optional<T>, Ts...> {
 private:
     using R = optionals_and_keywords<ix + 1, Ts...>;
 
-    static_assert(std::tuple_size_v<typename R::optionals> == sizeof...(Ts),
+    static_assert(R::noptionals == sizeof...(Ts),
                   "non-optional follows optional argument");
 
 public:
