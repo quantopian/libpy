@@ -1270,7 +1270,7 @@ private:
                 s << unbox(self);
                 std::size_t size = s.tellp();
                 PyObject* out;
-                char* buf;
+                const char* buf;
 #if PY_MAJOR_VERSION == 2
                 out = PyString_FromStringAndSize(nullptr, size);
                 if (!out) {
@@ -1284,7 +1284,7 @@ private:
                 }
                 buf = PyUnicode_AsUTF8(out);
 #endif
-                s.read(buf, size);
+                s << buf;
                 return out;
             }
             catch (const std::exception& e) {
@@ -1310,7 +1310,7 @@ public:
                 auto res = std::invoke(impl, unbox(self));
                 std::size_t size = std::size(res);
                 py::scoped_ref<> out;
-                char* buf;
+                const char* buf;
 #if PY_MAJOR_VERSION == 2
                 out = py::scoped_ref(PyString_FromStringAndSize(nullptr, size));
                 if (!out) {
@@ -1324,7 +1324,7 @@ public:
                 }
                 buf = PyUnicode_AsUTF8(out.get());
 #endif
-                std::copy(std::begin(res), std::end(res), buf);
+                std::copy(std::begin(res), std::end(res), &buf);
                 return std::move(out).escape();
             }
             catch (const std::exception& e) {
