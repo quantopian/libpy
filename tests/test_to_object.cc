@@ -261,4 +261,14 @@ TEST_F(to_object, object_map_key) {
     EXPECT_EQ(Py_REFCNT(key.get()), starting_ref_count + 1);
 }
 
+
+TEST_F(to_object, scoped_ref_nonstandard) {
+    py::scoped_ref<PyArray_Descr> t = py::new_dtype<std::uint32_t>();
+    Py_ssize_t starting_ref_count = Py_REFCNT(t.get());
+
+    py::scoped_ref ob = py::to_object(t);
+    ASSERT_TRUE(ob);
+
+}
+
 }  // namespace test_to_object
