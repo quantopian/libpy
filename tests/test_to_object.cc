@@ -267,6 +267,7 @@ TEST_F(to_object, scoped_ref_nonstandard) {
 
     py::scoped_ref ob = py::to_object(t);
     ASSERT_TRUE(ob);
+    EXPECT_EQ(static_cast<PyObject*>(ob), static_cast<PyObject*>(t));
 
 }
 
