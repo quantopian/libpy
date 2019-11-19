@@ -1,6 +1,7 @@
 #pragma once
 
 #include "libpy/exception.h"
+#include "libpy/detail/api.h"
 
 namespace py::abi {
 /** Structure for holding the ABI version of the libpy library.
@@ -21,7 +22,7 @@ namespace detail {
 constexpr abi_version header_libpy_abi_version{0, 2, 0};
 }  // namespace detail
 
-extern "C" abi_version libpy_abi_version;
+extern "C" LIBPY_EXPORT abi_version libpy_abi_version;
 
 /** Check if two abi versions are compatible.
 

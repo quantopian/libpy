@@ -1,10 +1,10 @@
 #include "gtest/gtest.h"
 
-#include "libpy/detail/python.h"
 #define LIBPY_TEST_MAIN
-#include "libpy/numpy_utils.h"
-
 #include "libpy/automethod.h"
+#include "libpy/detail/api.h"
+#include "libpy/detail/python.h"
+#include "libpy/numpy_utils.h"
 
 namespace test {
 PyObject* run_tests(PyObject*, PyObject* py_argv) {
@@ -38,6 +38,7 @@ PyMethodDef methods[] = {
 };
 
 #if PY_MAJOR_VERSION == 2
+PyMODINIT_FUNC init_runner() LIBPY_EXPORT;
 PyMODINIT_FUNC init_runner() {
     import_array();
     PyObject* mod = Py_InitModule("_runner", methods);
@@ -58,6 +59,7 @@ PyModuleDef module = {
     nullptr,
 };
 
+PyMODINIT_FUNC PyInit__runner() LIBPY_EXPORT;
 PyMODINIT_FUNC PyInit__runner() {
     import_array();
     return PyModule_Create(&module);

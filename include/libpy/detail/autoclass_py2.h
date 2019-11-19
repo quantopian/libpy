@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+#include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/py2.h"
 
@@ -94,7 +95,7 @@ struct PyType_Spec {
     PyType_Slot *slots; /* terminated by slot==0. */
 };
 
-PyObject* PyType_FromSpec(PyType_Spec*);
+LIBPY_EXPORT PyObject* PyType_FromSpec(PyType_Spec*);
 
 namespace detail {
 // `Py_TPFLAGS_CHECKTYPES` tells Python to pass operator arguments as-is to our operator
