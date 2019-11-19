@@ -1,8 +1,11 @@
 # Put custom environment stuff here.
 -include Makefile.local
 
+# Overridable parameters. Set these as environment variables or in
+# Makefile.local if you want to change these values.
 PYTHON ?= python
 PYTEST ?= pytest
+EXTRA_INCLUDE_DIRS ?=
 
 MAJOR_VERSION := 1
 MINOR_VERSION := 0
@@ -28,11 +31,13 @@ CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
 
+
 # https://github.com/quantopian/libpy/pull/86/files#r309288697
 INCLUDE_DIRS := include/ \
 	$(shell $(PYTHON) -c "from distutils import sysconfig; \
 						  print(sysconfig.get_config_var('INCLUDEPY'))") \
-	$(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())')
+	$(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())') \
+	$(EXTRA_INCLUDE_DIRS)
 INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d)
 
 SO_SUFFIX := $(shell $(PYTHON) etc/ext_suffix.py)
