@@ -1,5 +1,6 @@
 #pragma once
 
+#include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 
 #if PY_MAJOR_VERSION == 2
@@ -17,9 +18,9 @@
 namespace py {
 /** A wrapper around the threadstate.
  */
-struct gil final {
+struct LIBPY_EXPORT gil final {
 private:
-    static thread_local PyThreadState* m_save;
+    LIBPY_EXPORT static thread_local PyThreadState* m_save;
 
 public:
     gil() = delete;

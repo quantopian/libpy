@@ -5,6 +5,7 @@
 #include <tuple>
 
 #include "libpy/char_sequence.h"
+#include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/meta.h"
 #include "libpy/scoped_ref.h"
@@ -209,8 +210,9 @@ inline detail::raise_buffer<> raise(PyObject* exc) {
     @return Always `nullptr`. This allows users to write:
             `return raise_from_cxx_exception(e)`
  */
-std::nullptr_t raise_from_cxx_exception(const std::exception& e);
+LIBPY_EXPORT std::nullptr_t raise_from_cxx_exception(const std::exception& e);
 
+LIBPY_BEGIN_EXPORT
 /** A C++ exception that can be used to communicate a Python error.
  */
 class exception : public std::exception {
@@ -241,4 +243,5 @@ public:
         return m_msg.data();
     }
 };
+LIBPY_END_EXPORT
 }  // namespace py

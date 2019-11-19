@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "libpy/detail/api.h"
 #include "libpy/detail/no_destruct_wrapper.h"
 #include "libpy/detail/python.h"
 #include "libpy/scoped_ref.h"
@@ -53,6 +54,7 @@ struct autoclass_storage {
 
 // A map from a C++ RTTI object to the Python class that was created to wrap it using
 // `py::autoclass`.
-extern no_destruct_wrapper<std::unordered_map<std::type_index, std::unique_ptr<autoclass_storage>>>
+LIBPY_EXPORT extern no_destruct_wrapper<
+    std::unordered_map<std::type_index, std::unique_ptr<autoclass_storage>>>
     autoclass_type_cache;
 }  // namespace py::detail

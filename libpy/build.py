@@ -61,6 +61,7 @@ class LibpyExtension(setuptools.Extension, object):
         libpy_extra_compile_args = [
             '-std=gnu++17',
             '-pipe',
+            '-fvisibility-inlines-hidden',
             '-DPY_MAJOR_VERSION=%d' % sys.version_info.major,
             '-DPY_MINOR_VERSION=%d' % sys.version_info.minor,
         ]

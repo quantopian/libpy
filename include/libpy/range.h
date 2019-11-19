@@ -2,11 +2,13 @@
 
 #include <utility>
 
+#include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 
 namespace py {
+LIBPY_BEGIN_EXPORT
 /** A range which lazily iterates over the elements of a Python iterable.
  */
 class range {
@@ -47,4 +49,5 @@ public:
     iterator begin() const;
     iterator end() const;
 };
+LIBPY_END_EXPORT
 }  // namespace py
