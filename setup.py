@@ -9,7 +9,7 @@ class BuildFailed(Exception):
     pass
 
 
-dont_build = ast.literal_eval(os.environ('LIBPY_DONT_BUILD', '0'))
+dont_build = ast.literal_eval(os.environ.get('LIBPY_DONT_BUILD', '0'))
 if 'build_ext' in sys.argv or 'egg_info' in sys.argv and not dont_build:
     path = os.path.dirname(os.path.abspath(__file__))
     command = 'make -C "%s"' % path
