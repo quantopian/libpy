@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstring>
-#include <cxxabi.h>
 #include <exception>
 #include <memory>
 #include <string>

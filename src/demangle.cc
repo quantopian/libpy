@@ -1,3 +1,5 @@
+#include <cxxabi.h>
+
 #include "libpy/demangle.h"
 
 namespace py::util {
