@@ -14,9 +14,7 @@ struct abi_version {
     int patch;
 };
 
-std::ostream& operator<<(std::ostream& stream, abi_version v) {
-    return stream << v.major << '.' << v.minor << '.' << v.patch;
-}
+LIBPY_EXPORT std::ostream& operator<<(std::ostream&, abi_version);
 
 namespace detail {
 constexpr abi_version header_libpy_abi_version{0, 2, 0};
