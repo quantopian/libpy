@@ -9,6 +9,14 @@ class BuildFailed(Exception):
     pass
 
 
+# Setting ``LIBPY_DONT_BUILD`` to a truthy value will disable building the
+# libpy extension, but allow the setup.py to run so that the Python support
+# code may be installed. This exists to allow libpy to be used with alternative
+# which may produce the libpy shared object in an alternative way. This flag
+# prevents the setup.py from attempting to rebuild the shared object which may
+# clobber or duplicate work done by the larger build system. This is an
+# advanced feature and shouldn't be used without care as it may produce invalid
+# installs of ``libpy``.
 dont_build = ast.literal_eval(os.environ.get('LIBPY_DONT_BUILD', '0'))
 if 'build_ext' in sys.argv or 'egg_info' in sys.argv and not dont_build:
     path = os.path.dirname(os.path.abspath(__file__))
