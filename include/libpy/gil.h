@@ -16,9 +16,10 @@
 #endif
 
 namespace py {
+LIBPY_BEGIN_EXPORT
 /** A wrapper around the threadstate.
  */
-struct LIBPY_EXPORT gil final {
+struct gil final {
 private:
     LIBPY_EXPORT static thread_local PyThreadState* m_save;
 
@@ -118,6 +119,6 @@ public:
         }
     };
 };
-
+LIBPY_END_EXPORT
 #undef DISABLE_PY2
 }  // namespace py
