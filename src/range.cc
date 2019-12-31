@@ -1,7 +1,7 @@
 #include "libpy/range.h"
 
 namespace py {
-range::iterator::iterator(PyObject* it) : m_iterator(it), m_value(nullptr) {
+range::iterator::iterator(py::borrowed_ref<> it) : m_iterator(it), m_value(nullptr) {
     ++(*this);
 }
 
@@ -37,7 +37,7 @@ bool range::iterator::operator==(const iterator& other) const {
     return m_iterator == other.m_iterator && m_value.get() == other.m_value.get();
 }
 
-range::range(PyObject* iterable) : m_iterator(PyObject_GetIter(iterable)) {
+range::range(py::borrowed_ref<> iterable) : m_iterator(PyObject_GetIter(iterable)) {
     if (!m_iterator) {
         throw py::exception{};
     }

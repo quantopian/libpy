@@ -65,6 +65,7 @@
 
 #include "libpy/any.h"
 #include "libpy/automethod.h"
+#include "libpy/borrowed_ref.h"
 #include "libpy/char_sequence.h"
 #include "libpy/datetime64.h"
 #include "libpy/exception.h"
@@ -247,6 +248,9 @@ struct new_dtype<double> : new_dtype_from_typecode<NPY_FLOAT64> {};
 
 template<>
 struct new_dtype<PyObject*> : new_dtype_from_typecode<NPY_OBJECT> {};
+
+template<typename T>
+struct new_dtype<py::borrowed_ref<T>> : new_dtype_from_typecode<NPY_OBJECT> {};
 
 template<typename T>
 struct new_dtype<scoped_ref<T>> : new_dtype<PyObject*> {};

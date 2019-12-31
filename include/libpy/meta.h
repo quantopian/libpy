@@ -16,17 +16,17 @@ namespace py ::meta {
     type of an expression. To get the compiler to emit a message, instantiate `print_t`
     with the type of interest and access any member inside the type, for example `::a`.
 
-    ```
+    \code
     using T = std::remove_cv_t<std::remove_reference_t<const int&>>;
 
     print_t<T>::a;
-    ```
+    \endcode
 
-    ```
+    \code
     error: invalid use of incomplete type ‘struct py::meta::print_t<int>’
      print_t<T>::a;
              ^
-    ```
+    \endcode
 
     In the message we see: `py::meta::print_t<int>`, where `int` is the result of
     `std::remove_cv_t<std::remove_reference_t<const int&>>`.
@@ -49,7 +49,7 @@ struct print_t;
     value of an expression. To get the compiler to emit a message, instantiate `print_v`
     with the value of interest and access any member inside the type, for example `::a`.
 
-    ```
+    \code
     template<auto v>
     unsigned long fib = fib<v - 1> + fib<v - 2>;
 
@@ -62,12 +62,12 @@ struct print_t;
     unsigned long v = fib<24>;
 
     print_v<T>::a;
-    ```
+    \endcode
 
-    ```
+    \code
     error: invalid use of incomplete type ‘struct py::meta::print_v<46368>’
      print_v<v>::a;
-    ```
+    \endcode
 
     In the message we see: `py::meta::print_v<46368>`, where `46368` is the value of
     `fib<24>`.
@@ -212,9 +212,9 @@ namespace op {
 
     # Example
 
-    ```
+    \code
     DEFINE_BINOP(+, add)
-    ```
+    \endcode
 
     Creates a struct named `add` that implements `operator()` to forward to `lhs + rhs`.
  */

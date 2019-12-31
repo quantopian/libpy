@@ -20,6 +20,8 @@ namespace detail {
 constexpr abi_version header_libpy_abi_version{0, 2, 0};
 }  // namespace detail
 
+/** The version of the libpy shared object.
+ */
 extern "C" LIBPY_EXPORT abi_version libpy_abi_version;
 
 /** Check if two abi versions are compatible.

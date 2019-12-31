@@ -7,7 +7,8 @@
 #include "libpy/ndarray_view.h"
 
 namespace py {
-/** Interface to provide typed access to a collection of type-erased array_views.
+/** Interface to provide runtime type-checked statically typed access to a
+    collection of type-erased `ndarray_views`.
 
     @tparam ndim The number of dimensions for the underlying `py::ndarray_view` objects.
     @tparam Ts A sequence of tuples of types that convey the possible combinations of

@@ -4,6 +4,7 @@
 #include <string>
 #include <tuple>
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/char_sequence.h"
 #include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
@@ -79,7 +80,7 @@ struct raise_buffer;
 }  // namespace detail
 
 // forward declare for friend function
-detail::raise_buffer<> raise(PyObject* exc);
+detail::raise_buffer<> raise(py::borrowed_ref<> exc);
 
 namespace detail {
 /** Compile-time type for holding the exception and types to feed to
@@ -88,18 +89,18 @@ namespace detail {
 template<typename... Ts>
 struct raise_buffer {
 private:
-    PyObject* m_exc;
+    py::borrowed_ref<> m_exc;
     std::tuple<Ts...> m_elements;
 
 protected:
-    friend raise_buffer<> py::raise(PyObject*);
+    friend raise_buffer<> py::raise(py::borrowed_ref<>);
 
     /** Construct a `raise_buffer` from an exception type and some elements.
 
         @param exc The type of the exception to raise
         @param elements The elements to format into the exception message.
      */
-    constexpr raise_buffer(PyObject* exc, Ts&&... elements)
+    constexpr raise_buffer(py::borrowed_ref<> exc, Ts&&... elements)
         : m_exc(exc), m_elements(std::forward<Ts>(elements)...) {}
 
 public:
@@ -134,7 +135,7 @@ public:
     /** Get the type of the exception to be raised. This is `nullptr` when
         invalidated.
      */
-    constexpr PyObject* exc() {
+    constexpr py::borrowed_ref<> exc() {
         return m_exc;
     }
 
@@ -199,7 +200,7 @@ public:
     @return A buffer to write the error message to like a `std::ostream`.
     @see py::raise_format
 */
-inline detail::raise_buffer<> raise(PyObject* exc) {
+inline detail::raise_buffer<> raise(py::borrowed_ref<> exc) {
     return detail::raise_buffer<>(exc);
 }
 
@@ -234,7 +235,7 @@ public:
         @param args The arguments to forward to `py::raise`.
      */
     template<typename... Args>
-    exception(PyObject* exc, Args&&... args) {
+    exception(py::borrowed_ref<> exc, Args&&... args) {
         (raise(exc) << ... << std::forward<Args>(args));
         m_msg = msg_from_current_pyexc();
     }

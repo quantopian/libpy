@@ -2,10 +2,10 @@
 
 #include <utility>
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
-#include "libpy/scoped_ref.h"
 
 namespace py {
 LIBPY_BEGIN_EXPORT
@@ -13,22 +13,22 @@ LIBPY_BEGIN_EXPORT
  */
 class dict_range {
 private:
-    PyObject* m_map;
+    py::scoped_ref<> m_map;
 
     class iterator {
     public:
-        using value_type = std::pair<PyObject*, PyObject*>;
+        using value_type = std::pair<py::borrowed_ref<>, py::borrowed_ref<>>;
         using reference = value_type&;
 
     private:
-        PyObject* m_map;
+        py::borrowed_ref<> m_map;
         Py_ssize_t m_pos;
         value_type m_item;
 
     public:
         inline iterator() : m_map(nullptr), m_pos(-1), m_item(nullptr, nullptr) {}
 
-        explicit iterator(PyObject* map);
+        explicit iterator(py::borrowed_ref<> map);
 
         iterator(const iterator&) = default;
         iterator& operator=(const iterator&) = default;
@@ -44,11 +44,20 @@ private:
     };
 
 public:
-    inline explicit dict_range(PyObject* map) : m_map(map) {}
-    inline explicit dict_range(const py::scoped_ref<>& map) : dict_range(map.get()) {}
+    /** Create an object which iterates a Python dictionary as key, value pairs.
 
-    static dict_range checked(PyObject* map);
-    static dict_range checked(const py::scoped_ref<>& map);
+        @note This does not do a type check, `map` must be a Python dictionary.
+        @param map The map to create a range over.
+    */
+    inline explicit dict_range(py::borrowed_ref<> map) : m_map(map.get()) {}
+
+    /** Assert that `map` is a Python dictionary and then construct a
+        `dict_range`.
+
+        @param map The object to check and then make a view over.
+        @return A new dict range.
+     */
+    static dict_range checked(py::borrowed_ref<> map);
 
     iterator begin() const;
     iterator end() const;

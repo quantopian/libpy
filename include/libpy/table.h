@@ -55,15 +55,15 @@
 
 namespace py {
 
-/** Build a specification for a column to pass to ``table`` or ``table_view``.
+/** Build a specification for a column to pass to `table` or `table_view`.
 
     ### Usage
 
-    ```
+    \code
     using my_table = py::table<py::C<int>("some_name"_cs),
                                py::C<double>("some_other_name"_cs)>;
     my_table t;
-    ```
+    \endcode
 
     @tparam Value The scalar dtype of the column.
     @param Key A `std::integer_sequence` of chars containing the column name.
@@ -93,24 +93,24 @@ template<auto... ColumnSingletons>
 using column_names = std::tuple<column_name<ColumnSingletons>...>;
 
 /** Helper for converting a parameter pack of column singletons into a tuple whose field
- *  types correspond to the types of the input columns.
+    types correspond to the types of the input columns.
  */
 template<auto... ColumnSingletons>
 using column_types = std::tuple<column_type<ColumnSingletons>...>;
 
-/** Convert a column with ``T`` values to a one with ``const T`` values.
+/** Convert a column with `T` values to a one with `const T` values.
  */
 template<auto p, typename C = typename detail::unwrap_column<p>::const_column>
 constexpr C* const_column = &detail::column_singleton<C>;
 
-/** Convert a column with ``const T`` values to a one with ``T`` values.
+/** Convert a column with `const T` values to a one with `T` values.
  */
 template<auto p, typename C = typename detail::unwrap_column<p>::remove_const_column>
 constexpr C* remove_const_column = &detail::column_singleton<C>;
 
 namespace detail {
 
-/** Helper for ``row::get`` and ``row_view::get``.
+/** Helper for `row::get` and `row_view::get`.
  */
 template<std::size_t ix, typename T, auto... columns>
 struct get_helper {
