@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
@@ -21,13 +22,13 @@ private:
         using reference = value_type&;
 
     private:
-        PyObject* m_iterator;
+        py::borrowed_ref<> m_iterator;
         value_type m_value;
 
     public:
         inline iterator() : m_iterator(nullptr), m_value(nullptr) {}
 
-        explicit iterator(PyObject* it);
+        explicit iterator(py::borrowed_ref<> it);
 
         iterator(const iterator&) = default;
         iterator& operator=(const iterator&) = default;
@@ -43,8 +44,7 @@ private:
     };
 
 public:
-    explicit range(PyObject* iterable);
-    inline explicit range(const py::scoped_ref<>& iterable) : range(iterable.get()) {}
+    explicit range(py::borrowed_ref<> iterable);
 
     iterator begin() const;
     iterator end() const;

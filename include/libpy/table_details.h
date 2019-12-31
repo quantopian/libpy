@@ -30,10 +30,10 @@ namespace py::detail {
 
     All of this enables the following, relatively pleasant syntax for consumers:
 
-    ```
+    \code
     using my_table = py::table<py::C<int>("some_name"_cs),
                                py::C<double>("some_other_name"_cs)>;
-    ```
+    \endcode
 */
 template<typename Key, typename Value>
 struct column {

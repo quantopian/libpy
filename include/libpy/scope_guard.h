@@ -9,7 +9,7 @@ namespace py::util {
 
     ### Example
 
-    ```
+    \code
     // add objects to all vectors, if an exception is thrown, no objects will be added
     //  to any vectors.
     void add_objects(std::vector<A>& as,
@@ -31,6 +31,7 @@ namespace py::util {
         a_guard.dismiss();
         b_guard.dismiss();
     }
+    \endcode
 */
 template<typename F>
 struct scope_guard {

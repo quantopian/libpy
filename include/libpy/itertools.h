@@ -229,28 +229,27 @@ public:
         return {m_func, m_iterable.end()};
     }
 };
-}  // namespace detail
+}  // namesppace detail
 
 /** Create an iterator that lazily applies `f` to every element of `iterable`.
 
-    @param f The function to apply.
-    @param iterable The iterable to apply the function to.
-
-    # Notes
-    ```
+    \code
     for (auto v : imap(f, it)) {
-        // ...
+    // ...
     }
-    ```
+    \endcode
 
     behaves the same as:
 
-    ```
+    \code
     for (auto& underlying : it) {
         auto v = f(underlying);
         // ...
     }
-    ```
+    \endcode
+
+    @param f The function to apply.
+    @param iterable The iterable to apply the function to.
  */
 template<typename F, typename T>
 auto imap(F&& f, T&& iterable) {

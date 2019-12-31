@@ -1,7 +1,7 @@
 #include "libpy/dict_range.h"
 
 namespace py {
-dict_range::iterator::iterator(PyObject* map) : m_map(map), m_pos(0) {
+dict_range::iterator::iterator(py::borrowed_ref<> map) : m_map(map), m_pos(0) {
     ++(*this);
 }
 
@@ -14,11 +14,17 @@ dict_range::iterator::value_type* dict_range::iterator::operator->() {
 }
 
 dict_range::iterator& dict_range::iterator::operator++() {
-    if (!PyDict_Next(m_map, &m_pos, &m_item.first, &m_item.second)) {
+    PyObject* k;
+    PyObject* v;
+    if (!PyDict_Next(m_map, &m_pos, &k, &v)) {
         m_map = nullptr;
         m_pos = -1;
         m_item.first = nullptr;
         m_item.second = nullptr;
+    }
+    else {
+        m_item.first = k;
+        m_item.second = v;
     }
     return *this;
 }
@@ -36,17 +42,13 @@ bool dict_range::iterator::operator==(const iterator& other) const {
     return m_pos == other.m_pos;
 }
 
-dict_range dict_range::checked(PyObject* map) {
+dict_range dict_range::checked(py::borrowed_ref<> map) {
     if (!PyDict_Check(map)) {
         throw py::exception(PyExc_TypeError,
                             "argument to py::dict_range::checked isn't a dict, got: ",
                             Py_TYPE(map)->tp_name);
     }
     return dict_range(map);
-}
-
-dict_range dict_range::checked(const py::scoped_ref<>& map) {
-    return checked(map.get());
 }
 
 dict_range::iterator dict_range::begin() const {

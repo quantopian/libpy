@@ -2,6 +2,7 @@
 
 #include <type_traits>
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/detail/python.h"
 
 namespace py {
@@ -55,8 +56,8 @@ public:
 
         @param ref The Python object to create a new managed reference to.
      */
-    constexpr static scoped_ref new_reference(T* ref) {
-        Py_INCREF(ref);
+    constexpr static scoped_ref new_reference(py::borrowed_ref<T> ref) {
+        Py_INCREF(ref.get());
         return scoped_ref{ref};
     }
 
@@ -65,8 +66,8 @@ public:
         @param ref The Python object to create a new managed reference to. If `ref`
                is `nullptr`, then the resulting object just holds `nullptr` also.
      */
-    constexpr static scoped_ref xnew_reference(T* ref) {
-        Py_XINCREF(ref);
+    constexpr static scoped_ref xnew_reference(py::borrowed_ref<T> ref) {
+        Py_XINCREF(ref.get());
         return scoped_ref{ref};
     }
 
@@ -122,19 +123,11 @@ public:
         return m_ref;
     }
 
-    bool operator==(T* other) const {
-        return m_ref == other;
-    }
-
-    bool operator==(const scoped_ref& other) const {
+    bool operator==(py::borrowed_ref<> other) const {
         return m_ref == other.get();
     }
 
-    bool operator!=(T* other) const {
-        return m_ref != other;
-    }
-
-    bool operator!=(const scoped_ref& other) const {
+    bool operator!=(py::borrowed_ref<> other) const {
         return m_ref != other.get();
     }
 };

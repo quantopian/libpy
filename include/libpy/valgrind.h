@@ -24,7 +24,7 @@ constexpr bool enabled = true;
     This is a nop by default, to actually instrument the section: compile with
     ``-LIBPY_VALGRIND`` and run python under valgrind like:
 
-    ```bash
+    \code
     $ valgrind --tool=callgrind \
         --instr-atstart=no \
         --dump-line=yes \
@@ -32,7 +32,7 @@ constexpr bool enabled = true;
         --cache-sim=yes \
         --branch-sim=yes \
         python
-    ```
+    \endcode
 
     The `--instr-atstart=no` says to not start collecting right away and to
     wait for our RAII object to trigger collection.

@@ -48,9 +48,9 @@ constexpr void nop_clear_base(T*) {}
     To create a new Python type for an object that wraps a C++ type, `my_type`,
     you can write the following:
 
-    ```
+    \code
     py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
-    ```
+    \endcode
 
     The resulting type will have a `__name__` of "PythonName", and a
     `__module__` of "modname".
@@ -61,11 +61,11 @@ constexpr void nop_clear_base(T*) {}
     signature of the constructor. For example, to create a constructor that
     accepts an int and a double, we would write:
 
-    ```
+    \code
     py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
                                          .new_<int, double>()
                                          .type();
-    ```
+    \endcode
 
     Only one constructor overload may be exposed to Python because Python
     doesn't support function overloading. If a constructor is not provided,
@@ -77,12 +77,12 @@ constexpr void nop_clear_base(T*) {}
     Python method to generate. For example, to expose a C++ method called `foo`
     as a Python method named `bar`, we would write:
 
-    ```
+    \code
     py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
                                          .new_<int, double>()
                                          .def<&my_type::foo>("bar")
                                          .type();
-    ```
+    \endcode
 
     ### Subclassing Existing Python Types
 
@@ -105,11 +105,11 @@ constexpr void nop_clear_base(T*) {}
     By default, Python objects defined with `autoclass<T>.type()` will have a
     layout that looks like:
 
-    ```
+    \code
     class autoclass_object : public PyObject {
         T value;
     };
-    ```
+    \endcode
 
     The `PyTypeObject` returned by `autoclass::type` will be a (Python) subclass
     of Python's `object` type.
@@ -1473,12 +1473,12 @@ public:
 
         ### Usage
 
-        ```
+        \code
         namespace py::dispatch {
         template<>
         struct to_object<C> : public py::autoclass<C>::to_object {};
         }  // namespace py::dispatch
-        ```
+        \endcode
          */
     class to_object {
         template<typename U>

@@ -60,8 +60,7 @@ protected:
     }
 
 public:
-    explicit basic_streambuf(const scoped_ref<>& file) : m_file_ob(file) {}
-    explicit basic_streambuf(scoped_ref<>&& file) : m_file_ob(std::move(file)) {}
+    explicit basic_streambuf(const py::borrowed_ref<>& file) : m_file_ob(py::scoped_ref<T>::new_reference(file)) {}
 };
 
 /** A C++ output stream which writes to a Python file-like object.
@@ -74,16 +73,7 @@ private:
     basic_streambuf<CharT, Traits> m_buf;
 
 public:
-    /** Construct a `basic_ostream` from a `PyObject*`. This will incref `file`.
-     */
-    basic_ostream(PyObject* file) : basic_ostream(scoped_ref(file)) {
-        Py_INCREF(file);
-    }
-
-    basic_ostream(const scoped_ref<>& file) : std::ios(0), m_buf(file) {
-        this->rdbuf(&m_buf);
-    }
-    basic_ostream(scoped_ref<>&& file) : std::ios(0), m_buf(std::move(file)) {
+    basic_ostream(py::borrowed_ref<> file) : std::ios(0), m_buf(file) {
         this->rdbuf(&m_buf);
     }
 

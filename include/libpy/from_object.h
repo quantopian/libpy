@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
@@ -68,19 +69,7 @@ struct from_object;
     @see py::dispatch::from_object
  */
 template<typename T>
-decltype(auto) from_object(PyObject* ob) {
-    return dispatch::from_object<T>::f(ob);
-}
-
-/** Convert a Python object into a C++ object recursively.
-
-
-    @param ob The object to convert
-    @return `ob` as a C++ object.
-    @see py::dispatch::from_object
- */
-template<typename T, typename U>
-decltype(auto) from_object(const scoped_ref<U>& ob) {
+decltype(auto) from_object(py::borrowed_ref<> ob) {
     return dispatch::from_object<T>::f(ob.get());
 }
 
@@ -188,13 +177,21 @@ struct from_object<PyObject*> {
     }
 };
 
+/** Identity conversion for `borrowed_ref`.
+ */
+template<typename T>
+struct from_object<py::borrowed_ref<T>> {
+    static py::borrowed_ref<T> f(PyObject* ob) {
+        return ob;
+    }
+};
+
 /** Identity conversion for `scoped_ref`.
  */
 template<typename T>
-struct from_object<scoped_ref<T>> {
+struct from_object<py::scoped_ref<T>> {
     static scoped_ref<T> f(PyObject* ob) {
-        Py_INCREF(ob);
-        return scoped_ref<T>(ob);
+        return scoped_ref<T>::new_reference(ob);
     }
 };
 
