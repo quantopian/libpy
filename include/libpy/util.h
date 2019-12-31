@@ -60,7 +60,7 @@ inline const char* pystring_to_cstring(py::borrowed_ref<> ob) {
     if (!PyString_Check(ob)) {
         throw std::runtime_error("ob is not a string");
     }
-    return PyString_AS_STRING(ob);
+    return PyString_AS_STRING(ob.get());
 #else
     return PyUnicode_AsUTF8(ob);
 #endif
@@ -81,8 +81,8 @@ inline std::string_view pystring_to_string_view(py::borrowed_ref<> ob) {
         throw formatted_error<std::runtime_error>("expected a string, got: ",
                                                   Py_TYPE(ob)->tp_name);
     }
-    size = PyString_GET_SIZE(ob);
-    cs = PyString_AS_STRING(ob);
+    size = PyString_GET_SIZE(ob.get());
+    cs = PyString_AS_STRING(ob.get());
 #else
     cs = PyUnicode_AsUTF8AndSize(ob, &size);
     if (!cs) {
