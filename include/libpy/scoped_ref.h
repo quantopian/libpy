@@ -58,7 +58,7 @@ public:
      */
     constexpr static scoped_ref new_reference(py::borrowed_ref<T> ref) {
         Py_INCREF(ref.get());
-        return scoped_ref{ref};
+        return scoped_ref{ref.get()};
     }
 
     /** Create a scoped ref that is a new reference to `ref` if `ref` is non-null.
@@ -68,7 +68,7 @@ public:
      */
     constexpr static scoped_ref xnew_reference(py::borrowed_ref<T> ref) {
         Py_XINCREF(ref.get());
-        return scoped_ref{ref};
+        return scoped_ref{ref.get()};
     }
 
 

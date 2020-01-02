@@ -1,5 +1,6 @@
 #pragma once
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
@@ -22,6 +23,7 @@ private:
     py::scoped_ref<> m_ob;
 
 public:
+    inline object_map_key(py::borrowed_ref<> ob) : m_ob(py::scoped_ref<>::new_reference(ob)) {}
     inline object_map_key(const py::scoped_ref<>& ob) : m_ob(ob) {}
 
     object_map_key() = default;
@@ -79,9 +81,8 @@ public:
 namespace dispatch {
 template<>
 struct from_object<object_map_key> {
-    static object_map_key f(PyObject* ob) {
-        Py_INCREF(ob);
-        return object_map_key{py::scoped_ref<>{ob}};
+    static object_map_key f(py::borrowed_ref<> ob) {
+        return object_map_key{ob};
     }
 };
 

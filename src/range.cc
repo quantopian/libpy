@@ -14,7 +14,7 @@ range::iterator::value_type* range::iterator::operator->() {
 }
 
 range::iterator& range::iterator::operator++() {
-    m_value = py::scoped_ref(PyIter_Next(m_iterator));
+    m_value = py::scoped_ref(PyIter_Next(m_iterator.get()));
     if (!m_value) {
         if (PyErr_Occurred()) {
             throw py::exception{};
@@ -37,7 +37,7 @@ bool range::iterator::operator==(const iterator& other) const {
     return m_iterator == other.m_iterator && m_value.get() == other.m_value.get();
 }
 
-range::range(py::borrowed_ref<> iterable) : m_iterator(PyObject_GetIter(iterable)) {
+range::range(py::borrowed_ref<> iterable) : m_iterator(PyObject_GetIter(iterable.get())) {
     if (!m_iterator) {
         throw py::exception{};
     }
