@@ -313,8 +313,8 @@ public:
                                         key,
                                         "'");
                 }
-                Py_INCREF(value);
-                PyTuple_SET_ITEM(flat.get(), ix, value);
+                Py_INCREF(value.get());
+                PyTuple_SET_ITEM(flat.get(), ix, value.get());
             }
         }
 

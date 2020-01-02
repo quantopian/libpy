@@ -34,7 +34,7 @@ public:
         return m_ref;
     }
 
-    constexpr operator T*() const {
+    explicit constexpr operator T*() const {
         return m_ref;
     }
 

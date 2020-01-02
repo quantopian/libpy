@@ -62,7 +62,7 @@ inline const char* pystring_to_cstring(py::borrowed_ref<> ob) {
     }
     return PyString_AS_STRING(ob.get());
 #else
-    return PyUnicode_AsUTF8(ob);
+    return PyUnicode_AsUTF8(ob.get());
 #endif
 }
 
@@ -77,17 +77,18 @@ inline std::string_view pystring_to_string_view(py::borrowed_ref<> ob) {
     Py_ssize_t size;
     const char* cs;
 #if PY_MAJOR_VERSION == 2
-    if (!PyString_Check(ob)) {
+    if (!PyString_Check(ob.get())) {
         throw formatted_error<std::runtime_error>("expected a string, got: ",
-                                                  Py_TYPE(ob)->tp_name);
+                                                  Py_TYPE(ob.get())->tp_name);
     }
     size = PyString_GET_SIZE(ob.get());
     cs = PyString_AS_STRING(ob.get());
 #else
-    cs = PyUnicode_AsUTF8AndSize(ob, &size);
+    cs = PyUnicode_AsUTF8AndSize(ob.get(), &size);
     if (!cs) {
         throw formatted_error<std::runtime_error>(
-            "failed to get string and size from object of type: ", Py_TYPE(ob)->tp_name);
+            "failed to get string and size from object of type: ",
+            Py_TYPE(ob.get())->tp_name);
     }
 #endif
     return {cs, static_cast<std::size_t>(size)};

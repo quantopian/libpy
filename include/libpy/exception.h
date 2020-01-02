@@ -67,6 +67,13 @@ struct raise_format<PyTypeObject*> {
 };
 
 template<typename T>
+struct raise_format<py::borrowed_ref<T>> {
+    static std::ostream& f(std::ostream& out, py::borrowed_ref<T> value) {
+        return raise_format<PyObject*>::f(out, static_cast<PyObject*>(value));
+    }
+};
+
+template<typename T>
 struct raise_format<py::scoped_ref<T>> {
     static std::ostream& f(std::ostream& out, const py::scoped_ref<T>& value) {
         return raise_format<PyObject*>::f(out, static_cast<PyObject*>(value));
@@ -164,7 +171,7 @@ public:
                      ...);
                 },
                 std::move(m_elements));
-            PyErr_SetString(m_exc, msg.str().c_str());
+            PyErr_SetString(m_exc.get(), msg.str().c_str());
         }
     }
 

@@ -16,7 +16,7 @@ dict_range::iterator::value_type* dict_range::iterator::operator->() {
 dict_range::iterator& dict_range::iterator::operator++() {
     PyObject* k;
     PyObject* v;
-    if (!PyDict_Next(m_map, &m_pos, &k, &v)) {
+    if (!PyDict_Next(m_map.get(), &m_pos, &k, &v)) {
         m_map = nullptr;
         m_pos = -1;
         m_item.first = nullptr;

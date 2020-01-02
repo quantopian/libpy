@@ -311,8 +311,8 @@ struct raise_format<PyArray_Descr*> {
 
 template<>
 struct from_object<py_bool> {
-    static py_bool f(PyObject* ob) {
-        if (!PyBool_Check(ob)) {
+    static py_bool f(py::borrowed_ref<> ob) {
+        if (!PyBool_Check(ob.get())) {
             throw invalid_conversion::make<py_bool>(ob);
         }
 
@@ -454,12 +454,12 @@ inline scoped_ref<PyArray_Descr> vtable_to_dtype(const any_vtable& vtable) {
 
 template<typename T, std::size_t ndim>
 struct from_object<ndarray_view<T, ndim>> {
-    static ndarray_view<T, ndim> f(PyObject* ob) {
-        if (!PyArray_Check(ob)) {
+    static ndarray_view<T, ndim> f(py::borrowed_ref<> ob) {
+        if (!PyArray_Check(ob.get())) {
             throw invalid_conversion::make<ndarray_view<T, ndim>>(ob);
         }
 
-        auto array = reinterpret_cast<PyArrayObject*>(ob);
+        auto array = reinterpret_cast<PyArrayObject*>(ob.get());
 
         if (PyArray_NDIM(array) != ndim) {
             throw exception(PyExc_TypeError,
@@ -525,13 +525,13 @@ struct from_object<ndarray_view<T, ndim>> {
 
 template<typename D>
 struct from_object<datetime64<D>> {
-    static datetime64<D> f(PyObject* ob) {
-        if (!PyArray_CheckScalar(ob)) {
+    static datetime64<D> f(py::borrowed_ref<> ob) {
+        if (!PyArray_CheckScalar(ob.get())) {
             throw invalid_conversion::make<datetime64<D>>(ob);
         }
 
-        scoped_ref array(
-            reinterpret_cast<PyArrayObject*>(PyArray_FromScalar(ob, nullptr)));
+        py::scoped_ref array(
+            reinterpret_cast<PyArrayObject*>(PyArray_FromScalar(ob.get(), nullptr)));
 
         auto dtype = py::new_dtype<datetime64<D>>();
         if (!dtype) {

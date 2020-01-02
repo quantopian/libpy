@@ -15,7 +15,7 @@ namespace py {
             exception set on failure.
  */
 inline py::scoped_ref<> getattr(py::borrowed_ref<> ob, const std::string& attr) {
-    return py::scoped_ref{PyObject_GetAttrString(ob, attr.data())};
+    return py::scoped_ref{PyObject_GetAttrString(ob.get(), attr.data())};
 }
 
 /** Look up an attribute on a Python object and return a new owning reference.
@@ -26,7 +26,7 @@ inline py::scoped_ref<> getattr(py::borrowed_ref<> ob, const std::string& attr) 
             exist, a `py::exception` will be thrown.
  */
 inline py::scoped_ref<> getattr_throws(py::borrowed_ref<> ob, const std::string& attr) {
-    PyObject* res = PyObject_GetAttrString(ob, attr.data());
+    PyObject* res = PyObject_GetAttrString(ob.get(), attr.data());
     if (!res) {
         throw py::exception{};
     }
