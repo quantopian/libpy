@@ -1302,7 +1302,7 @@ public:
         return add_slot(Py_tp_str, get_str_func<T>());
     }
 
-    private:
+private:
     template<auto impl>
     reprfunc get_repr_func() {
         return [](PyObject* self) -> PyObject* {

@@ -53,7 +53,8 @@ std::nullptr_t raise_from_cxx_exception(const std::exception& e) {
         raise(type) << value << "; raised from C++ exception";
     }
     else {
-        raise(type) << value << "; raised from C++ exception: " << deep_what(e);;
+        raise(type) << value << "; raised from C++ exception: " << deep_what(e);
+        ;
     }
     Py_DECREF(type);
     Py_DECREF(value);

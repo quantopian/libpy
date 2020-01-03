@@ -436,7 +436,7 @@ public:
                    other);
     }
 };
-}
+}  // namespace py
 
 namespace std {
 template<auto... columns>
@@ -450,7 +450,7 @@ struct tuple_element<ix, py::row_view<columns...>> {
     using type = std::remove_pointer_t<
         tuple_element_t<ix, typename py::row_view<columns...>::tuple_type>>;
 };
-}
+}  // namespace std
 
 namespace py {
 template<auto...>
@@ -618,7 +618,7 @@ public:
         return begin()[ix];
     }
 };
-}  // namespace detail
+}  // namespace detail::table_iter
 
 /** A collection of named `std::vector` objects.
 
