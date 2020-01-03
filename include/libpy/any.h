@@ -557,15 +557,15 @@ namespace dispatch {
  */
 template<>
 struct to_object<py::any_ref> {
-    static PyObject* f(const py::any_ref& ref) {
-        return ref.vtable().to_object(ref.addr()).escape();
+    static py::scoped_ref<> f(const py::any_ref& ref) {
+        return ref.vtable().to_object(ref.addr());
     }
 };
 
 template<>
 struct to_object<py::any_cref> {
-    static PyObject* f(const py::any_cref& ref) {
-        return ref.vtable().to_object(ref.addr()).escape();
+    static py::scoped_ref<> f(const py::any_cref& ref) {
+        return ref.vtable().to_object(ref.addr());
     }
 };
 }  // namespace dispatch
