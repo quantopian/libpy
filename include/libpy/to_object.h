@@ -110,7 +110,7 @@ struct to_object<std::array<T, n>> {
 template<typename T>
 struct to_object<scoped_ref<T>> {
     static py::scoped_ref<> f(const scoped_ref<T>& ob) {
-        return ob;
+        return py::scoped_ref<>::new_reference(reinterpret_cast<PyObject*>(ob.get()));
     }
 };
 
