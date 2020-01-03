@@ -71,7 +71,6 @@ public:
         return scoped_ref{ref.get()};
     }
 
-
     /** Decref the managed pointer if it is not `nullptr`.
      */
     ~scoped_ref() {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "libpy/exception.h"
 #include "libpy/detail/api.h"
+#include "libpy/exception.h"
 
 namespace py::abi {
 /** Structure for holding the ABI version of the libpy library.
@@ -39,8 +39,7 @@ inline bool compatible_versions(abi_version provider, abi_version consumer) {
     @return true with a Python exception raised if the ABI versions are incompatible.
  */
 inline bool ensure_compatible_libpy_abi() {
-    if (!compatible_versions(libpy_abi_version,
-                             detail::header_libpy_abi_version)) {
+    if (!compatible_versions(libpy_abi_version, detail::header_libpy_abi_version)) {
         py::raise(PyExc_ImportError)
             << "libpy compiled version is incompatible with the compiled version of this "
                "extension module\nlibpy version: "

@@ -229,7 +229,7 @@ public:
         return {m_func, m_iterable.end()};
     }
 };
-}  // namesppace detail
+}  // namespace detail
 
 /** Create an iterator that lazily applies `f` to every element of `iterable`.
 

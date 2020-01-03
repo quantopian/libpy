@@ -24,4 +24,4 @@ demangled_cstring demangle_string(const char* cs) {
 demangled_cstring demangle_string(const std::string& cs) {
     return demangle_string(cs.data());
 }
-}  // namespace py
+}  // namespace py::util

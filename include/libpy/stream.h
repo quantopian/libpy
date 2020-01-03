@@ -60,7 +60,8 @@ protected:
     }
 
 public:
-    explicit basic_streambuf(const py::borrowed_ref<>& file) : m_file_ob(py::scoped_ref<T>::new_reference(file)) {}
+    explicit basic_streambuf(const py::borrowed_ref<>& file)
+        : m_file_ob(py::scoped_ref<T>::new_reference(file)) {}
 };
 
 /** A C++ output stream which writes to a Python file-like object.

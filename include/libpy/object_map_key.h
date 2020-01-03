@@ -23,7 +23,8 @@ private:
     py::scoped_ref<> m_ob;
 
 public:
-    inline object_map_key(py::borrowed_ref<> ob) : m_ob(py::scoped_ref<>::new_reference(ob)) {}
+    inline object_map_key(py::borrowed_ref<> ob)
+        : m_ob(py::scoped_ref<>::new_reference(ob)) {}
     inline object_map_key(const py::scoped_ref<>& ob) : m_ob(ob) {}
 
     object_map_key() = default;

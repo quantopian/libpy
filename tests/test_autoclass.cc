@@ -618,9 +618,8 @@ std::string string_repr_free_func(const std::string& val) {
 };
 
 TEST_F(autoclass, repr_free_func) {
-    py::scoped_ref cls = py::autoclass<std::string>()
-                             .repr<string_repr_free_func>()
-                             .type();
+    py::scoped_ref cls =
+        py::autoclass<std::string>().repr<string_repr_free_func>().type();
     ASSERT_TRUE(cls);
 
     py::scoped_ref inst = py::autoclass<std::string>::construct("ayy lmao");

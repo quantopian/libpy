@@ -8,7 +8,7 @@
 #define DISABLE_PY2(feature, signature, body)                                            \
     template<typename T = void>                                                          \
     [[noreturn]] signature {                                                             \
-        static_assert(!std::is_same_v<T, T>, "cannot use " #feature " in Python 2");      \
+        static_assert(!std::is_same_v<T, T>, "cannot use " #feature " in Python 2");     \
         std::terminate();                                                                \
     }
 #else
