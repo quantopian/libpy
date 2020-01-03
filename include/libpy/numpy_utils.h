@@ -322,8 +322,8 @@ struct from_object<py_bool> {
 
 template<>
 struct to_object<py_bool> {
-    static PyObject* f(py_bool v) {
-        return PyBool_FromLong(v.value);
+    static py::scoped_ref<> f(py_bool v) {
+        return py::scoped_ref{PyBool_FromLong(v.value)};
     }
 };
 
@@ -331,13 +331,13 @@ struct to_object<py_bool> {
  */
 template<typename unit>
 struct to_object<datetime64<unit>> {
-    static PyObject* f(const datetime64<unit>& dt) {
+    static py::scoped_ref<> f(const datetime64<unit>& dt) {
         auto descr = py::new_dtype<datetime64<unit>>();
         if (!descr) {
             return nullptr;
         }
         std::int64_t as_int = static_cast<std::int64_t>(dt);
-        return PyArray_Scalar(&as_int, descr.get(), nullptr);
+        return py::scoped_ref{PyArray_Scalar(&as_int, descr.get(), nullptr)};
     }
 };
 

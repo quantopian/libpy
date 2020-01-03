@@ -252,7 +252,7 @@ public:
                 wide = PyInt_AS_LONG(value.get());
             }
             else {
-                wide = static_cast<wide_type>(PyInt_AS_LONG(value));
+                wide = static_cast<wide_type>(PyInt_AS_LONG(value.get()));
             }
         }
         else {

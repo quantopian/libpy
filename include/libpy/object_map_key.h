@@ -88,10 +88,8 @@ struct from_object<object_map_key> {
 
 template<>
 struct to_object<object_map_key> {
-    static PyObject* f(const object_map_key& ob) {
-        PyObject* out = ob.get();
-        Py_INCREF(out);
-        return out;
+    static py::scoped_ref<> f(const object_map_key& ob) {
+        return py::scoped_ref<>::new_reference(ob.get());
     }
 };
 }  // namespace dispatch
