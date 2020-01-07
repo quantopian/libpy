@@ -229,7 +229,7 @@ public:
         std::tuple<decltype(py::dispatch::from_object<Args>::f(nullptr))...>;
 
 private:
-    using parsed = optionals_and_keywords<0, Args...>;
+    using parsed = optionals_and_keywords<0, py::meta::remove_cvref<Args>...>;
     static constexpr std::size_t arity = sizeof...(Args);
     static constexpr std::size_t nkeywords = std::tuple_size_v<typename parsed::keywords>;
     static constexpr std::size_t nposonly = arity - nkeywords;
