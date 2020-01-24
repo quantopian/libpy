@@ -37,6 +37,8 @@ CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 INCLUDE_DIRS := include/ \
 	$(shell $(PYTHON) -c "from distutils import sysconfig; \
 						  print(sysconfig.get_config_var('INCLUDEPY'))") \
+	$(shell $(PYTHON) -c "from distutils import sysconfig; \
+						  print(sysconfig.get_config_var('INCLUDEDIR'))") \
 	$(shell $(PYTHON) -c 'import numpy as np;print(np.get_include())') \
 	$(EXTRA_INCLUDE_DIRS)
 INCLUDE := $(foreach d,$(INCLUDE_DIRS), -I$d)
