@@ -3,6 +3,12 @@ FROM ubuntu:18.04
 LABEL MAINTAINER Quantopian Inc.
 
 ENV DEBIAN_FRONTEND noninteractive
+
+ARG EC2_REGION=us-east-1
+RUN if [ ! -z "$EC2_REGION" ]; then echo "Using EC2 mirror!" \
+    && sed -i -e "s/archive.ubuntu.com/${EC2_REGION}.ec2.archive.ubuntu.com/g" /etc/apt/sources.list; fi
+
+
 RUN apt-get update && apt-get install -y software-properties-common wget
 RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-6.0 main" >> \
