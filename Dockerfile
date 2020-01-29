@@ -50,6 +50,7 @@ RUN apt-get update && apt-get install -y \
     && which "${PYTHON_BINARY_NAME}" \
     && "${PYTHON_BINARY_NAME}" --version \
     && "${PYTHON_BINARY_NAME}" -m pip --version \
+    && "${PYTHON_BINARY_NAME}" -m pip install tox==3.12.1 \
     # clean up apt caches
     && rm -rf /var/lib/apt/lists/*
 
