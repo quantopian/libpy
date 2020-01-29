@@ -3,7 +3,7 @@ steps:
 - label: ":docker: [py27] build"
   key: "py27-build"
   plugins:
-    - docker-compose#v2.6.0:
+    - docker-compose#v3.1.0:
         build:
           - libpy27
         image-name: ${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
@@ -11,11 +11,12 @@ steps:
         cache-from:
           - libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}
           - libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-ci-cache
+        push: libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}
 
 - label: ":docker: [py35] build"
   key: "py35-build"
   plugins:
-    - docker-compose#v2.6.0:
+    - docker-compose#v3.1.0:
         build:
           - libpy35
         image-name: py3-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
@@ -23,11 +24,12 @@ steps:
         cache-from:
           - libpy35:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}
           - libpy35:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-ci-cache
+        push: libpy35:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}
 
 - label: ":docker: [py36] build"
   key: "py36-build"
   plugins:
-    - docker-compose#v2.6.0:
+    - docker-compose#v3.1.0:
         build:
           - libpy36
         image-name: py3-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
@@ -35,75 +37,45 @@ steps:
         cache-from:
           - libpy36:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}
           - libpy36:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-ci-cache
+        push: libpy36:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}
 
-
-
-- label: ":amazon-ecs: [py27] push branch images"
-  key: "py27-push"
-  depends_on: "py27-build"
-  plugins:
-    - thedyrt/skip-checkout#v0.1.1: ~
-    - ssh://git@github.com/quantopian/ecr-retag-buildkite-plugin.git#3ce7b55:
-        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
-        destinations:
-            - 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}
-
-- label: ":amazon-ecs: [py35] push branch images"
-  key: "py35-push"
-  depends_on: "py35-build"
-  plugins:
-    - thedyrt/skip-checkout#v0.1.1: ~
-    - ssh://git@github.com/quantopian/ecr-retag-buildkite-plugin.git#3ce7b55:
-        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
-        destinations:
-            - 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}
-
-- label: ":amazon-ecs: [py27] push branch images"
-  key: "py36-push"
-  depends_on: "py36-build"
-  plugins:
-    - thedyrt/skip-checkout#v0.1.1: ~
-    - ssh://git@github.com/quantopian/ecr-retag-buildkite-plugin.git#3ce7b55:
-        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
-        destinations:
-            - 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}
 
 # Run libpy tests for Python 2.
 - label: ":python: tox py27 (release)"
   key: "py27-test"
-  depends_on: "py27-push"
+  depends_on: "py27-build"
   command:
     - cd /src/libpy
     - tox -e py27-release
   timeout_in_minutes: 10
   plugins:
-    docker-compose#v3.0.0:
+  - docker-compose#v3.1.0:
       run: libpy27
       shell: ["/bin/bash", "-c"]
 
 # Run libpy tests for Python 2.
 - label: ":python: tox py35 (release)"
   key: "py35-test"
-  depends_on: "py35-push"
+  depends_on: "py35-build"
   command:
     - cd /src/libpy
     - tox -e py35-release
   timeout_in_minutes: 10
   plugins:
-    docker-compose#v3.0.0:
+  - docker-compose#v3.1.0:
       run: libpy35
       shell: ["/bin/bash", "-c"]
 
 # Run libpy tests for Python 2.
 - label: ":python: tox py36 (release)"
   key: "py36-test"
-  depends_on: "py36-push"
+  depends_on: "py36-build"
   command:
     - cd /src/libpy
     - tox -e py36-release
   timeout_in_minutes: 10
   plugins:
-    docker-compose#v3.0.0:
+  - docker-compose#v3.1.0:
       run: libpy36
       shell: ["/bin/bash", "-c"]
 
@@ -115,11 +87,11 @@ steps:
 # never deployed standalone.
 - label: ":docker: docker push ci-cache"
   plugins:
-    - docker-compose#v3.0.0:
+    - docker-compose#v3.1.0:
         push:
-          - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-ci-cache
-          - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-ci-cache
-          - libpy:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-ci-cache
+          - libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-ci-cache
+          - libpy35:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-ci-cache
+          - libpy36:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-ci-cache
   branches: "master"
   concurrency: 1
   concurrency_group: "libpy/ecr-push"
