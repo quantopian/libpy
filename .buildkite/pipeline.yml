@@ -1,16 +1,16 @@
 steps:
 
 - label: ":docker: [py27] build"
-key: "py27-build"
-plugins:
-  - docker-compose#v2.6.0:
-      build:
-        - libpy27
-      image-name: ${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
-      image-repository: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy
-      cache-from:
-        - libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}
-        - libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-ci-cache
+  key: "py27-build"
+  plugins:
+    - docker-compose#v2.6.0:
+        build:
+          - libpy27
+        image-name: ${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
+        image-repository: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy
+        cache-from:
+          - libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}
+          - libpy27:997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-ci-cache
 
 - label: ":docker: [py35] build"
   key: "py35-build"

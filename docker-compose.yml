@@ -13,8 +13,9 @@ services:
       - BUILDKITE_PARALLEL_JOB
       - BUILDKITE_PARALLEL_JOB_COUNT
 
+
   libpy35:
-    image: image: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}
+    image: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}
     build:
       context: .
       args:
@@ -25,8 +26,9 @@ services:
       - BUILDKITE_PARALLEL_JOB
       - BUILDKITE_PARALLEL_JOB_COUNT
 
+
   libpy36:
-    image: image: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}
+    image: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}
     build:
       context: .
       args:
