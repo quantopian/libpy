@@ -44,7 +44,7 @@ steps:
   plugins:
     - thedyrt/skip-checkout#v0.1.1: ~
     - ssh://git@github.com/quantopian/ecr-retag-buildkite-plugin.git#3ce7b55:
-        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}
+        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
         destinations:
             - 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py27-${BUILDKITE_BRANCH}
 
@@ -54,7 +54,7 @@ steps:
   plugins:
     - thedyrt/skip-checkout#v0.1.1: ~
     - ssh://git@github.com/quantopian/ecr-retag-buildkite-plugin.git#3ce7b55:
-        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}
+        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
         destinations:
             - 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py35-${BUILDKITE_BRANCH}
 
@@ -64,7 +64,7 @@ steps:
   plugins:
     - thedyrt/skip-checkout#v0.1.1: ~
     - ssh://git@github.com/quantopian/ecr-retag-buildkite-plugin.git#3ce7b55:
-        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}
+        source: 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}-${BUILDKITE_BUILD_NUMBER}
         destinations:
             - 997938224961.dkr.ecr.us-east-1.amazonaws.com/libpy:py36-${BUILDKITE_BRANCH}
 

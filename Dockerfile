@@ -42,7 +42,7 @@ RUN apt-get update && apt-get install -y \
     $(if [ "${PYTHON_BINARY_NAME}" = "python3.5" ]; then \
         echo "python3-pip python3.5-dev"; \
     elif [ "${PYTHON_BINARY_NAME}" = "python3.6" ]; then \
-        echo "python-pip python3.6-dev"; \
+        echo "python3-pip python3.6-dev"; \
     elif [ "${PYTHON_BINARY_NAME}" = "python2.7" ]; then \
         echo "python-pip python2.7-dev"; \
     fi) \
