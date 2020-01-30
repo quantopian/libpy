@@ -162,7 +162,12 @@ private:
         }
 
         if (m_vtable.is_trivially_copyable()) {
-            std::memcpy(new_data, old_data, size() * m_vtable.size());
+            if (size()) {
+                // note: because it is UB to call `std::memcpy` with a `nullptr`
+                // src even if size is 0 so we need to explicitly guard for our
+                // first growth.
+                std::memcpy(new_data, old_data, size() * m_vtable.size());
+            }
             m_vtable.free(old_data);
         }
         else {
