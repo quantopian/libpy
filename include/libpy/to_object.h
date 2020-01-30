@@ -108,9 +108,16 @@ struct to_object<std::array<T, n>> {
 /** Identity conversion for `scoped_ref`.
  */
 template<typename T>
-struct to_object<scoped_ref<T>> {
-    static py::scoped_ref<> f(const scoped_ref<T>& ob) {
-        return py::scoped_ref<>::new_reference(reinterpret_cast<PyObject*>(ob.get()));
+struct to_object<py::scoped_ref<T>> {
+    static py::scoped_ref<> f(const py::scoped_ref<T>& ob) {
+        return py::scoped_ref<>::xnew_reference(reinterpret_cast<PyObject*>(ob.get()));
+    }
+};
+
+template<typename T>
+struct to_object<py::borrowed_ref<T>> {
+    static py::scoped_ref<> f(py::borrowed_ref<T> ob) {
+        return py::scoped_ref<>::xnew_reference(reinterpret_cast<PyObject*>(ob.get()));
     }
 };
 
