@@ -288,7 +288,7 @@ private:
                 result = true;
             }
             else {
-                PyTuple_SET_ITEM(out, ix, as_object);
+                PyTuple_SET_ITEM(out.get(), ix, as_object);
             }
             return '\0';
         };

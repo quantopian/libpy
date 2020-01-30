@@ -7,7 +7,9 @@
 #include <tuple>
 #include <utility>
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/char_sequence.h"
+#include "libpy/detail/numpy.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
@@ -15,6 +17,146 @@
 #include "libpy/to_object.h"
 
 namespace py {
+namespace dispatch {
+/** Extension point to adapt Python arguments to C++ arguments for
+    `autofunction` adapted function.
+
+    By default, all types are adapted with `py::from_object<T>` where T is the
+    type of the argument including cv qualifiers and referenceness. This can be
+    extended to support adapting arguments that require some extra state in the
+    transformation, for example adapting a buffer-like object into a
+    `std::string_view`.
+
+    To add a custom adapted argument type, create an explicit specialization of
+    `py::dispatch::adapt_argument`. The specialization should support an
+    `adapt_argument(py::borrowed_ref<>)` constructor which is passed the Python
+    input. The constructor should throw an exception if the Python object cannot
+    be adapted to the given C++ type. The specialization should also implement a
+    `get()` method which returns the C++ value to pass to the C++ function
+    implementation. Instances of `adapt_argument` will outlive the C++
+    implementation function call, so they may be used to manage state like a
+    `Py_buffer` or a lock.
+
+    The `get` method should either return an rvalue reference to the adapted
+    data or move the data out of `*this` so that it can be forwarded to the
+    implementation function. If the type is small like a string view, then a
+    value can be returned directly. `get()` will only be called exactly once.
+ */
+template<typename T>
+class adapt_argument {
+private:
+    decltype(py::from_object<T>(nullptr)) m_memb;
+
+public:
+    template<typename U = T,
+             typename = std::enable_if_t<std::is_default_constructible_v<U>>>
+    adapt_argument() {}
+
+    adapt_argument(py::borrowed_ref<> ob) : m_memb(py::from_object<T>(ob)) {}
+
+    decltype(m_memb) get() {
+        return std::forward<decltype(m_memb)>(m_memb);
+    }
+};
+
+template<>
+class adapt_argument<std::string_view> {
+private:
+    py::buffer m_buf;
+    std::string_view m_memb;
+
+public:
+    adapt_argument() = default;
+
+    adapt_argument(py::borrowed_ref<> ob) {
+        if (PyBytes_Check(ob.get())) {
+            Py_ssize_t size = PyBytes_GET_SIZE(ob.get());
+            const char* data = PyBytes_AS_STRING(ob.get());
+
+            m_memb = {data, static_cast<std::size_t>(size)};
+        }
+        else {
+            m_buf = py::get_buffer(ob, PyBUF_CONTIG_RO | PyBUF_FORMAT);
+            if (!py::buffer_type_compatible<char>(m_buf)) {
+                throw py::exception(PyExc_TypeError,
+                                    "cannot adapt convert Python object of type ",
+                                    Py_TYPE(ob.get()),
+                                    " to std::string_view");
+            }
+
+            if (m_buf->ndim != 1) {
+                throw py::exception(
+                    PyExc_TypeError,
+                    "cannot adapt multi-dimensional buffer to a std::string_view");
+            }
+
+            m_memb = {static_cast<char*>(m_buf->buf),
+                      static_cast<std::size_t>(m_buf->shape[0])};
+        }
+    }
+
+    std::string_view get() const {
+        return m_memb;
+    }
+};
+
+template<>
+class adapt_argument<const std::string_view> : public adapt_argument<std::string_view> {};
+
+template<>
+class adapt_argument<std::string_view&> : public adapt_argument<std::string_view> {};
+
+template<>
+class adapt_argument<const std::string_view&> : public adapt_argument<std::string_view> {};
+
+template<typename T, std::size_t ndim>
+class adapt_argument<py::ndarray_view<T, ndim>> {
+    py::buffer m_buf;
+    py::ndarray_view<T, ndim> m_memb;
+
+public:
+    adapt_argument() = default;
+
+    adapt_argument(py::borrowed_ref<> ob) {
+        if (PyArray_Check(ob.get())) {
+            // Special case for when `ob` is an ndarray. This is not just an
+            // optimization, Python's buffer protocol doesn't support datetime64
+            // dtypes, so we need to go to the array directly for that.
+            m_memb = py::from_object<py::ndarray_view<T, ndim>>(ob);
+        }
+        else if constexpr (std::is_same_v<T, py::any_ref> ||
+                           std::is_same_v<T, py::any_cref> ||
+                           py::buffer_format<T> != '\0') {
+            // Guard this branch in an if-constexpr because
+            // `from_buffer_protocol` only exists for views over types that are
+            // supported by the Python buffer protocol.
+            auto [memb, buf] = py::ndarray_view<T, ndim>::from_buffer_protocol(ob);
+            std::swap(m_buf, buf);
+            m_memb = memb;
+        }
+        else {
+            throw py::invalid_conversion::make<py::ndarray_view<T, ndim>>(ob);
+        }
+    }
+
+    py::ndarray_view<T, ndim> get() {
+        return m_memb;
+    }
+};
+
+template<typename T, std::size_t ndim>
+class adapt_argument<const py::ndarray_view<T, ndim>>
+    : public adapt_argument<py::ndarray_view<T, ndim>> {};
+
+template<typename T, std::size_t ndim>
+class adapt_argument<py::ndarray_view<T, ndim>&>
+    : public adapt_argument<py::ndarray_view<T, ndim>> {};
+
+template<typename T, std::size_t ndim>
+class adapt_argument<const py::ndarray_view<T, ndim>&>
+    : public adapt_argument<py::ndarray_view<T, ndim>> {};
+}  // namespace dispatch
+
 namespace arg {
 /** A wrapper for specifying that a type may be passed by keyword in Python.
 
@@ -38,11 +180,11 @@ public:
     keyword(keyword& cpfrom) : m_value(cpfrom.m_value) {}
     keyword& operator=(const keyword&) = default;
 
-    const T& get() const {
+    T& get() {
         return m_value;
     }
 
-    T& get() {
+    const T& get() const {
         return m_value;
     }
 };
@@ -66,11 +208,11 @@ public:
     optional(optional& cpfrom) : m_value(cpfrom.m_value) {}
     optional& operator=(const optional&) = default;
 
-    const std::optional<T>& get() const {
+    std::optional<T>& get() {
         return m_value;
     }
 
-    std::optional<T>& get() {
+    const std::optional<T>& get() const {
         return m_value;
     }
 };
@@ -94,11 +236,11 @@ public:
     optional(optional& cpfrom) : m_value(cpfrom.m_value) {}
     optional& operator=(const optional&) = default;
 
-    const std::optional<T>& get() const {
+    std::optional<T>& get() {
         return m_value;
     }
 
-    std::optional<T>& get() {
+    const std::optional<T>& get() const {
         return m_value;
     }
 };
@@ -117,40 +259,60 @@ using opt_kwd = opt<kwd<Name, T>>;
 
 namespace dispatch {
 template<typename Name, typename T>
-struct from_object<arg::keyword<Name, T>> {
-    static arg::keyword<Name, T> f(PyObject* ob) {
-        if (!ob) {
-            auto name = py::cs::to_array(Name{});
-            throw py::exception(PyExc_TypeError,
-                                "functon missing required argument '",
-                                std::string_view(name.data(), name.size() - 1),
-                                "'");
-        }
-        return {py::from_object<T>(ob)};
+class adapt_argument<arg::keyword<Name, T>> {
+private:
+    dispatch::adapt_argument<T> m_adapted;
+
+public:
+    adapt_argument(py::borrowed_ref<> ob) : m_adapted(ob) {
+    }
+
+    arg::keyword<Name, T> get() {
+        return arg::keyword<Name, T>(m_adapted.get());
     }
 };
 
 template<typename T>
-struct from_object<arg::optional<T>> {
-    static arg::optional<T> f(PyObject* ob) {
+class adapt_argument<arg::optional<T>> {
+private:
+    std::optional<dispatch::adapt_argument<T>> m_adapted;
+
+public:
+    adapt_argument() = default;
+
+    adapt_argument(py::borrowed_ref<> ob) {
         if (ob) {
-            return {py::from_object<T>(ob)};
+            m_adapted = adapt_argument<T>{ob};
         }
-        else {
-            return {};
+    }
+
+    arg::optional<T> get() {
+        if (m_adapted) {
+            return m_adapted->get();
         }
+        return std::nullopt;
     }
 };
 
 template<typename Name, typename T>
-struct from_object<arg::optional<arg::keyword<Name, T>>> {
-    static arg::optional<arg::keyword<Name, T>> f(PyObject* ob) {
+class adapt_argument<arg::optional<arg::keyword<Name, T>>> {
+private:
+    std::optional<dispatch::adapt_argument<T>> m_adapted;
+
+public:
+    adapt_argument() = default;
+
+    adapt_argument(py::borrowed_ref<> ob) {
         if (ob) {
-            return {py::from_object<T>(ob)};
+            m_adapted = adapt_argument<T>{ob};
         }
-        else {
-            return {};
+    }
+
+    arg::optional<arg::keyword<Name, T>> get() {
+        if (m_adapted) {
+            return m_adapted->get();
         }
+        return std::nullopt;
     }
 };
 }  // namespace dispatch
@@ -225,8 +387,7 @@ struct optionals_and_keywords<ix> {
 template<typename... Args>
 struct argument_parser {
 public:
-    using signature =
-        std::tuple<decltype(py::dispatch::from_object<Args>::f(nullptr))...>;
+    using signature = std::tuple<dispatch::adapt_argument<Args>...>;
 
 private:
     using parsed = optionals_and_keywords<0, py::meta::remove_cvref<Args>...>;
@@ -236,15 +397,15 @@ private:
     static constexpr std::size_t nrequired = arity - parsed::noptionals;
 
     template<typename Arg, std::size_t ix>
-    static decltype(py::from_object<Arg>(nullptr)) positional_arg(PyObject* args) {
+    static dispatch::adapt_argument<Arg> positional_arg(PyObject* args) {
         if (static_cast<Py_ssize_t>(ix) < PyTuple_GET_SIZE(args)) {
-            return py::from_object<Arg>(PyTuple_GET_ITEM(args, ix));
+            return dispatch::adapt_argument<Arg>(PyTuple_GET_ITEM(args, ix));
         }
         else if constexpr (ix < nrequired) {
             throw py::exception(PyExc_AssertionError, "cannot be missing a required arg");
         }
         else {
-            return Arg{};
+            return dispatch::adapt_argument<Arg>{};
         }
     }
 
@@ -278,20 +439,42 @@ public:
         if (!arity && (PyTuple_GET_SIZE(args) || (kwargs && PyDict_Size(kwargs)))) {
             throw py::exception(PyExc_TypeError, "function takes no arguments");
         }
+
+        auto mismatched_args =
+            [](Py_ssize_t nargs) {
+                if (nrequired == arity) {
+                    return py::exception(PyExc_TypeError,
+                                         "function takes ",
+                                         arity,
+                                         " argument",
+                                         (arity != 1) ? "s" : "",
+                                         " but ",
+                                         nargs,
+                                         " were given");
+                }
+                return py::exception(PyExc_TypeError,
+                                     "function takes from ",
+                                     nrequired,
+                                     " to ",
+                                     arity,
+                                     " arguments but ",
+                                     nargs,
+                                     " were given");
+        };
+
         if (nkeywords == 0) {
             if (kwargs && PyDict_Size(kwargs)) {
                 throw py::exception(PyExc_TypeError,
                                     "function takes no keyword arguments");
             }
-            if (PyTuple_GET_SIZE(args) < static_cast<Py_ssize_t>(nrequired)) {
-                throw py::exception(PyExc_TypeError,
-                                    "function expects at least ",
-                                    nrequired,
-                                    " arguments but received ",
-                                    PyTuple_GET_SIZE(args));
+
+            if (PyTuple_GET_SIZE(args) < static_cast<Py_ssize_t>(nrequired) ||
+                PyTuple_GET_SIZE(args) > static_cast<Py_ssize_t>(arity)) {
+                throw mismatched_args(PyTuple_GET_SIZE(args));
             }
             return positional_args(args, std::make_index_sequence<arity>{});
         }
+
         // flatten the args + kwargs into a single tuple to pass to
         // `positional_args`
         py::scoped_ref<> flat(PyTuple_New(arity));
@@ -303,6 +486,8 @@ public:
             Py_INCREF(ob);                         // add a new ref
             PyTuple_SET_ITEM(flat.get(), ix, ob);  // steals the new ref
         }
+
+        Py_ssize_t total_args = PyTuple_GET_SIZE(args);
         if (kwargs) {
             for (auto [key, value] : py::dict_range(kwargs)) {
                 std::string_view key_view = py::util::pystring_to_string_view(key);
@@ -316,6 +501,11 @@ public:
                 Py_INCREF(value.get());
                 PyTuple_SET_ITEM(flat.get(), ix, value.get());
             }
+
+            total_args += PyDict_Size(kwargs);
+        }
+        if (total_args < static_cast<Py_ssize_t>(nrequired)) {
+            throw mismatched_args(total_args);
         }
 
         return positional_args(flat.get(), std::make_index_sequence<arity>{});
@@ -340,8 +530,9 @@ public:
 
     static constexpr auto flags = base_flags | parser::flags;
 
-    static auto build_arg_tuple(PyObject*, PyObject* args, PyObject* kwargs) {
-        return parser::parse(args, kwargs);
+    static R apply(R (*f)(Args...), PyObject*, PyObject* args, PyObject* kwargs) {
+        auto parsed = parser::parse(args, kwargs);
+        return std::apply([&](auto&... args) -> R { return f(args.get()...); }, parsed);
     }
 };
 
@@ -355,8 +546,10 @@ public:
 
     static constexpr auto flags = base_flags | parser::flags;
 
-    static auto build_arg_tuple(Self self, PyObject* args, PyObject* kwargs) {
-        return std::tuple_cat(std::make_tuple(self), parser::parse(args, kwargs));
+    static R apply(R (*f)(Self, Args...), Self self, PyObject* args, PyObject* kwargs) {
+        auto parsed = parser::parse(args, kwargs);
+        return std::apply([&](auto&... args) -> R { return f(self, args.get()...); },
+                          parsed);
     }
 };
 
@@ -373,17 +566,16 @@ struct automethodwrapper_impl {
         using f = method_traits<decltype(impl), flags, Self>;
 
         if constexpr (std::is_same_v<typename f::return_type, void>) {
-            std::apply(impl, f::build_arg_tuple(self, args, kwargs));
+            f::apply(impl, self, args, kwargs);
             // Allow auto method with void return. This will return a new reference of
             // None to the calling Python.
             Py_RETURN_NONE;
         }
         else if constexpr (std::is_same_v<typename f::return_type, PyObject*>) {
-            return std::apply(impl, f::build_arg_tuple(self, args, kwargs));
+            return f::apply(impl, self, args, kwargs);
         }
         else {
-            return py::to_object(std::apply(impl, f::build_arg_tuple(self, args, kwargs)))
-                .escape();
+            return py::to_object(f::apply(impl, self, args, kwargs)).escape();
         }
     }
 };
