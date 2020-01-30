@@ -90,30 +90,33 @@ public:
 };
 
 namespace detail {
-inline py::scoped_ref<>
-run_python(const std::string_view& python_source,
-           const std::string_view& file,
-           std::size_t line,
-           py::scoped_ref<> python_namespace = py::scoped_ref(nullptr)) {
-    if (!python_namespace) {
-        py::scoped_ref main_module(PyImport_ImportModule("__main__"));
-        if (!main_module) {
-            throw py::exception();
-        }
+inline py::scoped_ref<> run_python(
+    const std::string_view& python_source,
+    const std::string_view& file,
+    std::size_t line,
+    bool eval,
+    const std::unordered_map<std::string, py::scoped_ref<>>& python_namespace = {}) {
+    py::scoped_ref py_ns{PyDict_New()};
 
-        // PyModule_GetDict returns a borrowed reference
-        PyObject* main_dict = PyModule_GetDict(main_module.get());
-        if (!main_dict) {
+    for (const auto [k, v] : python_namespace) {
+        if (PyDict_SetItemString(py_ns.get(), k.data(), v.get())) {
             return nullptr;
         }
+    }
 
-        if (!(python_namespace = py::scoped_ref(PyDict_New()))) {
-            return nullptr;
-        }
+    py::scoped_ref main_module(PyImport_ImportModule("__main__"));
+    if (!main_module) {
+        return nullptr;
+    }
 
-        if (PyDict_Update(python_namespace.get(), main_dict)) {
-            return nullptr;
-        }
+    // PyModule_GetDict returns a borrowed reference
+    PyObject* main_dict = PyModule_GetDict(main_module.get());
+    if (!main_dict) {
+        return nullptr;
+    }
+
+    if (PyDict_Update(py_ns.get(), main_dict)) {
+        return nullptr;
     }
 
     py::scoped_ref io(PyImport_ImportModule("io"));
@@ -136,13 +139,17 @@ run_python(const std::string_view& python_source,
     // Add a bunch of newlines so that the errors in the tests correspond to
     // the line of the files. Subtract some lines to account for the code we
     // inject around the test source.
-    for (std::size_t n = 0; n < line - lines_in_source - 2; ++n) {
+    for (std::size_t n = 0; n < line - lines_in_source - 2 - eval; ++n) {
         full_source << '\n';
     }
 
     // Put the user's test in a function. We share a module dict in this test
     // suite so assignments in a test should not bleed into other tests.
-    full_source << "if True:\n" << python_source;
+    full_source << "if True:\n";
+    if (eval) {
+        full_source << "    __libpy_output = \\\n";
+    }
+    full_source << python_source;
     py::scoped_ref code_object(
         Py_CompileString(full_source.str().data(), file.data(), Py_file_input));
     if (!code_object) {
@@ -155,24 +162,38 @@ run_python(const std::string_view& python_source,
 #define LIBPY_CODE_CAST(x) (x)
 #endif
 
-    py::scoped_ref result(PyEval_EvalCode(LIBPY_CODE_CAST(code_object.get()),
-                                          python_namespace.get(),
-                                          python_namespace.get()));
+    py::scoped_ref result(
+        PyEval_EvalCode(LIBPY_CODE_CAST(code_object.get()), py_ns.get(), py_ns.get()));
 
 #undef LIBPY_CODE_CAST
 
     if (!result) {
         return nullptr;
     }
-    return python_namespace;
+    if (!eval) {
+        return py_ns;
+    }
+    return py::scoped_ref<>::xnew_reference(
+        PyDict_GetItemString(py_ns.get(), "__libpy_output"));
 }
 }  // namespace detail
 
 /** Run some Python code.
 
     @param python_source The Python source code to run.
-    @param namespace (optional) The Python namespace to evaluate in.
+    @param namespace (optional) The Python namespace to evaluate in, this should be
+           an `unordered_map<std::string, py::scoped_ref<>>`
     @return namespace The namespace after running the Python code.
 */
 #define RUN_PYTHON(python_source, ...)                                                   \
-    ::detail::run_python(python_source, __FILE__, __LINE__, ##__VA_ARGS__)
+    ::detail::run_python(python_source, __FILE__, __LINE__, false, ##__VA_ARGS__)
+
+/** Eval some Python code.
+
+    @param python_source The Python source code to evaluate.
+    @param namespace (optional) The Python namespace to evaluate in, this should be
+           an `unordered_map<std::string, py::scoped_ref<>>`
+    @return The result of evaluating the given Python expression.
+*/
+#define EVAL_PYTHON(python_source, ...)                                                  \
+    ::detail::run_python(python_source, __FILE__, __LINE__, true, ##__VA_ARGS__)
