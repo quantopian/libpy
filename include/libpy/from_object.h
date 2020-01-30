@@ -28,10 +28,9 @@ namespace py {
 /** Exception raised when an invalid `py::from_object` call is performed.
  */
 class invalid_conversion : public py::exception {
-private:
+public:
     inline invalid_conversion(const std::string& msg) : py::exception(msg) {}
 
-public:
     template<typename ConvertTo>
     static invalid_conversion make(py::borrowed_ref<> ob) {
         py::scoped_ref repr(PyObject_Repr(ob.get()));
@@ -377,6 +376,30 @@ struct from_object<std::vector<T>> {
     }
 };
 
+template<typename T, std::size_t n>
+struct from_object<std::array<T, n>> {
+    static std::array<T, n> f(py::borrowed_ref<> v) {
+        if (!PyList_Check(v.get())) {
+            throw invalid_conversion::make<std::array<T, n>>(v);
+        }
+
+        if (PyList_GET_SIZE(v.get()) != static_cast<Py_ssize_t>(n)) {
+            throw py::util::formatted_error<invalid_conversion>(
+                "list size does not match fixed-size array size: ",
+                PyList_GET_SIZE(v.get()),
+                " != ",
+                n);
+        }
+
+        std::array<T, n> out;
+        for (Py_ssize_t ix = 0; ix < static_cast<Py_ssize_t>(out.size()); ++ix) {
+            out[ix] = py::from_object<T>(PyList_GET_ITEM(v.get(), ix));
+        }
+
+        return out;
+    }
+};
+
 template<typename T>
 struct from_object<std::unordered_set<T>> {
     static std::unordered_set<T> f(py::borrowed_ref<> s) {
@@ -408,12 +431,12 @@ private:
     template<std::size_t... ixs>
     static std::tuple<Ts...> fill_tuple(py::borrowed_ref<> tup,
                                         std::index_sequence<ixs...>) {
-        return {py::from_object<Ts>(PyTuple_GET_ITEM(tup, ixs))...};
+        return {py::from_object<Ts>(PyTuple_GET_ITEM(tup.get(), ixs))...};
     }
 
 public:
     static std::tuple<Ts...> f(py::borrowed_ref<> tup) {
-        if (!(PyTuple_Check(tup) && PyTuple_GET_SIZE(tup) == sizeof...(Ts))) {
+        if (!(PyTuple_Check(tup.get()) && PyTuple_GET_SIZE(tup.get()) == sizeof...(Ts))) {
             throw invalid_conversion::make<std::tuple<Ts...>>(tup);
         }
 
