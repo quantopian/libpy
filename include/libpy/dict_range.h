@@ -49,7 +49,7 @@ public:
         @note This does not do a type check, `map` must be a Python dictionary.
         @param map The map to create a range over.
     */
-    inline explicit dict_range(py::borrowed_ref<> map) : m_map(map.get()) {}
+    explicit dict_range(py::borrowed_ref<> map);
 
     /** Assert that `map` is a Python dictionary and then construct a
         `dict_range`.
