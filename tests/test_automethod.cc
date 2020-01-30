@@ -1,8 +1,8 @@
+#include <forward_list>
 #include <numeric>
 #include <optional>
 #include <string>
 #include <vector>
-#include <forward_list>
 
 #include <gtest/gtest.h>
 
@@ -94,7 +94,6 @@ TEST_F(automethod, name_and_doc) {
     test(make_f<test_f>(expected_name.data(), expected_doc.data()));
     test(make_meth<test_meth>(expected_name.data(), expected_doc.data()));
 }
-
 
 bool void_return_no_arg_called = false;
 void void_return_no_arg() {
@@ -306,7 +305,8 @@ py::datetime64<unit> sum_datetime64_int_values(I begin, I end) {
         })};
 }
 
-std::tuple<std::size_t, py::datetime64ns> datetime64_array_view(py::array_view<py::datetime64ns> view) {
+std::tuple<std::size_t, py::datetime64ns>
+datetime64_array_view(py::array_view<py::datetime64ns> view) {
     return {view.size(),
             sum_datetime64_int_values<py::chrono::ns>(view.begin(), view.end())};
 }
@@ -329,7 +329,6 @@ TEST_F(automethod, datetime64_array_view) {
     EXPECT_EQ(size, expected_size);
     EXPECT_EQ(sum, expected_sum);
 }
-
 
 std::tuple<std::array<std::size_t, 2>, std::vector<int>>
 two_dimensional_array_view(py::ndarray_view<int, 2> view) {
@@ -362,7 +361,9 @@ TEST_F(automethod, two_dimensional_array_view) {
 
     auto test = [&](py::borrowed_ref<> input) {
         auto res = py::call_function_throws(f, input);
-        auto [shape, sums] = py::from_object<std::tuple<std::array<std::size_t, 2>, std::vector<int>>>(res);
+        auto [shape, sums] =
+            py::from_object<std::tuple<std::array<std::size_t, 2>, std::vector<int>>>(
+                res);
         EXPECT_EQ(shape, shape);
         EXPECT_EQ(sums, expected_sums);
     };
@@ -401,7 +402,8 @@ TEST_F(automethod, two_dimensional_array_view_wrong_ndim) {
     PyErr_Clear();
 }
 
-std::tuple<std::string, std::size_t, std::size_t> mut_any_ndarray_view(py::array_view<py::any_ref> view) {
+std::tuple<std::string, std::size_t, std::size_t>
+mut_any_ndarray_view(py::array_view<py::any_ref> view) {
     if (static_cast<std::size_t>(view.strides()[0]) != view.vtable().size()) {
         throw py::exception(PyExc_AssertionError, "input should not be strided");
     }
@@ -420,7 +422,9 @@ TEST_F(automethod, mut_any_ndarray_view) {
         using T = typename decltype(vec)::value_type;
         std::string expected_type_name = py::util::type_name<T>().get();
         std::size_t expected_size = vec.size();
-        std::size_t expected_hash = py::hash_buffer(reinterpret_cast<const char*>(vec.data()), vec.size() * sizeof(T));
+        std::size_t expected_hash = py::hash_buffer(reinterpret_cast<const char*>(
+                                                        vec.data()),
+                                                    vec.size() * sizeof(T));
 
         auto ndarray = py::move_to_numpy_array(std::move(vec));
         ASSERT_TRUE(ndarray);
@@ -478,7 +482,9 @@ TEST_F(automethod, immut_any_ndarray_view) {
         using T = typename decltype(vec)::value_type;
         std::string expected_type_name = py::util::type_name<T>().get();
         std::size_t expected_size = vec.size();
-        std::size_t expected_hash = py::hash_buffer(reinterpret_cast<const char*>(vec.data()), vec.size() * sizeof(T));
+        std::size_t expected_hash = py::hash_buffer(reinterpret_cast<const char*>(
+                                                        vec.data()),
+                                                    vec.size() * sizeof(T));
 
         auto ndarray = py::move_to_numpy_array(std::move(vec));
         ASSERT_TRUE(ndarray);
@@ -588,7 +594,6 @@ TEST_F(automethod, too_many_positional_only_1) {
                                   "function takes 1 argument but 2 were given");
     PyErr_Clear();
 }
-
 
 int three_positional(int a, int b, int c) {
     return a + b + c;

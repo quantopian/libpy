@@ -107,7 +107,8 @@ template<>
 class adapt_argument<std::string_view&> : public adapt_argument<std::string_view> {};
 
 template<>
-class adapt_argument<const std::string_view&> : public adapt_argument<std::string_view> {};
+class adapt_argument<const std::string_view&> : public adapt_argument<std::string_view> {
+};
 
 template<typename T, std::size_t ndim>
 class adapt_argument<py::ndarray_view<T, ndim>> {
@@ -264,8 +265,7 @@ private:
     dispatch::adapt_argument<T> m_adapted;
 
 public:
-    adapt_argument(py::borrowed_ref<> ob) : m_adapted(ob) {
-    }
+    adapt_argument(py::borrowed_ref<> ob) : m_adapted(ob) {}
 
     arg::keyword<Name, T> get() {
         return arg::keyword<Name, T>(m_adapted.get());
@@ -440,26 +440,25 @@ public:
             throw py::exception(PyExc_TypeError, "function takes no arguments");
         }
 
-        auto mismatched_args =
-            [](Py_ssize_t nargs) {
-                if (nrequired == arity) {
-                    return py::exception(PyExc_TypeError,
-                                         "function takes ",
-                                         arity,
-                                         " argument",
-                                         (arity != 1) ? "s" : "",
-                                         " but ",
-                                         nargs,
-                                         " were given");
-                }
+        auto mismatched_args = [](Py_ssize_t nargs) {
+            if (nrequired == arity) {
                 return py::exception(PyExc_TypeError,
-                                     "function takes from ",
-                                     nrequired,
-                                     " to ",
+                                     "function takes ",
                                      arity,
-                                     " arguments but ",
+                                     " argument",
+                                     (arity != 1) ? "s" : "",
+                                     " but ",
                                      nargs,
                                      " were given");
+            }
+            return py::exception(PyExc_TypeError,
+                                 "function takes from ",
+                                 nrequired,
+                                 " to ",
+                                 arity,
+                                 " arguments but ",
+                                 nargs,
+                                 " were given");
         };
 
         if (nkeywords == 0) {
