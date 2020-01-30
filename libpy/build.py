@@ -40,6 +40,8 @@ class LibpyExtension(setuptools.Extension, object):
     max_errors : int or None, optional
         Limit the number of error messages that are shown.
         Defaults to None, showing all error messages.
+    ubsan : bool, optional
+        Compile with ubsan? Implies optlevel=0.
     **kwargs
         All other keyword arguments forwarded to :class:`setuptools.Extension`.
 
@@ -66,7 +68,15 @@ class LibpyExtension(setuptools.Extension, object):
             '-DPY_MINOR_VERSION=%d' % sys.version_info.minor,
         ]
 
+        libpy_extra_link_args = []
+
         optlevel = kwargs.pop('optlevel', 0)
+        ubsan = kwargs.pop('ubsan', False)
+        if ubsan:
+            optlevel = 0
+            libpy_extra_compile_args.append('-fsanitize=undefined')
+            libpy_extra_link_args.append('-lubsan')
+
         libpy_extra_compile_args.append('-O%d' % optlevel)
         if kwargs.pop('debug_symbols', True):
             libpy_extra_compile_args.append('-g')
@@ -89,7 +99,11 @@ class LibpyExtension(setuptools.Extension, object):
             libpy_extra_compile_args.append('-fmax-errors=%d' % max_errors)
         kwargs['extra_compile_args'] = (
             libpy_extra_compile_args +
-            kwargs.setdefault('extra_compile_args', [])
+            kwargs.get('extra_compile_args', [])
+        )
+        kwargs['extra_link_args'] = (
+            libpy_extra_link_args +
+            kwargs.get('extra_link_args', [])
         )
 
         include_dirs = kwargs.setdefault('include_dirs', [])
