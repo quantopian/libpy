@@ -59,3 +59,5 @@ libpy_report.xml
 # python support artifacts
 libpy.egg-info/*
 dist/*
+
+venv/*
