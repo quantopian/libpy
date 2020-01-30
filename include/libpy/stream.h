@@ -20,7 +20,7 @@ private:
 
     /** The reference to the file-like object.
      */
-    scoped_ref<> m_file_ob;
+    py::scoped_ref<> m_file_ob;
 
     std::array<CharT, 8192> m_write_buffer;
     std::size_t m_write_ix = 0;
@@ -61,7 +61,7 @@ protected:
 
 public:
     explicit basic_streambuf(const py::borrowed_ref<>& file)
-        : m_file_ob(py::scoped_ref<T>::new_reference(file)) {}
+        : m_file_ob(py::scoped_ref<>::new_reference(file)) {}
 };
 
 /** A C++ output stream which writes to a Python file-like object.
