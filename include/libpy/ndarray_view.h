@@ -90,9 +90,6 @@ public:
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
-private:
-
-public:
     template<typename U = T>
     static std::enable_if_t<py::buffer_format<U> != '\0',
                             std::tuple<ndarray_view<T, ndim>, py::buffer>>
