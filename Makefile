@@ -27,7 +27,7 @@ WARNINGS := -Werror -Wall -Wextra -Wno-register -Wno-missing-field-initializers 
 CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 	-fwrapv -fno-strict-aliasing -pipe \
 	-march=x86-64 -mtune=generic \
-	-fvisibility=hidden
+	-fvisibility=hidden \
 	-fmax-errors=$(MAX_ERRORS) $(WARNINGS) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
