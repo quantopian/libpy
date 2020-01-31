@@ -29,31 +29,19 @@ public:
     inline invalid_mangled_name() : demangle_error("invalid mangled name") {}
 };
 
-namespace detail {
-struct demangle_deleter {
-    inline void operator()(char* p) const {
-        std::free(p);
-    }
-};
-}  // namespace detail
+/** Demangle the given string.
 
-/** A nul-terminated `char*` deleted with `std::free`.
+    @param cs The mangled symbol or type name.
+    @return The demangled string.
  */
-using demangled_cstring = std::unique_ptr<char, detail::demangle_deleter>;
+std::string demangle_string(const char* cs);
 
 /** Demangle the given string.
 
     @param cs The mangled symbol or type name.
     @return The demangled string.
  */
-demangled_cstring demangle_string(const char* cs);
-
-/** Demangle the given string.
-
-    @param cs The mangled symbol or type name.
-    @return The demangled string.
- */
-demangled_cstring demangle_string(const std::string& cs);
+std::string demangle_string(const std::string& cs);
 LIBPY_END_EXPORT
 
 /** Get the name for a given type. If the demangled name cannot be given, returns the
@@ -63,18 +51,23 @@ LIBPY_END_EXPORT
     @return The demangled name.
  */
 template<typename T>
-demangled_cstring type_name() {
+std::string type_name() {
     const char* name = typeid(T).name();
+    std::string out;
     try {
-        return demangle_string(name);
+        out = demangle_string(name);
     }
     catch (const invalid_mangled_name&) {
-        // we need to allocate this memory with `std::malloc` to line up with the
-        // `std::free` in `detail::demangle_deleter`.
-        std::size_t size = std::strlen(name);
-        char* buf = reinterpret_cast<char*>(std::malloc(size));
-        std::memcpy(buf, name, size);
-        return demangled_cstring(buf);
+        out = name;
     }
+
+    if (std::is_lvalue_reference_v<T>) {
+        out.push_back('&');
+    }
+    else if (std::is_rvalue_reference_v<T>) {
+        out.insert(out.end(), 2, '&');
+    }
+
+    return out;
 }
 }  // namespace py::util

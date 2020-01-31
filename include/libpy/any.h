@@ -34,7 +34,7 @@ struct any_vtable_impl {
     bool (*eq)(const void* lhs, const void* rhs);
     py::scoped_ref<> (*to_object)(const void* addr);
     std::ostream& (*ostream_format)(std::ostream& stream, const void* addr);
-    py::util::demangled_cstring (*type_name)();
+    std::string (*type_name)();
 };
 
 template<typename T>
@@ -91,7 +91,7 @@ constexpr any_vtable_impl any_vtable_instance = {
         else {
             throw py::exception(PyExc_TypeError,
                                 "cannot convert values of type ",
-                                py::util::type_name<T>().get(),
+                                py::util::type_name<T>(),
                                 " into Python object");
         }
     },
@@ -104,7 +104,7 @@ constexpr any_vtable_impl any_vtable_instance = {
             throw py::exception(
                 PyExc_TypeError,
                 "cannot use operator<<(std::ostream&, const T&) for values of type ",
-                py::util::type_name<T>().get());
+                py::util::type_name<T>());
         }
     },
     []() { return py::util::type_name<T>(); },
@@ -250,7 +250,7 @@ public:
         return m_impl->ostream_format(stream, addr);
     }
 
-    inline py::util::demangled_cstring type_name() const {
+    inline std::string type_name() const {
         return m_impl->type_name();
     }
 

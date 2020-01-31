@@ -106,7 +106,7 @@ public:
                                 "cannot adapt buffer of format: ",
                                 buf->format,
                                 " to an ndarray_view of type: ",
-                                py::util::type_name<T>().get());
+                                py::util::type_name<T>());
         }
 
         if (buf->ndim != ndim) {

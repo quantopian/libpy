@@ -29,7 +29,8 @@ namespace py {
  */
 class invalid_conversion : public py::exception {
 public:
-    inline invalid_conversion(const std::string& msg) : py::exception(msg) {}
+    inline invalid_conversion(const std::string& msg)
+        : py::exception(PyExc_TypeError, msg) {}
 
     template<typename ConvertTo>
     static invalid_conversion make(py::borrowed_ref<> ob) {
@@ -44,7 +45,7 @@ public:
 
         std::stringstream s;
         s << "failed to convert Python object of type " << Py_TYPE(ob.get())->tp_name
-          << " to a C++ object of type " << py::util::type_name<ConvertTo>().get()
+          << " to a C++ object of type " << py::util::type_name<ConvertTo>()
           << ": ob=" << data;
         return invalid_conversion(s.str());
     }
@@ -276,7 +277,7 @@ public:
         if (wide > std::numeric_limits<T>::max() ||
             wide < std::numeric_limits<T>::min()) {
             py::raise(PyExc_OverflowError)
-                << "converting " << value << " to type " << py::util::type_name<T>().get()
+                << "converting " << value << " to type " << py::util::type_name<T>()
                 << " overflows";
             throw invalid_conversion::make<T>(value);
         }

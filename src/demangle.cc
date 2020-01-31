@@ -3,13 +3,16 @@
 #include "libpy/demangle.h"
 
 namespace py::util {
-demangled_cstring demangle_string(const char* cs) {
+std::string demangle_string(const char* cs) {
     int status;
     char* demangled = ::abi::__cxa_demangle(cs, nullptr, nullptr, &status);
 
     switch (status) {
-    case 0:
-        return demangled_cstring(demangled);
+    case 0: {
+        std::string out(demangled);
+        std::free(demangled);
+        return out;
+    }
     case -1:
         throw demangle_error("memory error");
     case -2:
@@ -21,7 +24,7 @@ demangled_cstring demangle_string(const char* cs) {
     }
 }
 
-demangled_cstring demangle_string(const std::string& cs) {
+std::string demangle_string(const std::string& cs) {
     return demangle_string(cs.data());
 }
 }  // namespace py::util
