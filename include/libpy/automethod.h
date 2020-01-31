@@ -101,13 +101,18 @@ public:
 };
 
 template<>
-class adapt_argument<const std::string_view> : public adapt_argument<std::string_view> {};
+class adapt_argument<const std::string_view> : public adapt_argument<std::string_view> {
+    using adapt_argument<std::string_view>::adapt_argument;
+};
 
 template<>
-class adapt_argument<std::string_view&> : public adapt_argument<std::string_view> {};
+class adapt_argument<std::string_view&> : public adapt_argument<std::string_view> {
+    using adapt_argument<std::string_view>::adapt_argument;
+};
 
 template<>
 class adapt_argument<const std::string_view&> : public adapt_argument<std::string_view> {
+    using adapt_argument<std::string_view>::adapt_argument;
 };
 
 template<typename T, std::size_t ndim>
@@ -147,15 +152,21 @@ public:
 
 template<typename T, std::size_t ndim>
 class adapt_argument<const py::ndarray_view<T, ndim>>
-    : public adapt_argument<py::ndarray_view<T, ndim>> {};
+    : public adapt_argument<py::ndarray_view<T, ndim>> {
+    using adapt_argument<py::ndarray_view<T, ndim>>::adapt_argument;
+};
 
 template<typename T, std::size_t ndim>
 class adapt_argument<py::ndarray_view<T, ndim>&>
-    : public adapt_argument<py::ndarray_view<T, ndim>> {};
+    : public adapt_argument<py::ndarray_view<T, ndim>> {
+    using adapt_argument<py::ndarray_view<T, ndim>>::adapt_argument;
+};
 
 template<typename T, std::size_t ndim>
 class adapt_argument<const py::ndarray_view<T, ndim>&>
-    : public adapt_argument<py::ndarray_view<T, ndim>> {};
+    : public adapt_argument<py::ndarray_view<T, ndim>> {
+    using adapt_argument<py::ndarray_view<T, ndim>>::adapt_argument;
+};
 }  // namespace dispatch
 
 namespace arg {

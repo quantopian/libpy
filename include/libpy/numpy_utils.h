@@ -395,7 +395,7 @@ inline scoped_ref<PyArray_Descr> vtable_to_dtype(const any_vtable& vtable) {
 
     throw exception(PyExc_TypeError,
                     "cannot create an dtype from the vtable for type: ",
-                    vtable.type_name().get());
+                    vtable.type_name());
 }
 
 template<typename T, std::size_t ndim>

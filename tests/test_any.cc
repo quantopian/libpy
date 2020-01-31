@@ -32,7 +32,7 @@ TEST(any_vtable, void_vtable) {
     EXPECT_THROW(vtable.eq(a, a), std::runtime_error);
     EXPECT_THROW(vtable.to_object(a), std::runtime_error);
 
-    EXPECT_STREQ(vtable.type_name().get(), py::util::type_name<void>().get());
+    EXPECT_EQ(vtable.type_name(), py::util::type_name<void>());
 
     EXPECT_EQ(vtable, py::any_vtable::make<void>());
     EXPECT_EQ(vtable, py::any_vtable{});  // default construct makes void table
