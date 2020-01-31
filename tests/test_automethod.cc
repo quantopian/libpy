@@ -408,7 +408,7 @@ mut_any_ndarray_view(py::array_view<py::any_ref> view) {
         throw py::exception(PyExc_AssertionError, "input should not be strided");
     }
 
-    return {view.vtable().type_name().get(),
+    return {view.vtable().type_name(),
             view.size(),
             py::hash_buffer(reinterpret_cast<const char*>(view.buffer()),
                             view.size() * view.vtable().size())};
@@ -420,7 +420,7 @@ TEST_F(automethod, mut_any_ndarray_view) {
     auto test = [&](auto... data) {
         std::vector vec = {data...};
         using T = typename decltype(vec)::value_type;
-        std::string expected_type_name = py::util::type_name<T>().get();
+        std::string expected_type_name = py::util::type_name<T>();
         std::size_t expected_size = vec.size();
         std::size_t expected_hash = py::hash_buffer(reinterpret_cast<const char*>(
                                                         vec.data()),
@@ -468,7 +468,7 @@ immut_any_ndarray_view(py::array_view<py::any_cref> view) {
         throw py::exception(PyExc_AssertionError, "input should not be strided");
     }
 
-    return {view.vtable().type_name().get(),
+    return {view.vtable().type_name(),
             view.size(),
             py::hash_buffer(reinterpret_cast<const char*>(view.buffer()),
                             view.size() * view.vtable().size())};
@@ -480,7 +480,7 @@ TEST_F(automethod, immut_any_ndarray_view) {
     auto test = [&](auto... data) {
         std::vector vec = {data...};
         using T = typename decltype(vec)::value_type;
-        std::string expected_type_name = py::util::type_name<T>().get();
+        std::string expected_type_name = py::util::type_name<T>();
         std::size_t expected_size = vec.size();
         std::size_t expected_hash = py::hash_buffer(reinterpret_cast<const char*>(
                                                         vec.data()),
@@ -692,5 +692,32 @@ TEST_F(automethod, non_copyable) {
 
     auto res = py::call_function_throws(f, true);
     EXPECT_EQ(res.get(), Py_None);
+}
+
+int int_mut_ref(int& a) {
+    return a;
+}
+
+TEST_F(automethod, int_mut_ref) {
+    auto f = make_f<int_mut_ref>("f");
+
+    auto res = py::call_function(f, 12);
+    EXPECT_FALSE(res);
+    expect_pyerr_type_and_message(PyExc_TypeError,
+                                  "failed to convert Python object of type int to a C++ "
+                                  "object of type int&: ob=12");
+    PyErr_Clear();
+}
+
+int int_const_ref(const int& a) {
+    return a;
+}
+
+TEST_F(automethod, int_const_ref) {
+    auto f = make_f<int_const_ref>("f");
+
+    auto res = py::call_function_throws(f, 12);
+    int unboxed = py::from_object<int>(res);
+    EXPECT_EQ(unboxed, 12);
 }
 }  // namespace test_automethod
