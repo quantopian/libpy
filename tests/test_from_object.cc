@@ -42,7 +42,7 @@ TEST_F(from_object, test_basic_integer) {
 template<typename T>
 void expect_overflow(const py::scoped_ref<>& ob) {
     EXPECT_THROW(py::from_object<T>(ob), py::invalid_conversion)
-        << py::util::type_name<T>().get();
+        << py::util::type_name<T>();
     EXPECT_TRUE(PyErr_Occurred());
     PyErr_Clear();
 }
@@ -102,7 +102,7 @@ TEST_F(from_object, test_overflow) {
 template<typename T>
 void test_typed_array_view_bad_conversion(const py::scoped_ref<>& ndarray) {
     EXPECT_THROW(py::from_object<py::array_view<T>>(ndarray), py::exception)
-        << py::util::type_name<T>().get();
+        << py::util::type_name<T>();
     PyErr_Clear();
 }
 

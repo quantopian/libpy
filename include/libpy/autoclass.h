@@ -311,7 +311,7 @@ private:
         auto cls = lookup_type();
         if (!cls) {
             py::raise(PyExc_RuntimeError)
-                << "C++ type " << util::type_name<T>().get()
+                << "C++ type " << util::type_name<T>()
                 << " does not have a corresponding Python type yet";
             return {nullptr, nullptr};
         }
@@ -373,7 +373,7 @@ private:
     }
 
 public:
-    autoclass(std::string name = util::type_name<T>().get(),
+    autoclass(std::string name = util::type_name<T>(),
               int extra_flags = 0,
               PyTypeObject* base_type = nullptr)
         : m_storage(std::make_unique<detail::autoclass_storage>(std::move(name))),
@@ -394,7 +394,7 @@ public:
                     "Python base type ",
                     base_type->tp_name,
                     " instances do not match the size of `base` template param ",
-                    util::type_name<base>().get(),
+                    util::type_name<base>(),
                     ": ",
                     base_type->tp_basicsize,
                     " != ",
@@ -1168,7 +1168,7 @@ private:
                 py::scoped_ref<PyTypeObject> cls = autoclass<iter>::lookup_type();
                 if (!cls) {
                     py::raise(PyExc_RuntimeError)
-                        << "no iterator type found for " << util::type_name<T>().get();
+                        << "no iterator type found for " << util::type_name<T>();
                     return nullptr;
                 }
 

@@ -216,7 +216,7 @@ TEST_F(autoclass, name) {
         ASSERT_TRUE(cls);
 
         const char* const tp_name = reinterpret_cast<PyTypeObject*>(cls.get())->tp_name;
-        EXPECT_STREQ(tp_name, py::util::type_name<C>().get());
+        EXPECT_EQ(tp_name, py::util::type_name<C>());
     }
 
     {
