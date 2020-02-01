@@ -48,7 +48,7 @@ private:
     decltype(py::from_object<T>(nullptr)) m_memb;
 
 public:
-    template<typename U = T,
+    template<typename U = decltype(m_memb),
              typename = std::enable_if_t<std::is_default_constructible_v<U>>>
     adapt_argument() {}
 
