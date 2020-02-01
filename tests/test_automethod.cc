@@ -190,7 +190,7 @@ TEST_F(automethod, string_view_argument) {
 }
 
 std::tuple<std::size_t, std::size_t>
-const_ref_string_view_argument(const std::string_view view) {
+const_ref_string_view_argument(const std::string_view& view) {
     return string_view_argument(view);
 }
 
