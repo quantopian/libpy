@@ -694,30 +694,31 @@ TEST_F(automethod, non_copyable) {
     EXPECT_EQ(res.get(), Py_None);
 }
 
-int int_mut_ref(int& a) {
+double double_mut_ref(double& a) {
     return a;
 }
 
 TEST_F(automethod, int_mut_ref) {
-    auto f = make_f<int_mut_ref>("f");
+    auto f = make_f<double_mut_ref>("f");
 
-    auto res = py::call_function(f, 12);
+    auto res = py::call_function(f, 12.0);
     EXPECT_FALSE(res);
-    expect_pyerr_type_and_message(PyExc_TypeError,
-                                  "failed to convert Python object of type int to a C++ "
-                                  "object of type int&: ob=12");
+    expect_pyerr_type_and_message(
+        PyExc_TypeError,
+        "failed to convert Python object of type float to a C++ "
+        "object of type double&: ob=12.0");
     PyErr_Clear();
 }
 
-int int_const_ref(const int& a) {
+int double_const_ref(const double& a) {
     return a;
 }
 
 TEST_F(automethod, int_const_ref) {
-    auto f = make_f<int_const_ref>("f");
+    auto f = make_f<double_const_ref>("f");
 
-    auto res = py::call_function_throws(f, 12);
-    int unboxed = py::from_object<int>(res);
-    EXPECT_EQ(unboxed, 12);
+    auto res = py::call_function_throws(f, 12.0);
+    double unboxed = py::from_object<int>(res);
+    EXPECT_EQ(unboxed, 12.0);
 }
 }  // namespace test_automethod
