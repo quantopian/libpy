@@ -247,7 +247,7 @@ public:
         m_msg = msg_from_current_pyexc();
     }
 
-    inline const char* what() const noexcept override {
+    virtual inline const char* what() const noexcept override {
         return m_msg.data();
     }
 };
