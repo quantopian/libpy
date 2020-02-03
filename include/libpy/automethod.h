@@ -48,10 +48,6 @@ private:
     decltype(py::from_object<T>(nullptr)) m_memb;
 
 public:
-    template<typename U = decltype(m_memb),
-             typename = std::enable_if_t<std::is_default_constructible_v<U>>>
-    adapt_argument() {}
-
     adapt_argument(py::borrowed_ref<> ob) : m_memb(py::from_object<T>(ob)) {}
 
     decltype(m_memb) get() {
@@ -66,8 +62,6 @@ private:
     std::string_view m_memb;
 
 public:
-    adapt_argument() = default;
-
     adapt_argument(py::borrowed_ref<> ob) {
         if (PyBytes_Check(ob.get())) {
             Py_ssize_t size = PyBytes_GET_SIZE(ob.get());
@@ -121,8 +115,6 @@ class adapt_argument<py::ndarray_view<T, ndim>> {
     py::ndarray_view<T, ndim> m_memb;
 
 public:
-    adapt_argument() = default;
-
     adapt_argument(py::borrowed_ref<> ob) {
         if (PyArray_Check(ob.get())) {
             // Special case for when `ob` is an ndarray. This is not just an
@@ -245,7 +237,7 @@ public:
     optional(const optional&) = default;
     optional(optional&&) = default;
     optional& operator=(optional&&) = default;
-    optional(optional& cpfrom) : m_value(cpfrom.m_value) {}
+    optional(optional& cpfrom) = default;
     optional& operator=(const optional&) = default;
 
     std::optional<T>& get() {
