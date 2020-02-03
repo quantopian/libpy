@@ -85,6 +85,7 @@ class LibpyExtension(setuptools.Extension, object):
             libpy_extra_compile_args.extend([
                 '-Wall',
                 '-Wextra',
+                '-Wno-maybe-uninitialized',
                 '-Wno-register',
                 '-Wno-missing-field-initializers',
                 '-Wsign-compare',
