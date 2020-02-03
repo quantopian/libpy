@@ -823,7 +823,7 @@ private:
         richcompare.
      */
     template<typename LHS, typename op, typename RHS>
-    static constexpr auto get_cmp_func() {
+    static constexpr binaryfunc get_cmp_func() {
         auto out = get_binop_func_impl<LHS, op, RHS>(0);
         if constexpr (std::is_same_v<decltype(out), binaryfunc>) {
             return [](PyObject*, PyObject*) { Py_RETURN_NOTIMPLEMENTED; };
@@ -834,7 +834,7 @@ private:
     }
 
     template<typename LHS, typename op, typename RHS>
-    static constexpr auto cmp_func = get_cmp_func<LHS, op, RHS>();
+    static constexpr binaryfunc cmp_func = get_cmp_func<LHS, op, RHS>();
 
 public:
     /** Add all of the number methods by inferring them from `T`'s
