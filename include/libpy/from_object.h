@@ -133,9 +133,9 @@ struct from_object<std::array<char, n>> {
         const char* data;
         Py_ssize_t size;
 
-        if (PyBytes_Check(cs)) {
-            size = PyBytes_GET_SIZE(cs);
-            data = PyBytes_AS_STRING(cs);
+        if (PyBytes_Check(cs.get())) {
+            size = PyBytes_GET_SIZE(cs.get());
+            data = PyBytes_AS_STRING(cs.get());
         }
         else {
             throw invalid_conversion::make<std::array<char, n>>(cs);
