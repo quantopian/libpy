@@ -86,7 +86,8 @@ private:
     }
 
     template<std::size_t tuple_ix, typename... Args>
-    void add_typed_entry(std::size_t, const py::ndarray_view<Args, ndim>&...) {
+    [[noreturn]] void add_typed_entry(std::size_t,
+                                      const py::ndarray_view<Args, ndim>&...) {
         throw std::bad_any_cast{};
     }
 

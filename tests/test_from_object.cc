@@ -4,6 +4,7 @@
 #include "libpy/demangle.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
+#include "libpy/ndarray_view.h"
 #include "libpy/numpy_utils.h"
 #include "libpy/object_map_key.h"
 #include "libpy/scoped_ref.h"

@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "libpy/any.h"
+#include "libpy/numpy_utils.h"
 
 namespace py {
 class any_vector {
@@ -582,4 +583,18 @@ public:
         return m_vtable;
     }
 };
+
+
+inline scoped_ref<> move_to_numpy_array(py::any_vector&& values) {
+
+    auto descr = values.vtable().new_dtype();
+    if (!descr) {
+        return nullptr;
+    }
+    return py::move_to_numpy_array<py::any_vector, 1>(std::move(values),
+                                                      std::move(descr),
+                                                      {values.size()},
+                                                      {static_cast<std::int64_t>(
+                                                          values.vtable().size())});
+}
 }  // namespace py

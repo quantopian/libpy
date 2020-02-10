@@ -64,7 +64,7 @@ TEST(any_vtable, ostream_format) {
     }
     {
         // a new type which doesn't have an overload for:
-        // `operator<<(std::ostream&, constS&)`
+        // `operator<<(std::ostream&, const S&)`
         struct S {
             int a;
 

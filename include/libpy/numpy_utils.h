@@ -7,15 +7,12 @@
 #include <type_traits>
 #include <vector>
 
-#include "libpy/any.h"
-#include "libpy/automethod.h"
 #include "libpy/borrowed_ref.h"
 #include "libpy/buffer.h"
 #include "libpy/char_sequence.h"
 #include "libpy/datetime64.h"
 #include "libpy/detail/numpy.h"
 #include "libpy/exception.h"
-#include "libpy/ndarray_view.h"
 #include "libpy/object_map_key.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
@@ -247,6 +244,28 @@ scoped_ref<PyArray_Descr> new_dtype() {
     return scoped_ref<PyArray_Descr>(dispatch::new_dtype<T>::get());
 }
 
+namespace detail {
+template<typename T>
+struct has_new_dtype {
+private:
+    template<typename U>
+    static decltype(py::dispatch::new_dtype<U>::get(), std::true_type{}) test(int);
+
+    template<typename>
+    static std::false_type test(long);
+
+public:
+    static constexpr bool value = std::is_same_v<decltype(test<T>(0)), std::true_type>;
+};
+}
+
+/** Compile time boolean to detect if `new_dtype` works for a given type. This exists to
+    make it easier to use `if constexpr` to test this condition instead of using more
+    complicated SFINAE.
+ */
+template<typename T>
+constexpr bool has_new_dtype = detail::has_new_dtype<T>::value;
+
 namespace dispatch {
 template<>
 struct raise_format<PyArray_Descr*> {
@@ -284,188 +303,6 @@ struct to_object<datetime64<unit>> {
         }
         std::int64_t as_int = static_cast<std::int64_t>(dt);
         return py::scoped_ref{PyArray_Scalar(&as_int, descr.get(), nullptr)};
-    }
-};
-
-/** Lookup the proper any_vtable for the given numpy dtype.
-
-    @param dtype The runtime numpy dtype.
-    @return The any_vtable that corresponds to the given dtype.
- */
-inline any_vtable dtype_to_vtable(PyArray_Descr* dtype) {
-    switch (dtype->type_num) {
-    case NPY_BOOL:
-        return any_vtable::make<py_bool>();
-    case NPY_INT8:
-        return any_vtable::make<std::int8_t>();
-    case NPY_INT16:
-        return any_vtable::make<std::int16_t>();
-    case NPY_INT32:
-        return any_vtable::make<std::int32_t>();
-    case NPY_INT64:
-        return any_vtable::make<std::int64_t>();
-    case NPY_UINT8:
-        return any_vtable::make<std::uint8_t>();
-    case NPY_UINT16:
-        return any_vtable::make<std::uint16_t>();
-    case NPY_UINT32:
-        return any_vtable::make<std::uint32_t>();
-    case NPY_UINT64:
-        return any_vtable::make<std::uint64_t>();
-    case NPY_FLOAT32:
-        return any_vtable::make<float>();
-    case NPY_FLOAT64:
-        return any_vtable::make<double>();
-    case NPY_DATETIME:
-        switch (auto unit = reinterpret_cast<PyArray_DatetimeDTypeMetaData*>(
-                                dtype->c_metadata)
-                                ->meta.base) {
-        case py_chrono_unit_to_numpy_unit<py::chrono::ns>:
-            return any_vtable::make<py::datetime64<py::chrono::ns>>();
-        case py_chrono_unit_to_numpy_unit<py::chrono::us>:
-            return any_vtable::make<py::datetime64<py::chrono::us>>();
-        case py_chrono_unit_to_numpy_unit<py::chrono::ms>:
-            return any_vtable::make<py::datetime64<py::chrono::ms>>();
-        case py_chrono_unit_to_numpy_unit<py::chrono::s>:
-            return any_vtable::make<py::datetime64<py::chrono::s>>();
-        case py_chrono_unit_to_numpy_unit<py::chrono::m>:
-            return any_vtable::make<py::datetime64<py::chrono::m>>();
-        case py_chrono_unit_to_numpy_unit<py::chrono::h>:
-            return any_vtable::make<py::datetime64<py::chrono::h>>();
-        case py_chrono_unit_to_numpy_unit<py::chrono::D>:
-            return any_vtable::make<py::datetime64<py::chrono::D>>();
-        case NPY_FR_GENERIC:
-            throw exception(PyExc_TypeError, "cannot adapt unitless datetime");
-        default:
-            throw exception(PyExc_TypeError, "unknown datetime unit: ", unit);
-        }
-    case NPY_OBJECT:
-        return any_vtable::make<scoped_ref<>>();
-    }
-
-    throw exception(PyExc_TypeError,
-                    "cannot create an any ref view over an ndarray of dtype: ",
-                    reinterpret_cast<PyObject*>(dtype));
-}
-
-/** Lookup the proper dtype for the given vtable.
-
-    @param vtable The runtime vtable.
-    @return The numpy dtype that corresponds to the given vtable.
- */
-inline scoped_ref<PyArray_Descr> vtable_to_dtype(const any_vtable& vtable) {
-    if (vtable == any_vtable::make<py_bool>())
-        return py::new_dtype<py_bool>();
-    if (vtable == any_vtable::make<std::int8_t>())
-        return py::new_dtype<std::int8_t>();
-    if (vtable == any_vtable::make<std::int16_t>())
-        return py::new_dtype<std::int16_t>();
-    if (vtable == any_vtable::make<std::int32_t>())
-        return py::new_dtype<std::int32_t>();
-    if (vtable == any_vtable::make<std::int64_t>())
-        return py::new_dtype<std::int64_t>();
-    if (vtable == any_vtable::make<std::uint8_t>())
-        return py::new_dtype<uint8_t>();
-    if (vtable == any_vtable::make<std::uint16_t>())
-        return py::new_dtype<uint16_t>();
-    if (vtable == any_vtable::make<std::uint32_t>())
-        return py::new_dtype<uint32_t>();
-    if (vtable == any_vtable::make<std::uint64_t>())
-        return py::new_dtype<uint64_t>();
-    if (vtable == any_vtable::make<float>())
-        return py::new_dtype<float>();
-    if (vtable == any_vtable::make<double>())
-        return py::new_dtype<double>();
-    if (vtable == any_vtable::make<py::datetime64<py::chrono::ns>>())
-        return py::new_dtype<py::datetime64<py::chrono::ns>>();
-    if (vtable == any_vtable::make<py::datetime64<py::chrono::us>>())
-        return py::new_dtype<py::datetime64<py::chrono::us>>();
-    if (vtable == any_vtable::make<py::datetime64<py::chrono::ms>>())
-        return py::new_dtype<py::datetime64<py::chrono::ms>>();
-    if (vtable == any_vtable::make<py::datetime64<py::chrono::s>>())
-        return py::new_dtype<py::datetime64<py::chrono::s>>();
-    if (vtable == any_vtable::make<py::datetime64<py::chrono::m>>())
-        return py::new_dtype<py::datetime64<py::chrono::m>>();
-    if (vtable == any_vtable::make<py::datetime64<py::chrono::h>>())
-        return py::new_dtype<py::datetime64<py::chrono::h>>();
-    if (vtable == any_vtable::make<py::datetime64<py::chrono::D>>())
-        return py::new_dtype<py::datetime64<py::chrono::D>>();
-    if (vtable == any_vtable::make<scoped_ref<>>())
-        return py::new_dtype<PyObject*>();
-
-    throw exception(PyExc_TypeError,
-                    "cannot create an dtype from the vtable for type: ",
-                    vtable.type_name());
-}
-
-template<typename T, std::size_t ndim>
-struct from_object<ndarray_view<T, ndim>> {
-    static ndarray_view<T, ndim> f(py::borrowed_ref<> ob) {
-        if (!PyArray_Check(ob.get())) {
-            throw invalid_conversion::make<ndarray_view<T, ndim>>(ob);
-        }
-
-        auto array = reinterpret_cast<PyArrayObject*>(ob.get());
-
-        if (PyArray_NDIM(array) != ndim) {
-            throw exception(PyExc_TypeError,
-                            "argument must be a ",
-                            ndim,
-                            " dimensional array, got ndim=",
-                            PyArray_NDIM(array));
-        }
-
-        std::array<std::size_t, ndim> shape{0};
-        std::array<std::int64_t, ndim> strides{0};
-
-        std::copy_n(PyArray_SHAPE(array), ndim, shape.begin());
-        std::copy_n(PyArray_STRIDES(array), ndim, strides.begin());
-
-        auto given_dtype = PyArray_DTYPE(array);
-
-        if constexpr (std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) {
-            if (!(std::is_same_v<T, py::any_cref> || PyArray_ISWRITEABLE(array))) {
-                throw exception(PyExc_TypeError,
-                                "cannot take a mutable view over an immutable array");
-            }
-            any_vtable vtable = dtype_to_vtable(given_dtype);
-            using view_type = ndarray_view<T, ndim>;
-            return view_type(reinterpret_cast<typename view_type::buffer_type>(
-                                 PyArray_BYTES(array)),
-                             shape,
-                             strides,
-                             vtable);
-        }
-        else {
-            if (!(std::is_const_v<T> || PyArray_ISWRITEABLE(array))) {
-                throw exception(PyExc_TypeError,
-                                "cannot take a mutable view over an immutable array");
-            }
-            // note: This is a "constexpr else", removing and unindenting this
-            // else block would have semantic meaning and be incorrect. This
-            // branch is only expanded when the above test is false; if the
-            // "else" is removed, it will always be expanded.
-
-            auto expected_dtype = py::new_dtype<std::remove_cv_t<T>>();
-            if (!given_dtype) {
-                throw exception{};
-            }
-
-            if (!PyObject_RichCompareBool(reinterpret_cast<PyObject*>(given_dtype),
-                                          reinterpret_cast<PyObject*>(
-                                              expected_dtype.get()),
-                                          Py_EQ)) {
-                throw exception(PyExc_TypeError,
-                                "expected array of dtype: ",
-                                expected_dtype,
-                                ", got array of type: ",
-                                given_dtype);
-            }
-
-            return ndarray_view<T, ndim>(reinterpret_cast<T*>(PyArray_BYTES(array)),
-                                         shape,
-                                         strides);
-        }
     }
 };
 
@@ -628,19 +465,6 @@ scoped_ref<> move_to_numpy_array(std::vector<T>&& values) {
                                                   std::move(descr),
                                                   {values.size()},
                                                   {sizeof(T)});
-}
-
-inline scoped_ref<> move_to_numpy_array(py::any_vector&& values) {
-
-    auto descr = py::dispatch::vtable_to_dtype(values.vtable());
-    if (!descr) {
-        return nullptr;
-    }
-    return move_to_numpy_array<py::any_vector, 1>(std::move(values),
-                                                  std::move(descr),
-                                                  {values.size()},
-                                                  {static_cast<std::int64_t>(
-                                                      values.vtable().size())});
 }
 }  // namespace py
 
