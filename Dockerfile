@@ -32,8 +32,6 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     make \
     openssh-client \
-    python3.6-dev \
-    python3.6-venv \
     tzdata \
     util-linux \
     valgrind \
