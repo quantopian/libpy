@@ -242,7 +242,7 @@ TEST_F(automethod, array_view_wrong_ndim) {
     auto f = make_f<array_view>("f");
 
     std::array<std::size_t, 2> shape = {3ul, 5ul};
-    std::array<std::ptrdiff_t, 2> strides = {5 * sizeof(int), sizeof(int)};
+    std::array<std::int64_t, 2> strides = {5 * sizeof(int), sizeof(int)};
     // clang-format off
     std::vector<int> input_data = {
          1,  2,  3,  4,  5,
@@ -345,7 +345,7 @@ TEST_F(automethod, two_dimensional_array_view) {
     auto f = make_f<two_dimensional_array_view>("f");
 
     std::array<std::size_t, 2> shape = {3ul, 5ul};
-    std::array<std::ptrdiff_t, 2> strides = {5 * sizeof(int), sizeof(int)};
+    std::array<std::int64_t, 2> strides = {5 * sizeof(int), sizeof(int)};
     // clang-format off
     std::vector<int> input_data = {
          1,  2,  3,  4,  5,
