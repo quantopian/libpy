@@ -435,4 +435,49 @@ TEST(any_ref_array_view, negative_strides) {
         EXPECT_EQ(value, arr[arr.size() - ix++ - 1]);
     }
 }
+
+TEST(any_ref_array_view, test_vtable) {
+
+    std::string base = R"(
+        import numpy as np
+        array = np.array([], dtype=')";
+
+    auto res = [&](std::string dtype) {
+        auto py_prog = base + dtype + "')";
+        py::scoped_ref<> ns = RUN_PYTHON(py_prog);
+        ASSERT_TRUE(ns);
+        PyObject* obj = PyDict_GetItemString(ns.get(), "array");
+        auto arr = py::from_object<py::array_view<py::any_cref>>(obj);
+        ASSERT_TRUE(arr.size() == 0);
+    };
+
+    // clang-format off
+    std::vector<std::string> dtypes = {"bool",
+                                       "int8",
+                                       "int16",
+                                       "int32",
+                                       "int64",
+                                       "uint8",
+                                       "uint16",
+                                       "uint32",
+                                       "uint64",
+                                       "float32",
+                                       "float64",
+                                       "O",
+                                       "S10",
+                                       "S63",
+                                       "M8[us]",
+                                       "M8[ms]",
+                                       "M8[s]",
+                                       "M8[m]",
+                                       "M8[h]",
+                                       "M8[D]"};
+    // clang-format on
+
+    for (auto& d : dtypes) {
+        res(d);
+    }
+    EXPECT_THROW(res("S64"), py::exception);
+}
+
 }  // namespace test_array_view
