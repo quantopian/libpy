@@ -309,7 +309,9 @@ INSTANTIATE_TYPED_TEST_CASE_P(typed_,
                               array_view,
                               typename tuple_to_types<array_view_test_types>::type);
 
-TEST(array_view_extra, from_buffer_protocol) {
+class array_view_extra : public with_python_interpreter {};
+
+TEST_F(array_view_extra, from_buffer_protocol) {
     py::scoped_ref<> ns = RUN_PYTHON(R"(
         import numpy as np
         array = np.array([1.5, 2.5, 3.5], dtype='f8')
@@ -329,11 +331,16 @@ TEST(array_view_extra, from_buffer_protocol) {
     EXPECT_EQ(array_view[2], 3.5);
 
     EXPECT_THROW(({ py::array_view<float>::from_buffer_protocol(view); }), py::exception);
+    PyErr_Clear();
+
     EXPECT_THROW(({ py::ndarray_view<double, 2>::from_buffer_protocol(view); }),
                  py::exception);
+    PyErr_Clear();
 }
 
-TEST(any_ref_array_view, test_read) {
+class any_ref_array_view : public with_python_interpreter {};
+
+TEST_F(any_ref_array_view, test_read) {
     std::array<int, 5> underlying = {0, 1, 2, 3, 4};
     py::array_view<py::any_ref> dynamic_view(underlying);
 
@@ -350,7 +357,7 @@ TEST(any_ref_array_view, test_read) {
     }
 }
 
-TEST(any_ref_array_view, test_write) {
+TEST_F(any_ref_array_view, test_write) {
     std::array<int, 5> underlying = {0, 1, 2, 3, 4};
     std::array<int, 5> original_copy = underlying;
 
@@ -383,7 +390,7 @@ TEST(any_ref_array_view, test_write) {
     }
 }
 
-TEST(any_ref_array_view, test_cast) {
+TEST_F(any_ref_array_view, test_cast) {
     std::array<int, 5> underlying = {0, 1, 2, 3, 4};
     py::array_view<py::any_ref> dynamic_view(underlying);
 
@@ -417,7 +424,7 @@ TEST(any_ref_array_view, test_cast) {
     }
 }
 
-TEST(any_ref_array_view, negative_strides) {
+TEST_F(any_ref_array_view, negative_strides) {
     std::array<int, 5> arr = {1, 2, 3, 4, 5};
     py::array_view<py::any_ref> reverse_view(&arr.back(),
                                              {5},
@@ -436,48 +443,44 @@ TEST(any_ref_array_view, negative_strides) {
     }
 }
 
-TEST(any_ref_array_view, test_vtable) {
-
-    std::string base = R"(
-        import numpy as np
-        array = np.array([], dtype=')";
-
-    auto res = [&](std::string dtype) {
-        auto py_prog = base + dtype + "')";
-        py::scoped_ref<> ns = RUN_PYTHON(py_prog);
-        ASSERT_TRUE(ns);
-        PyObject* obj = PyDict_GetItemString(ns.get(), "array");
-        auto arr = py::from_object<py::array_view<py::any_cref>>(obj);
-        ASSERT_TRUE(arr.size() == 0);
+TEST_F(any_ref_array_view, test_vtable) {
+    auto test = [](auto data) {
+        py::scoped_ref ndarray = py::move_to_numpy_array(std::vector{data});
+        ASSERT_TRUE(ndarray);
+        auto view = py::from_object<py::array_view<py::any_cref>>(ndarray);
+        EXPECT_EQ(view.vtable(), py::any_vtable::make<decltype(data)>());
+        ASSERT_EQ(view.size(), 1);
+        EXPECT_EQ(view[0], data);
     };
 
-    // clang-format off
-    std::vector<std::string> dtypes = {"bool",
-                                       "int8",
-                                       "int16",
-                                       "int32",
-                                       "int64",
-                                       "uint8",
-                                       "uint16",
-                                       "uint32",
-                                       "uint64",
-                                       "float32",
-                                       "float64",
-                                       "O",
-                                       "S10",
-                                       "S63",
-                                       "M8[us]",
-                                       "M8[ms]",
-                                       "M8[s]",
-                                       "M8[m]",
-                                       "M8[h]",
-                                       "M8[D]"};
-    // clang-format on
+    std::tuple dtypes = {py::py_bool{true},
+                         std::int8_t{1},
+                         std::int16_t{1},
+                         std::int32_t{1},
+                         std::int64_t{1},
+                         std::uint8_t{1},
+                         std::uint16_t{1},
+                         std::uint32_t{1},
+                         std::uint64_t{1},
+                         float{1},
+                         double{1},
+                         py::none,
+                         std::array<char, 10>{1},
+                         std::array<char, 63>{1},
+                         py::datetime64<py::chrono::ns>{1},
+                         py::datetime64<py::chrono::us>{1},
+                         py::datetime64<py::chrono::ms>{1},
+                         py::datetime64<py::chrono::s>{1},
+                         py::datetime64<py::chrono::m>{1},
+                         py::datetime64<py::chrono::h>{1},
+                         py::datetime64<py::chrono::D>{1}};
 
-    for (auto& d : dtypes) {
-        res(d);
-    }
-    EXPECT_THROW(res("S64"), py::exception);
+    std::apply([&](auto... args) { (test(args), ...); }, dtypes);
+
+    EXPECT_THROW(test(std::array<char, 64>{1}), py::exception);
+    expect_pyerr_type_and_message(
+        PyExc_TypeError,
+        "cannot create vtable for fixed width strings with size greater than 63");
+    PyErr_Clear();
 }
-
 }  // namespace test_array_view
