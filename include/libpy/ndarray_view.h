@@ -14,6 +14,7 @@
 #include "libpy/any.h"
 #include "libpy/any_vector.h"
 #include "libpy/buffer.h"
+#include "libpy/detail/numpy.h"
 #include "libpy/exception.h"
 
 namespace py {
@@ -1290,4 +1291,77 @@ public:
         return {this->m_buffer, this->m_shape, this->m_strides, this->m_vtable};
     }
 };
+
+namespace dispatch {
+template<typename T, std::size_t ndim>
+struct from_object<ndarray_view<T, ndim>> {
+    static ndarray_view<T, ndim> f(py::borrowed_ref<> ob) {
+        if (!PyArray_Check(ob.get())) {
+            throw invalid_conversion::make<ndarray_view<T, ndim>>(ob);
+        }
+
+        auto array = reinterpret_cast<PyArrayObject*>(ob.get());
+
+        if (PyArray_NDIM(array) != ndim) {
+            throw exception(PyExc_TypeError,
+                            "argument must be a ",
+                            ndim,
+                            " dimensional array, got ndim=",
+                            PyArray_NDIM(array));
+        }
+
+        std::array<std::size_t, ndim> shape{0};
+        std::array<std::int64_t, ndim> strides{0};
+
+        std::copy_n(PyArray_SHAPE(array), ndim, shape.begin());
+        std::copy_n(PyArray_STRIDES(array), ndim, strides.begin());
+
+        auto given_dtype = PyArray_DTYPE(array);
+
+        if constexpr (std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) {
+            if (!(std::is_same_v<T, py::any_cref> || PyArray_ISWRITEABLE(array))) {
+                throw exception(PyExc_TypeError,
+                                "cannot take a mutable view over an immutable array");
+            }
+            any_vtable vtable = dtype_to_vtable(given_dtype);
+            using view_type = ndarray_view<T, ndim>;
+            return view_type(reinterpret_cast<typename view_type::buffer_type>(
+                                 PyArray_BYTES(array)),
+                             shape,
+                             strides,
+                             vtable);
+        }
+        else {
+            if (!(std::is_const_v<T> || PyArray_ISWRITEABLE(array))) {
+                throw exception(PyExc_TypeError,
+                                "cannot take a mutable view over an immutable array");
+            }
+            // note: This is a "constexpr else", removing and unindenting this
+            // else block would have semantic meaning and be incorrect. This
+            // branch is only expanded when the above test is false; if the
+            // "else" is removed, it will always be expanded.
+
+            auto expected_dtype = py::new_dtype<std::remove_cv_t<T>>();
+            if (!given_dtype) {
+                throw exception{};
+            }
+
+            if (!PyObject_RichCompareBool(reinterpret_cast<PyObject*>(given_dtype),
+                                          reinterpret_cast<PyObject*>(
+                                              expected_dtype.get()),
+                                          Py_EQ)) {
+                throw exception(PyExc_TypeError,
+                                "expected array of dtype: ",
+                                expected_dtype,
+                                ", got array of type: ",
+                                given_dtype);
+            }
+
+            return ndarray_view<T, ndim>(reinterpret_cast<T*>(PyArray_BYTES(array)),
+                                         shape,
+                                         strides);
+        }
+    }
+};
+}  // namespace dispatch
 }  // namespace py

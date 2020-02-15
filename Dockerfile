@@ -32,8 +32,6 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     make \
     openssh-client \
-    python3.6-dev \
-    python3.6-venv \
     tzdata \
     util-linux \
     valgrind \
@@ -50,7 +48,7 @@ RUN apt-get update && apt-get install -y \
     && which "${PYTHON_BINARY_NAME}" \
     && "${PYTHON_BINARY_NAME}" --version \
     && "${PYTHON_BINARY_NAME}" -m pip --version \
-    && "${PYTHON_BINARY_NAME}" -m pip install tox==3.12.1 \
+    && "${PYTHON_BINARY_NAME}" -m pip install tox==3.12.1 "six>=1.14.0" \
     # clean up apt caches
     && rm -rf /var/lib/apt/lists/*
 

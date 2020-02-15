@@ -10,6 +10,7 @@
 #include "libpy/demangle.h"
 #include "libpy/exception.h"
 #include "libpy/meta.h"
+#include "libpy/numpy_utils.h"
 #include "libpy/to_object.h"
 
 namespace py {
@@ -33,6 +34,7 @@ struct any_vtable_impl {
     bool (*ne)(const void* lhs, const void* rhs);
     bool (*eq)(const void* lhs, const void* rhs);
     py::scoped_ref<> (*to_object)(const void* addr);
+    py::scoped_ref<PyArray_Descr> (*new_dtype)();
     std::ostream& (*ostream_format)(std::ostream& stream, const void* addr);
     std::string (*type_name)();
 };
@@ -95,6 +97,16 @@ constexpr any_vtable_impl any_vtable_instance = {
                                 " into Python object");
         }
     },
+    []() -> scoped_ref<PyArray_Descr> {
+        if constexpr (py::has_new_dtype<T>) {
+            return py::new_dtype<T>();
+        }
+        else {
+            throw py::exception(PyExc_TypeError,
+                                "cannot create a dtype from the vtable for type:",
+                                py::util::type_name<T>());
+        }
+    },
     []([[maybe_unused]] std::ostream& stream,
        [[maybe_unused]] const void* addr) -> std::ostream& {
         if constexpr (has_ostream_format<const T&>::value) {
@@ -134,6 +146,7 @@ const any_vtable_impl any_vtable_instance<void> = {
     [](const void*, const void*) -> bool { void_vtable(); },
     [](const void*, const void*) -> bool { void_vtable(); },
     [](const void*) -> scoped_ref<> { void_vtable(); },
+    []() -> scoped_ref<PyArray_Descr> { void_vtable(); },
     [](std::ostream&, const void*) -> std::ostream& { void_vtable(); },
     []() { return py::util::type_name<void>(); },
 };
@@ -244,6 +257,10 @@ public:
 
     inline scoped_ref<> to_object(const void* addr) const {
         return m_impl->to_object(addr);
+    }
+
+    inline scoped_ref<PyArray_Descr> new_dtype() const {
+        return m_impl->new_dtype();
     }
 
     inline std::ostream& ostream_format(std::ostream& stream, const void* addr) const {
@@ -569,6 +586,104 @@ struct to_object<py::any_cref> {
     }
 };
 }  // namespace dispatch
+
+
+namespace detail {
+template<std::size_t max_size, typename T>
+struct make_string_vtable_impl;
+
+template<std::size_t max_size, std::size_t head, std::size_t... tail>
+struct make_string_vtable_impl<max_size, std::index_sequence<head, tail...>> {
+    static any_vtable f(int size) {
+        switch (size) {
+        case head:
+            return any_vtable::make<std::array<char, head>>();
+        default:
+            return make_string_vtable_impl<max_size, std::index_sequence<tail...>>::f(
+                size);
+    }
+    }
+};
+
+template<std::size_t max_size>
+struct make_string_vtable_impl<max_size, std::index_sequence<>> {
+    [[noreturn]] static any_vtable f(int) {
+        throw py::exception(
+            PyExc_TypeError,
+            "cannot create vtable for fixed width strings with size greater than ",
+            max_size - 1);
+    }
+};
+
+inline any_vtable make_string_vtable(int size) {
+    constexpr std::size_t max_size = 64;
+    return make_string_vtable_impl<max_size, std::make_index_sequence<max_size>>::f(size);
+}
+}  // namespace detail
+
+/** Lookup the proper any_vtable for the given numpy dtype.
+
+    @param dtype The runtime numpy dtype.
+    @return The any_vtable that corresponds to the given dtype.
+ */
+inline any_vtable
+dtype_to_vtable(py::borrowed_ref<PyArray_Descr> dtype) {
+    switch (dtype->type_num) {
+    case NPY_BOOL:
+        return any_vtable::make<py_bool>();
+    case NPY_INT8:
+        return any_vtable::make<std::int8_t>();
+    case NPY_INT16:
+        return any_vtable::make<std::int16_t>();
+    case NPY_INT32:
+        return any_vtable::make<std::int32_t>();
+    case NPY_INT64:
+        return any_vtable::make<std::int64_t>();
+    case NPY_UINT8:
+        return any_vtable::make<std::uint8_t>();
+    case NPY_UINT16:
+        return any_vtable::make<std::uint16_t>();
+    case NPY_UINT32:
+        return any_vtable::make<std::uint32_t>();
+    case NPY_UINT64:
+        return any_vtable::make<std::uint64_t>();
+    case NPY_FLOAT32:
+        return any_vtable::make<float>();
+    case NPY_FLOAT64:
+        return any_vtable::make<double>();
+    case NPY_DATETIME:
+        switch (auto unit = reinterpret_cast<PyArray_DatetimeDTypeMetaData*>(
+                                dtype->c_metadata)
+                                ->meta.base) {
+        case py_chrono_unit_to_numpy_unit<py::chrono::ns>:
+            return any_vtable::make<py::datetime64<py::chrono::ns>>();
+        case py_chrono_unit_to_numpy_unit<py::chrono::us>:
+            return any_vtable::make<py::datetime64<py::chrono::us>>();
+        case py_chrono_unit_to_numpy_unit<py::chrono::ms>:
+            return any_vtable::make<py::datetime64<py::chrono::ms>>();
+        case py_chrono_unit_to_numpy_unit<py::chrono::s>:
+            return any_vtable::make<py::datetime64<py::chrono::s>>();
+        case py_chrono_unit_to_numpy_unit<py::chrono::m>:
+            return any_vtable::make<py::datetime64<py::chrono::m>>();
+        case py_chrono_unit_to_numpy_unit<py::chrono::h>:
+            return any_vtable::make<py::datetime64<py::chrono::h>>();
+        case py_chrono_unit_to_numpy_unit<py::chrono::D>:
+            return any_vtable::make<py::datetime64<py::chrono::D>>();
+        case NPY_FR_GENERIC:
+            throw exception(PyExc_TypeError, "cannot adapt unitless datetime");
+        default:
+            throw exception(PyExc_TypeError, "unknown datetime unit: ", unit);
+        }
+    case NPY_OBJECT:
+        return any_vtable::make<scoped_ref<>>();
+    case NPY_STRING:
+        return detail::make_string_vtable(dtype->elsize);
+    }
+
+    throw py::exception(PyExc_TypeError,
+                        "cannot create an any ref view over an ndarray of dtype: ",
+                        static_cast<PyObject*>(dtype));
+}
 }  // namespace py
 
 namespace std {

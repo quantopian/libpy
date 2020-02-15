@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "libpy/borrowed_ref.h"
+#include "libpy/buffer.h"
 #include "libpy/char_sequence.h"
 #include "libpy/detail/numpy.h"
 #include "libpy/detail/python.h"
