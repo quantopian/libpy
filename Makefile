@@ -195,7 +195,7 @@ src/%.o: src/%.cc .make/all-flags
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@
 
 .PHONY: test
-test: $(PYTHON_TESTS) $(TEST_MODULE)
+test: $(PYTHON_TESTS) $(TEST_MODULE) tests/_test_automodule.so
 	GTEST_OUTPUT=$(GTEST_OUTPUT) \
 		$(LD_PRELOAD_VAR)="$(TEST_LD_PRELOAD)" \
 		ASAN_OPTIONS=$(ASAN_OPTIONS) \
@@ -203,6 +203,12 @@ test: $(PYTHON_TESTS) $(TEST_MODULE)
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		GTEST_ARGS=--gtest_filter=$(GTEST_FILTER) \
 		$(PYTEST) tests/ $(PYTEST_ARGS)
+
+tests/_test_automodule.o: tests/_test_automodule.cc .make/all-flags
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -MD -fPIC -c $< -o $@
+
+tests/_test_automodule.so: tests/_test_automodule.o
+	$(CXX) -shared -o $@ $< -lpthread $(LDFLAGS)
 
 .PHONY: gdbtest
 gdbtest: $(PYTHON_TESTS)
@@ -217,7 +223,7 @@ tests/%.o: tests/%.cc .make/all-flags
 
 $(TEST_MODULE): gtest.a $(TEST_OBJECTS) $(SONAME)
 	$(CXX) -shared -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-		-Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
+		-lpthread $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .make/all-flags
 	$(CXX) $(filter-out $(WARNINGS),$(CXXFLAGS)) -I $(GTEST_DIR) \

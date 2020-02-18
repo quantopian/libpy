@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "libpy/borrowed_ref.h"
 #include "libpy/detail/api.h"
 #include "libpy/detail/no_destruct_wrapper.h"
 #include "libpy/detail/python.h"
@@ -21,7 +22,7 @@ struct autoclass_storage {
     unbox_fn unbox;
 
     // Borrowed reference to the type that this struct contains storage for.
-    PyTypeObject* type;
+    py::borrowed_ref<PyTypeObject> type;
 
     // The method storage for `type`. We may use a vector because this is just a
     // collection of pointers and ints. `PyMethodDef` objects may move around until
