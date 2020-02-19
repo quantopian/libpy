@@ -188,10 +188,18 @@ private:
            state of the moved-from value, which is not the proper semantics for
            `push_back`.
         */
-        construct_into_buffer(new_data,
-                              size(),
-                              std::forward<T>(value),
-                              std::forward<F>(construct));
+        try {
+            construct_into_buffer(new_data,
+                                  size(),
+                                  std::forward<T>(value),
+                                  std::forward<F>(construct));
+        }
+        catch (...) {
+            // free the new array and re-raise the exception without modifying
+            // our state (`m_storage` nor `m_capacity`).
+            m_vtable.free(new_data);
+            throw;
+        }
 
         if (m_vtable.is_trivially_copyable()) {
             if (size()) {
