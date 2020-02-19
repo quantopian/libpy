@@ -386,138 +386,150 @@ void push_back_test_body() {
     EXPECT_EQ(vec[2], S{2});
     EXPECT_EQ(vec[3], S{3});
     EXPECT_EQ(vec.back(), S{3});
+
+    // test that push back doesn't invalidate references too early nor copy from the
+    // moved-from state of the reference.
+    // We need the size to be at the capacity to test this case.
+    ASSERT_EQ(vec.size(), vec.capacity());
+    vec.push_back(vec.front());
+    ASSERT_EQ(vec.size(), 5ul);
+    ASSERT_GE(vec.capacity(), 5ul);
+
+    EXPECT_EQ(vec.front(), S{0});
+    EXPECT_EQ(vec[0], S{0});
+    EXPECT_EQ(vec[1], S{1});
+    EXPECT_EQ(vec[2], S{2});
+    EXPECT_EQ(vec[3], S{3});
+    EXPECT_EQ(vec[4], S{0});
+    EXPECT_EQ(vec.back(), S{0});
 }
+
+struct push_back_base {
+    int data = 0;
+
+    push_back_base() = default;
+    push_back_base(int data) : data(data) {}
+
+    bool operator==(const push_back_base& other) const {
+        return data == other.data;
+    }
+
+    bool operator!=(const push_back_base& other) const {
+        return data != other.data;
+    }
+};
+
+std::ostream& operator<<(std::ostream& s, const push_back_base& b) {
+    return s << '{' << b.data << '}';
+}
+
+struct trivial_copy_push_back_type : public push_back_base {};
 
 TEST(any_vector, trivial_copy_push_back) {
-    struct S {
-        int data = 0;
 
-        bool operator==(S other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(S other) const {
-            return data != other.data;
-        }
-    };
-    auto vtable = py::any_vtable::make<S>();
+    auto vtable = py::any_vtable::make<trivial_copy_push_back_type>();
     ASSERT_TRUE(vtable.is_trivially_copyable());
 
-    push_back_test_body<S>();
+    push_back_test_body<trivial_copy_push_back_type>();
 }
 
+struct move_is_noexcept_and_trivially_destructible_push_back_type
+    : public push_back_base {
+    using push_back_base::push_back_base;
+    using push_back_base::operator=;
+
+    move_is_noexcept_and_trivially_destructible_push_back_type(
+        const move_is_noexcept_and_trivially_destructible_push_back_type&) = default;
+
+    move_is_noexcept_and_trivially_destructible_push_back_type(
+        move_is_noexcept_and_trivially_destructible_push_back_type&& mvfrom) noexcept
+        : push_back_base(mvfrom.data) {
+        // have some new state on the moved from data to test the sequencing between
+        // copying the new value and moving from the old buffer in grow()
+        mvfrom.data = -1;
+    }
+
+    move_is_noexcept_and_trivially_destructible_push_back_type& operator=(
+        const move_is_noexcept_and_trivially_destructible_push_back_type&) = default;
+
+    move_is_noexcept_and_trivially_destructible_push_back_type& operator=(
+        move_is_noexcept_and_trivially_destructible_push_back_type&& mvfrom) noexcept {
+        data = mvfrom.data;
+        mvfrom.data = -1;
+        return *this;
+    }
+};
+
 TEST(any_vector, move_is_noexcept_and_trivially_destructible_push_back) {
-    struct S {
-        int data = 0;
-
-        S() = default;
-        S(int data) : data(data) {}
-        S(const S& cpfrom) = default;
-        S(S&& mvfrom) noexcept : data(mvfrom.data) {}
-
-        S& operator=(const S& cpfrom) = default;
-        S& operator=(S&& mvfrom) noexcept {
-            data = mvfrom.data;
-            return *this;
-        }
-
-        bool operator==(S other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(S other) const {
-            return data != other.data;
-        }
-    };
-    auto vtable = py::any_vtable::make<S>();
+    auto vtable = py::any_vtable::make<
+        move_is_noexcept_and_trivially_destructible_push_back_type>();
     ASSERT_FALSE(vtable.is_trivially_copyable());
     ASSERT_TRUE(vtable.move_is_noexcept());
     ASSERT_TRUE(vtable.is_trivially_destructible());
 
-    push_back_test_body<S>();
+    push_back_test_body<move_is_noexcept_and_trivially_destructible_push_back_type>();
 }
 
+struct move_is_noexcept_push_back_type
+    : public move_is_noexcept_and_trivially_destructible_push_back_type {
+    using move_is_noexcept_and_trivially_destructible_push_back_type::
+        move_is_noexcept_and_trivially_destructible_push_back_type;
+    using move_is_noexcept_and_trivially_destructible_push_back_type::operator=;
+
+
+    ~move_is_noexcept_push_back_type() {
+        // provide a user defined destructor to not be trivially destructible
+    }
+};
+
 TEST(any_vector, move_is_noexcept_push_back) {
-    struct S {
-        int data = 0;
-
-        S() = default;
-        S(int data) : data(data) {}
-        S(const S& cpfrom) = default;
-        S(S&& mvfrom) noexcept : data(mvfrom.data) {}
-
-        S& operator=(const S& cpfrom) = default;
-        S& operator=(S&& mvfrom) noexcept {
-            data = mvfrom.data;
-            return *this;
-        }
-
-        ~S() {
-            // provide a user defined destructor to not be trivially destructible
-        }
-
-        bool operator==(S other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(S other) const {
-            return data != other.data;
-        }
-    };
-    auto vtable = py::any_vtable::make<S>();
+    auto vtable = py::any_vtable::make<move_is_noexcept_push_back_type>();
     ASSERT_FALSE(vtable.is_trivially_copyable());
     ASSERT_TRUE(vtable.move_is_noexcept());
     ASSERT_FALSE(vtable.is_trivially_destructible());
-    push_back_test_body<S>();
+    push_back_test_body<move_is_noexcept_push_back_type>();
 }
+
+struct non_noexcept_move_push_back_type : public push_back_base {
+    using push_back_base::push_back_base;
+    using push_back_base::operator=;
+
+    non_noexcept_move_push_back_type(const non_noexcept_move_push_back_type&) = default;
+    non_noexcept_move_push_back_type(non_noexcept_move_push_back_type&& mvfrom)
+        : push_back_base(mvfrom.data) {
+        // have some new state on the moved from data to test the sequencing between
+        // copying the new value and moving from the old buffer in grow()
+        mvfrom.data = -1;
+    }
+
+    non_noexcept_move_push_back_type&
+    operator=(const non_noexcept_move_push_back_type&) = default;
+
+    non_noexcept_move_push_back_type& operator=(non_noexcept_move_push_back_type&& mvfrom) {
+        data = mvfrom.data;
+        mvfrom.data = -1;
+        return *this;
+    }
+};
 
 TEST(any_vector, non_noexcept_move_push_back) {
-    struct S {
-        int data = 0;
-
-        S() = default;
-        S(int data) : data(data) {}
-        S(const S& cpfrom) = default;
-        S(S&& mvfrom) : data(mvfrom.data) {}
-
-        S& operator=(const S& cpfrom) = default;
-        S& operator=(S&& mvfrom) {
-            data = mvfrom.data;
-            return *this;
-        }
-
-        bool operator==(S other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(S other) const {
-            return data != other.data;
-        }
-    };
-    auto vtable = py::any_vtable::make<S>();
+    auto vtable = py::any_vtable::make<non_noexcept_move_push_back_type>();
     ASSERT_FALSE(vtable.is_trivially_copyable());
     ASSERT_FALSE(vtable.move_is_noexcept());
-    push_back_test_body<S>();
+    push_back_test_body<non_noexcept_move_push_back_type>();
 }
 
+struct alignas(128) over_aligned_push_back_type : public push_back_base {
+    using push_back_base::push_back_base;
+    using push_back_base::operator=;
+};
+
 TEST(any_vector, over_aligned_push_back) {
-    constexpr std::size_t align = 128;
+    constexpr std::size_t align = alignof(over_aligned_push_back_type);;
     ASSERT_GT(align, sizeof(int)) << "where are you compiling this?";
     ASSERT_GT(align, alignof(std::max_align_t));
 
-    struct alignas(align) S {
-        int data = 0;
-
-        bool operator==(const S& other) const {
-            return data == other.data;
-        }
-
-        bool operator!=(const S& other) const {
-            return data != other.data;
-        }
-    };
-
-    push_back_test_body<S>();
+    push_back_test_body<over_aligned_push_back_type>();
 }
 
 TEST(any_vector, iterator) {

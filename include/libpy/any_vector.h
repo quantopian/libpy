@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "libpy/any.h"
+#include "libpy/meta.h"
 #include "libpy/numpy_utils.h"
 
 namespace py {
@@ -149,9 +150,22 @@ private:
         }
     }
 
+    template<typename T, typename F>
+    void construct_into_buffer(std::byte* buf, std::size_t ix, T&& value, F&& construct) {
+        std::byte* addr = buf + pos_to_index(ix);
+        using raw = py::meta::remove_cvref<T>;
+        if constexpr (std::is_same_v<raw, any_ref> || std::is_same_v<raw, any_cref>) {
+                construct(addr, value.addr());
+            }
+        else {
+            construct(addr, std::addressof(value));
+        }
+    }
+
     /** Grow the vector in place, `count` must be greater than `capacity`.
      */
-    inline void grow(std::size_t count) {
+    template<typename T, typename F>
+    void grow(std::size_t count, T&& value, F&& construct) {
         if (!count) {
             count = 1;
         }
@@ -162,6 +176,23 @@ private:
             throw std::bad_alloc{};
         }
 
+
+        /* NOTE: We must copy the value before freeing the old buffer. If the
+           new value is a reference into `*this`, then freeing the old buffer
+           will invalidate the reference and we will use the value after it is
+           destroyed and freed.
+
+           If the value is noexcept move, then we still need to copy the value
+           before moving out of the values in the old buffer. If the new value
+           is a reference into `*this`, then if we move first we will copy the
+           state of the moved-from value, which is not the proper semantics for
+           `push_back`.
+        */
+        construct_into_buffer(new_data,
+                              size(),
+                              std::forward<T>(value),
+                              std::forward<F>(construct));
+
         if (m_vtable.is_trivially_copyable()) {
             if (size()) {
                 // note: because it is UB to call `std::memcpy` with a `nullptr`
@@ -169,7 +200,6 @@ private:
                 // first growth.
                 std::memcpy(new_data, old_data, size() * m_vtable.size());
             }
-            m_vtable.free(old_data);
         }
         else {
             if (m_vtable.move_is_noexcept() && m_vtable.is_trivially_destructible()) {
@@ -231,9 +261,9 @@ private:
                     p += itemsize;
                 }
             }
-
-            m_vtable.free(old_data);
         }
+
+        m_vtable.free(old_data);
 
         // if we make it here, we have successfully initialized `new_data` and unwound
         // `old_data`, now we can swap our new state over to the new array
@@ -241,20 +271,18 @@ private:
         m_capacity = count;
     }
 
-    template<typename F, typename T>
-    void push_back_impl(F&& construct, T&& value) {
+    template<typename T, typename F>
+    void push_back_impl(T&& value, F&& construct) {
         typecheck(value);
 
         if (size() == capacity()) {
-            grow(capacity() * 2);
-        }
-
-        std::byte* addr = m_storage + pos_to_index(size());
-        if constexpr (std::is_same_v<T, any_ref> || std::is_same_v<T, any_cref>) {
-            construct(addr, value.addr());
+            grow(capacity() * 2, std::forward<T>(value), std::forward<F>(construct));
         }
         else {
-            construct(addr, std::addressof(value));
+            construct_into_buffer(m_storage,
+                                  size(),
+                                  std::forward<T>(value),
+                                  std::forward<F>(construct));
         }
 
         ++m_size;
@@ -555,15 +583,24 @@ public:
 
     template<typename T>
     void push_back(const T& value) {
-        push_back_impl([&](void* new_,
-                           const void* old) { m_vtable.copy_construct(new_, old); },
-                       value);
+        push_back_impl(value, [this](void* new_, const void* old) {
+            m_vtable.copy_construct(new_, old);
+        });
     }
 
     template<typename T>
     void push_back(T&& value) {
-        push_back_impl([&](void* new_, void* old) { m_vtable.move_construct(new_, old); },
-                       std::move(value));
+        using raw = py::meta::remove_cvref<T>;
+        if constexpr (std::is_same_v<raw, any_ref> || std::is_same_v<raw, any_cref>) {
+            push_back_impl(value, [this](void* new_, const void* old) {
+                m_vtable.copy_construct(new_, old);
+            });
+        }
+        else {
+            push_back_impl(std::forward<T>(value), [this](void* new_, void* old) {
+                m_vtable.move_construct(new_, old);
+            });
+        }
     }
 
     inline void pop_back() {
