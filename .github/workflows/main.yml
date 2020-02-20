@@ -37,7 +37,7 @@ jobs:
     - name: Install c++ dependencies for linux
       if: matrix.os == 'ubuntu-latest'
       run: |
-        vcpkg install pcre2 sparsehash
+        sudo apt-get -y install libpcre2-dev libsparsehash-dev
     - name: Install c++ dependencies for MacOS
       if: matrix.os == 'macos-latest'
       run: |
