@@ -27,11 +27,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest==4.4.1 numpy==1.13.3
     - name: Install c++ dependencies for linux
-      if: matrix.os == "ubuntu-latest"
+      if: matrix.os == 'ubuntu-latest'
       run: |
         vcpkg install pcre2 sparsehash
     - name: Install c++ dependencies for MacOS
-      if: matrix.os == "macos-latest"
+      if: matrix.os == 'macos-latest'
       run: |
         brew install pcre2 google-sparsehash
     - name: Run the tests
