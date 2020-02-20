@@ -42,7 +42,8 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         brew install pcre2 google-sparsehash
-        brew link pcre2 google-sparsehash
+    - run: echo ::set-env name=EXTRA_INCLUDE_DIRS::/usr/local/include/
+      if: matrix.os == 'macos-latest'
     - name: Run the tests
       env:
         CC: gcc-8
