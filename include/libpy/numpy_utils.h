@@ -183,6 +183,13 @@ struct new_dtype<std::uint32_t> : new_dtype_from_typecode<NPY_UINT32> {};
 template<>
 struct new_dtype<std::uint64_t> : new_dtype_from_typecode<NPY_UINT64> {};
 
+#ifdef __APPLE__
+
+template<>
+struct new_dtype<long> : new_dtype_from_typecode<NPY_INT64> {};
+
+#endif
+
 template<>
 struct new_dtype<float> : new_dtype_from_typecode<NPY_FLOAT32> {};
 
@@ -257,7 +264,7 @@ private:
 public:
     static constexpr bool value = std::is_same_v<decltype(test<T>(0)), std::true_type>;
 };
-}
+}  // namespace detail
 
 /** Compile time boolean to detect if `new_dtype` works for a given type. This exists to
     make it easier to use `if constexpr` to test this condition instead of using more
