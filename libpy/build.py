@@ -108,8 +108,8 @@ class LibpyExtension(setuptools.Extension, object):
             kwargs.get('extra_link_args', [])
         )
         depends = kwargs.setdefault('depends', [])
-        depends.append(glob.glob(get_include()+'/**/*.h', recursive=True))
-        depends.append(glob.glob(get_include()+'/**/*.h', recursive=True))
+        depends.append(glob.glob(get_include() + '/**/*.h', recursive=True))
+        depends.append(glob.glob(np.get_include() + '/**/*.h', recursive=True))
 
         include_dirs = kwargs.setdefault('include_dirs', [])
         include_dirs.append(get_include())
