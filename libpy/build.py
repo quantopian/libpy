@@ -1,3 +1,4 @@
+import glob
 import os
 import sys
 
@@ -106,6 +107,9 @@ class LibpyExtension(setuptools.Extension, object):
             libpy_extra_link_args +
             kwargs.get('extra_link_args', [])
         )
+        depends = kwargs.setdefault('depends', [])
+        depends.append(glob.glob(get_include()+'/**/*.h', recursive=True))
+        depends.append(glob.glob(get_include()+'/**/*.h', recursive=True))
 
         include_dirs = kwargs.setdefault('include_dirs', [])
         include_dirs.append(get_include())
