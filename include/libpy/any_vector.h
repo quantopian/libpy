@@ -172,10 +172,6 @@ private:
 
         std::byte* old_data = m_storage;
         std::byte* new_data = m_vtable.alloc(count);
-        if (!new_data) {
-            throw std::bad_alloc{};
-        }
-
 
         /* NOTE: We must copy the value before freeing the old buffer. If the
            new value is a reference into `*this`, then freeing the old buffer
@@ -307,10 +303,6 @@ public:
           m_storage(vtable.default_construct_alloc(count)),
           m_size(count),
           m_capacity(count) {
-
-        if (!m_storage) {
-            throw std::bad_alloc{};
-        }
     }
 
 private:
@@ -399,11 +391,6 @@ public:
           m_storage(vtable.alloc(count)),
           m_size(count),
           m_capacity(count) {
-
-        if (!m_storage) {
-            throw std::bad_alloc{};
-        }
-
         try {
             typecheck(value);
 
@@ -438,11 +425,6 @@ public:
           m_storage(cpfrom.vtable().alloc(cpfrom.size())),
           m_size(cpfrom.size()),
           m_capacity(cpfrom.size()) {
-
-        if (!m_storage) {
-            throw std::bad_alloc{};
-        }
-
         if (m_vtable.is_trivially_copy_constructible()) {
             std::memcpy(m_storage, cpfrom.m_storage, m_vtable.size() * size());
         }
