@@ -159,29 +159,87 @@ struct new_dtype_from_typecode {
     }
 };
 
-template<>
-struct new_dtype<std::int8_t> : new_dtype_from_typecode<NPY_INT8> {};
+namespace detail {
+template<bool is_signed, std::size_t size>
+struct integral_typecode;
 
 template<>
-struct new_dtype<std::int16_t> : new_dtype_from_typecode<NPY_INT16> {};
+struct integral_typecode<true, 1> {
+    static constexpr int value = NPY_INT8;
+};
 
 template<>
-struct new_dtype<std::int32_t> : new_dtype_from_typecode<NPY_INT32> {};
+struct integral_typecode<true, 2> {
+    static constexpr int value = NPY_INT16;
+};
 
 template<>
-struct new_dtype<std::int64_t> : new_dtype_from_typecode<NPY_INT64> {};
+struct integral_typecode<true, 4> {
+    static constexpr int value = NPY_INT32;
+};
 
 template<>
-struct new_dtype<std::uint8_t> : new_dtype_from_typecode<NPY_UINT8> {};
+struct integral_typecode<true, 8> {
+    static constexpr int value = NPY_INT64;
+};
 
 template<>
-struct new_dtype<std::uint16_t> : new_dtype_from_typecode<NPY_UINT16> {};
+struct integral_typecode<false, 1> {
+    static constexpr int value = NPY_UINT8;
+};
 
 template<>
-struct new_dtype<std::uint32_t> : new_dtype_from_typecode<NPY_UINT32> {};
+struct integral_typecode<false, 2> {
+    static constexpr int value = NPY_UINT16;
+};
 
 template<>
-struct new_dtype<std::uint64_t> : new_dtype_from_typecode<NPY_UINT64> {};
+struct integral_typecode<false, 4> {
+    static constexpr int value = NPY_UINT32;
+};
+
+template<>
+struct integral_typecode<false, 8> {
+    static constexpr int value = NPY_UINT64;
+};
+
+template<typename T>
+using new_dtype_integral =
+    new_dtype_from_typecode<integral_typecode<std::is_signed_v<T>, sizeof(T)>::value>;
+}  // namespace detail
+
+template<>
+struct new_dtype<char> : detail::new_dtype_integral<char> {};
+
+template<>
+struct new_dtype<signed char> : detail::new_dtype_integral<signed char> {};
+
+template<>
+struct new_dtype<unsigned char> : detail::new_dtype_integral<unsigned char> {};
+
+template<>
+struct new_dtype<signed short> : detail::new_dtype_integral<signed short> {};
+
+template<>
+struct new_dtype<unsigned short> : detail::new_dtype_integral<unsigned short> {};
+
+template<>
+struct new_dtype<signed int> : detail::new_dtype_integral<signed int> {};
+
+template<>
+struct new_dtype<unsigned int> : detail::new_dtype_integral<unsigned int> {};
+
+template<>
+struct new_dtype<signed long> : detail::new_dtype_integral<signed long> {};
+
+template<>
+struct new_dtype<unsigned long> : detail::new_dtype_integral<unsigned long> {};
+
+template<>
+struct new_dtype<signed long long> : detail::new_dtype_integral<signed long long> {};
+
+template<>
+struct new_dtype<unsigned long long> : detail::new_dtype_integral<unsigned long long> {};
 
 template<>
 struct new_dtype<float> : new_dtype_from_typecode<NPY_FLOAT32> {};
@@ -257,7 +315,7 @@ private:
 public:
     static constexpr bool value = std::is_same_v<decltype(test<T>(0)), std::true_type>;
 };
-}
+}  // namespace detail
 
 /** Compile time boolean to detect if `new_dtype` works for a given type. This exists to
     make it easier to use `if constexpr` to test this condition instead of using more
