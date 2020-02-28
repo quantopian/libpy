@@ -452,7 +452,6 @@ TEST_F(automethod, mut_any_ndarray_view) {
     };
 
     test(int{1}, int{2}, int{3}, int{4});
-    test((long long){1}, (long long){2}, (long long){3}, (long long){4});
     test((unsigned int){1}, (unsigned int){2}, (unsigned int){3}, (unsigned int){4});
     test(float{1.5}, float{2.5}, float{3.5}, float{4.5});
     test(double{1.5}, double{2.5}, double{3.5}, double{4.5});
@@ -512,7 +511,6 @@ TEST_F(automethod, immut_any_ndarray_view) {
     };
 
     test(int{1}, int{2}, int{3}, int{4});
-    test((long long){1}, (long long){2}, (long long){3}, (long long){4});
     test((unsigned int){1}, (unsigned int){2}, (unsigned int){3}, (unsigned int){4});
     test(float{1.5}, float{2.5}, float{3.5}, float{4.5});
     test(double{1.5}, double{2.5}, double{3.5}, double{4.5});
