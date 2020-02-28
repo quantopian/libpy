@@ -451,11 +451,11 @@ TEST_F(automethod, mut_any_ndarray_view) {
         }
     };
 
-    test(1, 2, 3, 4);
-    test(1LL, 2LL, 3LL, 4LL);
-    test(1u, 2u, 3u, 4u);
-    test(1.5f, 2.5f, 3.5f, 4.5f);
-    test(1.5, 2.5, 3.5, 4.5);
+    test(int{1}, int{2}, int{3}, int{4});
+    test((long long){1}, (long long){2}, (long long){3}, (long long){4});
+    test((unsigned int){1}, (unsigned int){2}, (unsigned int){3}, (unsigned int){4});
+    test(float{1.5}, float{2.5}, float{3.5}, float{4.5});
+    test(double{1.5}, double{2.5}, double{3.5}, double{4.5});
     test(py::datetime64ns{1},
          py::datetime64ns{2},
          py::datetime64ns{3},
@@ -511,11 +511,11 @@ TEST_F(automethod, immut_any_ndarray_view) {
         }
     };
 
-    test(1, 2, 3, 4);
-    test(1LL, 2LL, 3LL, 4LL);
-    test(1u, 2u, 3u, 4u);
-    test(1.5f, 2.5f, 3.5f, 4.5f);
-    test(1.5, 2.5, 3.5, 4.5);
+    test(int{1}, int{2}, int{3}, int{4});
+    test((long long){1}, (long long){2}, (long long){3}, (long long){4});
+    test((unsigned int){1}, (unsigned int){2}, (unsigned int){3}, (unsigned int){4});
+    test(float{1.5}, float{2.5}, float{3.5}, float{4.5});
+    test(double{1.5}, double{2.5}, double{3.5}, double{4.5});
     test(py::datetime64ns{1},
          py::datetime64ns{2},
          py::datetime64ns{3},
