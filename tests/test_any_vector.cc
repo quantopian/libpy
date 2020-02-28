@@ -470,12 +470,28 @@ TEST(any_vector, move_is_noexcept_and_trivially_destructible_push_back) {
     push_back_test_body<move_is_noexcept_and_trivially_destructible_push_back_type>();
 }
 
-struct move_is_noexcept_push_back_type
-    : public move_is_noexcept_and_trivially_destructible_push_back_type {
-    using move_is_noexcept_and_trivially_destructible_push_back_type::
-        move_is_noexcept_and_trivially_destructible_push_back_type;
-    using move_is_noexcept_and_trivially_destructible_push_back_type::operator=;
+struct move_is_noexcept_push_back_type : public push_back_base {
+    using push_back_base::push_back_base;
+    using push_back_base::operator=;
 
+    move_is_noexcept_push_back_type(const move_is_noexcept_push_back_type&) = default;
+
+    move_is_noexcept_push_back_type(move_is_noexcept_push_back_type&& mvfrom) noexcept
+        : push_back_base(mvfrom.data) {
+        // have some new state on the moved from data to test the sequencing between
+        // copying the new value and moving from the old buffer in grow()
+        mvfrom.data = -1;
+    }
+
+    move_is_noexcept_push_back_type&
+    operator=(const move_is_noexcept_push_back_type&) = default;
+
+    move_is_noexcept_push_back_type&
+    operator=(move_is_noexcept_push_back_type&& mvfrom) noexcept {
+        data = mvfrom.data;
+        mvfrom.data = -1;
+        return *this;
+    }
 
     ~move_is_noexcept_push_back_type() {
         // provide a user defined destructor to not be trivially destructible
