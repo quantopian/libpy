@@ -23,7 +23,7 @@ OPTLEVEL ?= 3
 MAX_ERRORS ?= 5
 WARNINGS := -Werror -Wall -Wextra -Wno-register -Wno-missing-field-initializers \
 	-Wsign-compare -Wsuggest-override -Wparentheses -Waggressive-loop-optimizations \
-	-Wno-class-memaccess
+	-Wno-class-memaccess -Wno-maybe-uninitialized
 CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 	-fwrapv -fno-strict-aliasing -pipe \
 	-march=x86-64 -mtune=generic \
