@@ -452,7 +452,7 @@ TEST_F(automethod, mut_any_ndarray_view) {
     };
 
     test(1, 2, 3, 4);
-    test(1L, 2L, 3L, 4L);
+    test(1LL, 2LL, 3LL, 4LL);
     test(1u, 2u, 3u, 4u);
     test(1.5f, 2.5f, 3.5f, 4.5f);
     test(1.5, 2.5, 3.5, 4.5);
@@ -512,7 +512,7 @@ TEST_F(automethod, immut_any_ndarray_view) {
     };
 
     test(1, 2, 3, 4);
-    test(1L, 2L, 3L, 4L);
+    test(1LL, 2LL, 3LL, 4LL);
     test(1u, 2u, 3u, 4u);
     test(1.5f, 2.5f, 3.5f, 4.5f);
     test(1.5, 2.5, 3.5, 4.5);
