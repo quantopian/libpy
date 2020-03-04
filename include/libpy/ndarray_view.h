@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iterator>
+#include <numeric>
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
@@ -229,6 +230,39 @@ public:
      */
     const std::array<std::int64_t, ndim>& strides() const {
         return m_strides;
+    }
+
+    /** Check if the array is C contiguous.
+     */
+    bool is_c_contig() const {
+        std::int64_t expected = sizeof(T);
+        for (std::size_t back_dim = 0; back_dim < ndim; ++back_dim) {
+            std::size_t dim = ndim - back_dim - 1;
+            if (strides()[dim] != expected) {
+                return false;
+            }
+            expected *= shape()[dim];
+        }
+        return true;
+    }
+
+    /** Check if the array is F contiguous.
+     */
+    bool is_f_contig() const {
+        std::int64_t expected = sizeof(T);
+        for (std::size_t dim = 0; dim < ndim; ++dim) {
+            if (strides()[dim] != expected) {
+                return false;
+            }
+            expected *= shape()[dim];
+        }
+        return true;
+    }
+
+    /** Check if the array is contiguous in either C or F order.
+     */
+    bool is_contig() const {
+        return is_c_contig() || is_f_contig();
     }
 
     /** The underlying buffer of characters for this string array.
@@ -791,6 +825,39 @@ public:
      */
     const std::array<std::int64_t, ndim>& strides() const {
         return m_strides;
+    }
+
+        /** Check if the array is C contiguous.
+     */
+    bool is_c_contig() const {
+        std::int64_t expected = vtable().size();
+        for (std::size_t back_dim = 0; back_dim < ndim; ++back_dim) {
+            std::size_t dim = ndim - back_dim - 1;
+            if (strides()[dim] != expected) {
+                return false;
+            }
+            expected *= shape()[dim];
+        }
+        return true;
+    }
+
+    /** Check if the array is F contiguous.
+     */
+    bool is_f_contig() const {
+        std::int64_t expected = vtable().size();
+        for (std::size_t dim = 0; dim < ndim; ++dim) {
+            if (strides()[dim] != expected) {
+                return false;
+            }
+            expected *= shape()[dim];
+        }
+        return true;
+    }
+
+    /** Check if the array is contiguous in either C or F order.
+     */
+    bool is_contig() const {
+        return is_c_contig() || is_f_contig();
     }
 
     /** Cast the array to a static type.
@@ -1364,4 +1431,51 @@ struct from_object<ndarray_view<T, ndim>> {
     }
 };
 }  // namespace dispatch
+
+namespace detail {
+template<typename T, std::size_t ndim, typename UnaryFunction, typename... I>
+void for_each_unordered_recursive(py::ndarray_view<T, ndim> view, UnaryFunction f, I... ixs) {
+    static_assert(sizeof...(ixs) <= ndim, "too many indexers provided");
+    if constexpr(sizeof...(ixs) == ndim) {
+        f(view(ixs...));
+    }
+    else {
+        for (std::size_t n = 0; n < view.shape()[sizeof...(ixs)]; ++n) {
+            for_each_unordered_recursive(view, f, ixs..., n);
+        }
+    }
+}
+}  // namespace detail
+
+/** Apply a function to each element of an ndarray view in an unspecified order.
+
+    @param view The view to traverse.
+    @param f The function to apply.
+ */
+template<typename T, std::size_t ndim, typename UnaryFunction>
+UnaryFunction for_each_unordered(py::ndarray_view<T, ndim> view, UnaryFunction f) {
+    if (!view.size()) {
+        return f;
+    }
+
+    std::size_t count = std::accumulate(view.shape().begin(),
+                                        view.shape().end(),
+                                        1,
+                                        [](auto a, auto b) { return a * b; });
+    if constexpr (!(std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>)) {
+        if (view.is_contig()) {
+            // Specializing for contiguous arrays improves performance in two ways:
+            // 1. it allows us to traverse the memory in an efficient order
+            // 2. it gives the compiler a chance to vectorize 
+            T* data = reinterpret_cast<T*>(view.buffer());
+            T* end = data + count;
+            for (; data != end; ++data) {
+                f(*data);
+            }
+            return f;
+        }
+    }
+    detail::for_each_unordered_recursive(view, f);
+    return f;
+}
 }  // namespace py

@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <array>
+#include <numeric>
 #include <ostream>
+#include <unordered_set>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -10,6 +12,13 @@
 #include "test_utils.h"
 
 namespace test_array_view {
+template<typename T, std::size_t n>
+std::array<T, n> arange() {
+    std::array<T, n> out;
+    std::iota(out.begin(), out.end(), 0);
+    return out;
+}
+
 /** A non-fundamental type.
  */
 class custom_object {
@@ -24,7 +33,18 @@ public:
         return a == other.a and b == other.b;
     }
 };
+}
 
+namespace std {
+template<>
+struct hash<test_array_view::custom_object> {
+    auto operator()(const test_array_view::custom_object& ob) const {
+        return std::hash<int>{}(ob.a);
+    }
+};
+}  // namespace std
+
+namespace test_array_view {
 std::ostream& operator<<(std::ostream& s, const custom_object& ob) {
     return s << "<custom_object a=" << ob.a << ", b=" << ob.b << '>';
 }
@@ -261,6 +281,87 @@ TYPED_TEST_P(array_view, construction_from_const_view) {
     }
 }
 
+TYPED_TEST_P(array_view, for_each_unordered_1d_contig) {
+    using non_const_type = std::remove_const_t<TypeParam>;
+    auto arr = arange<non_const_type, 6>();
+    py::array_view<TypeParam> view(arr);
+
+    std::unordered_set<non_const_type> seen;
+    py::for_each_unordered(view, [&](TypeParam& val) { seen.insert(val); });
+
+    std::unordered_set<non_const_type> expected(arr.begin(), arr.end());
+    EXPECT_EQ(seen, expected);
+}
+
+TYPED_TEST_P(array_view, for_each_unordered_1d_non_contig) {
+    using non_const_type = std::remove_const_t<TypeParam>;
+    auto arr = arange<non_const_type, 6>();
+    py::array_view<TypeParam> view(arr.data(), {3}, {sizeof(non_const_type) * 2});
+
+    std::unordered_set<non_const_type> seen;
+    py::for_each_unordered(view, [&](TypeParam& val) { seen.insert(val); });
+
+    std::unordered_set<non_const_type> expected;
+    bool insert = true;
+    for (const auto& e : arr) {
+        if (insert) {
+            expected.insert(e);
+        }
+        insert = !insert;
+    }
+    EXPECT_EQ(seen, expected);
+}
+
+TYPED_TEST_P(array_view, for_each_unordered_2d_c_contig) {
+    using non_const_type = std::remove_const_t<TypeParam>;
+    auto arr = arange<non_const_type, 2 * 3>();
+    py::ndarray_view<TypeParam, 2> view(arr.data(),
+                                        {2, 3},
+                                        {sizeof(non_const_type) * 3,
+                                         sizeof(non_const_type)});
+
+    std::unordered_set<non_const_type> seen;
+    py::for_each_unordered(view, [&](TypeParam& val) { seen.insert(val); });
+
+    std::unordered_set<non_const_type> expected(arr.begin(), arr.end());
+    EXPECT_EQ(seen, expected);
+}
+
+TYPED_TEST_P(array_view, for_each_unordered_2d_f_contig) {
+    using non_const_type = std::remove_const_t<TypeParam>;
+    auto arr = arange<non_const_type, 2 * 3>();
+    py::ndarray_view<TypeParam, 2> view(arr.data(),
+                                        {2, 3},
+                                        {sizeof(non_const_type),
+                                         sizeof(non_const_type) * 2});
+
+    std::unordered_set<non_const_type> seen;
+    py::for_each_unordered(view, [&](TypeParam& val) { seen.insert(val); });
+
+    std::unordered_set<non_const_type> expected(arr.begin(), arr.end());
+    EXPECT_EQ(seen, expected);
+}
+
+TYPED_TEST_P(array_view, for_each_unordered_2d_non_contig) {
+    using non_const_type = std::remove_const_t<TypeParam>;
+    auto arr = arange<non_const_type, 4 * 6>();
+    py::ndarray_view<TypeParam, 2> view(arr.data(),
+                                        {2, 3},
+                                        {sizeof(non_const_type) * 2,
+                                         sizeof(non_const_type) * 2 * 2});
+
+    std::unordered_set<non_const_type> seen;
+    py::for_each_unordered(view, [&](TypeParam& val) { seen.insert(val); });
+
+    std::unordered_set<non_const_type> expected;
+    for (std::size_t row = 0; row < 2; ++row) {
+        for (std::size_t col = 0; col < 3; ++col) {
+            expected.insert(view(row, col));
+        }
+    }
+    EXPECT_EQ(seen, expected);
+}
+
 REGISTER_TYPED_TEST_SUITE_P(array_view,
                            from_std_array,
                            from_std_vector,
@@ -278,7 +379,12 @@ REGISTER_TYPED_TEST_SUITE_P(array_view,
                            slice_positive_step,
                            slice_negative_step,
                            slice_0_step,
-                           construction_from_const_view);
+                           construction_from_const_view,
+                           for_each_unordered_1d_contig,
+                           for_each_unordered_1d_non_contig,
+                           for_each_unordered_2d_c_contig,
+                           for_each_unordered_2d_f_contig,
+                           for_each_unordered_2d_non_contig);
 
 template<typename T>
 struct tuple_to_types;
