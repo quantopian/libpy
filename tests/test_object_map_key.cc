@@ -1,9 +1,11 @@
+#include <map>
 #include <unordered_map>
 
 #include "gtest/gtest.h"
 
 #include "libpy/dense_hash_map.h"
 #include "libpy/exception.h"
+#include "libpy/meta.h"
 #include "libpy/object_map_key.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/to_object.h"
@@ -22,61 +24,156 @@ TEST_F(object_map_key, eq) {
     // check that we aren't just checking pointer equality
     EXPECT_NE(a.get(), b.get());
     EXPECT_EQ(a, b);
+
+    EXPECT_EQ(py::object_map_key{nullptr}, py::object_map_key{nullptr});
 }
 
-TEST_F(object_map_key, eq_fails) {
+TEST_F(object_map_key, ne) {
+    py::object_map_key a{py::to_object(9001)};
+    ASSERT_TRUE(a);
+
+    py::object_map_key b{py::to_object(9002)};
+    ASSERT_TRUE(b);
+
+    // check that we aren't just checking pointer equality
+    EXPECT_NE(a.get(), b.get());
+    EXPECT_NE(a, b);
+    EXPECT_NE(a, nullptr);
+}
+
+TEST_F(object_map_key, lt) {
+    py::object_map_key a{py::to_object(9000)};
+    ASSERT_TRUE(a);
+
+    py::object_map_key b{py::to_object(9001)};
+    ASSERT_TRUE(b);
+
+    // check that we aren't just checking pointer equality
+    EXPECT_NE(a.get(), b.get());
+    EXPECT_LT(a, b);
+
+    EXPECT_LT(a, nullptr);
+
+    // NOTE: don't test EXPECT_GE` here because we are testing `operator<` explicitly
+    EXPECT_FALSE(py::object_map_key{nullptr} < a);
+    EXPECT_FALSE(py::object_map_key{nullptr} < nullptr);
+}
+
+TEST_F(object_map_key, le) {
+    py::object_map_key a{py::to_object(9000)};
+    ASSERT_TRUE(a);
+
+    py::object_map_key b{py::to_object(9001)};
+    ASSERT_TRUE(b);
+
+    py::object_map_key c{py::to_object(9001)};
+    ASSERT_TRUE(c);
+
+    // check that we aren't just checking pointer equality
+    EXPECT_NE(a.get(), b.get());
+    EXPECT_LE(a, b);
+
+    EXPECT_NE(a.get(), c.get());
+    EXPECT_LE(a, c);
+
+    EXPECT_LE(a, nullptr);
+
+    // NOTE: don't test EXPECT_GE` here because we are testing `operator<` explicitly
+    EXPECT_FALSE(py::object_map_key{nullptr} <= a);
+    EXPECT_LE(py::object_map_key{nullptr}, nullptr);
+}
+
+TEST_F(object_map_key, ge) {
+    py::object_map_key a{py::to_object(9000)};
+    ASSERT_TRUE(a);
+
+    py::object_map_key b{py::to_object(9001)};
+    ASSERT_TRUE(b);
+
+    py::object_map_key c{py::to_object(9001)};
+    ASSERT_TRUE(c);
+
+    // check that we aren't just checking pointer equality
+    EXPECT_NE(a.get(), b.get());
+    EXPECT_GE(b, a);
+
+    EXPECT_NE(a.get(), c.get());
+    EXPECT_GE(b, c);
+
+    // NOTE: don't test EXPECT_LT` here because we are testing `operator>=` explicitly
+    EXPECT_FALSE(a >= nullptr);
+    EXPECT_GE(py::object_map_key{nullptr}, a);
+    EXPECT_GE(py::object_map_key{nullptr}, nullptr);
+}
+
+TEST_F(object_map_key, gt) {
+    py::object_map_key a{py::to_object(9000)};
+    ASSERT_TRUE(a);
+
+    py::object_map_key b{py::to_object(9001)};
+    ASSERT_TRUE(b);
+
+    // check that we aren't just checking pointer equality
+    EXPECT_NE(a.get(), b.get());
+    EXPECT_GT(b, a);
+
+    // NOTE: don't test EXPECT_LE` here because we are testing `operator>` explicitly
+    EXPECT_FALSE(a > nullptr);
+    EXPECT_FALSE(py::object_map_key{nullptr} < nullptr);
+    EXPECT_GT(py::object_map_key{nullptr}, a);
+}
+
+template<typename F>
+void test_fails(const std::string& method, F f) {
+    using namespace std::literals;
+
     py::scoped_ref ns = RUN_PYTHON(R"(
-        class C:
-            def __eq__(self, other):
-                raise ValueError()
+        class C(object):
+            def __)"s + method + R"(__(self, other):
+                raise ValueError('ayy lmao')
 
         a = C()
         b = C()
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* a_ob = PyDict_GetItemString(ns.get(), "a");
+    py::borrowed_ref a_ob = PyDict_GetItemString(ns.get(), "a");
     ASSERT_TRUE(a_ob);
     Py_INCREF(a_ob);
-    py::object_map_key a{py::scoped_ref<>(a_ob)};
+    py::object_map_key a{a_ob};
 
-    PyObject* b_ob = PyDict_GetItemString(ns.get(), "b");
+    py::borrowed_ref b_ob = PyDict_GetItemString(ns.get(), "b");
     ASSERT_TRUE(b_ob);
     Py_INCREF(b_ob);
-    py::object_map_key b{py::scoped_ref<>(b_ob)};
+    py::object_map_key b{b_ob};
 
-    EXPECT_THROW(static_cast<void>(a == b), py::exception);
+    EXPECT_THROW(static_cast<void>(f(a, b)), py::exception);
+    expect_pyerr_type_and_message(PyExc_ValueError, "ayy lmao");
     PyErr_Clear();
 }
 
-TEST_F(object_map_key, null_eq) {
-    {
-        py::object_map_key a;
-        ASSERT_FALSE(a);
+TEST_F(object_map_key, eq_fails) {
+    test_fails("eq", py::meta::op::eq{});
+}
 
-        py::object_map_key b;
-        ASSERT_FALSE(b);
+TEST_F(object_map_key, ne_fails) {
+    test_fails("ne", py::meta::op::ne{});
+}
 
-        EXPECT_EQ(a, b);
-    }
-    {
-        py::object_map_key a;
-        ASSERT_FALSE(a);
+TEST_F(object_map_key, lt_fails) {
+    test_fails("lt", py::meta::op::lt{});
+}
 
-        py::object_map_key b{py::to_object(5)};
-        ASSERT_TRUE(b);
+TEST_F(object_map_key, le_fails) {
+    test_fails("le", py::meta::op::le{});
+}
 
-        EXPECT_NE(a, b);
-    }
-    {
-        py::object_map_key a{py::to_object(5)};
-        ASSERT_TRUE(a);
+TEST_F(object_map_key, ge_fails) {
+    test_fails("ge", py::meta::op::ge{});
+}
 
-        py::object_map_key b;
-        ASSERT_FALSE(b);
-
-        EXPECT_NE(a, b);
-    }
+TEST_F(object_map_key, gt_fails) {
+    test_fails("gt", py::meta::op::gt{});
 }
 
 TEST_F(object_map_key, hash) {
@@ -92,7 +189,7 @@ TEST_F(object_map_key, hash) {
 
 TEST_F(object_map_key, hash_fails) {
     py::scoped_ref ns = RUN_PYTHON(R"(
-        class C:
+        class C(object):
             def __hash__(self, other):
                 raise ValueError()
 
@@ -100,10 +197,10 @@ TEST_F(object_map_key, hash_fails) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* a_ob = PyDict_GetItemString(ns.get(), "a");
+    py::borrowed_ref a_ob = PyDict_GetItemString(ns.get(), "a");
     ASSERT_TRUE(a_ob);
     Py_INCREF(a_ob);
-    py::object_map_key a{py::scoped_ref<>(a_ob)};
+    py::object_map_key a{a_ob};
 
     EXPECT_THROW(static_cast<void>(std::hash<py::object_map_key>{}(a)), py::exception);
     PyErr_Clear();
@@ -142,6 +239,7 @@ void test_use_in_map(M map) {
 }
 
 TEST_F(object_map_key, use_in_map) {
+    test_use_in_map(std::map<py::object_map_key, int>{});
     test_use_in_map(std::unordered_map<py::object_map_key, int>{});
     test_use_in_map(py::sparse_hash_map<py::object_map_key, int>{});
     test_use_in_map(py::dense_hash_map<py::object_map_key, int>{py::object_map_key{}});
