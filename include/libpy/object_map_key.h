@@ -9,6 +9,7 @@
 
 namespace py {
 
+LIBPY_BEGIN_EXPORT
 /** A wrapper that allows a `py::scoped_ref` to be used as a key in a mapping structure.
 
     `object_map_key` overloads `operator==` to dispatch to the underlying Python object's
@@ -23,9 +24,10 @@ private:
     py::scoped_ref<> m_ob;
 
 public:
+    inline object_map_key(std::nullptr_t) : m_ob(nullptr) {}
     inline object_map_key(py::borrowed_ref<> ob)
-        : m_ob(py::scoped_ref<>::new_reference(ob)) {}
-    inline object_map_key(const py::scoped_ref<>& ob) : m_ob(ob) {}
+        : m_ob(py::scoped_ref<>::xnew_reference(ob)) {}
+    inline object_map_key(py::scoped_ref<> ob) : m_ob(std::move(ob)) {}
 
     object_map_key() = default;
     object_map_key(const object_map_key&) = default;
@@ -46,38 +48,18 @@ public:
         return m_ob;
     }
 
-    inline bool operator==(const object_map_key& other) const {
-        if (!m_ob) {
-            return !static_cast<bool>(other.m_ob);
-        }
-        if (!other.m_ob) {
-            return false;
-        }
-
-        int r = PyObject_RichCompareBool(m_ob.get(), other.get(), Py_EQ);
-        if (r < 0) {
-            throw py::exception{};
-        }
-
-        return r;
+    inline operator py::borrowed_ref<>() const {
+        return m_ob;
     }
 
-    inline bool operator!=(const object_map_key& other) const {
-        if (!m_ob) {
-            return static_cast<bool>(other.m_ob);
-        }
-        if (!other.m_ob) {
-            return true;
-        }
-
-        int r = PyObject_RichCompareBool(m_ob.get(), other.get(), Py_NE);
-        if (r < 0) {
-            throw py::exception{};
-        }
-
-        return r;
-    }
+    bool operator==(py::borrowed_ref<> other) const;
+    bool operator!=(py::borrowed_ref<> other) const;
+    bool operator<(py::borrowed_ref<> other) const;
+    bool operator<=(py::borrowed_ref<> other) const;
+    bool operator>=(py::borrowed_ref<> other) const;
+    bool operator>(py::borrowed_ref<> other) const;
 };
+LIBPY_END_EXPORT
 
 namespace dispatch {
 template<>
