@@ -436,6 +436,13 @@ public:
                    other);
     }
 };
+
+template<auto... columns>
+void swap(row_view<columns...> a, row_view<columns...> b) {
+    auto a_tmp = a.copy();
+    a = b;
+    b = a_tmp;
+}
 }  // namespace py
 
 namespace std {
@@ -557,6 +564,10 @@ public:
 
     difference_type operator-(const iterator& other) const {
         return m_ix - other.m_ix;
+    }
+
+    iterator operator-(difference_type n) const {
+        return iterator(m_columns, m_ix - n);
     }
 
     bool operator!=(const iterator& other) const {
