@@ -1,3 +1,6 @@
+
+.. image:: https://github.com/quantopian/libpy/workflows/CI/badge.svg
+
 ``libpy``
 =========
 
