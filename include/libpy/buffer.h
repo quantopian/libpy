@@ -25,49 +25,49 @@ struct buffer_free {
 using buffer = std::unique_ptr<Py_buffer, detail::buffer_free>;
 
 template<typename T>
-constexpr char buffer_format = '\0';
+inline constexpr char buffer_format = '\0';
 
 template<>
-constexpr char buffer_format<char> = 'c';
+inline constexpr char buffer_format<char> = 'c';
 
 template<>
-constexpr char buffer_format<signed char> = 'b';
+inline constexpr char buffer_format<signed char> = 'b';
 
 template<>
-constexpr char buffer_format<unsigned char> = 'B';
+inline constexpr char buffer_format<unsigned char> = 'B';
 
 template<>
-constexpr char buffer_format<bool> = '?';
+inline constexpr char buffer_format<bool> = '?';
 
 template<>
-constexpr char buffer_format<short> = 'h';
+inline constexpr char buffer_format<short> = 'h';
 
 template<>
-constexpr char buffer_format<unsigned short> = 'H';
+inline constexpr char buffer_format<unsigned short> = 'H';
 
 template<>
-constexpr char buffer_format<int> = 'i';
+inline constexpr char buffer_format<int> = 'i';
 
 template<>
-constexpr char buffer_format<unsigned int> = 'I';
+inline constexpr char buffer_format<unsigned int> = 'I';
 
 template<>
-constexpr char buffer_format<long> = 'l';
+inline constexpr char buffer_format<long> = 'l';
 
 template<>
-constexpr char buffer_format<unsigned long> = 'L';
+inline constexpr char buffer_format<unsigned long> = 'L';
 
 template<>
-constexpr char buffer_format<long long> = 'q';
+inline constexpr char buffer_format<long long> = 'q';
 
 template<>
-constexpr char buffer_format<unsigned long long> = 'Q';
+inline constexpr char buffer_format<unsigned long long> = 'Q';
 
 template<>
-constexpr char buffer_format<float> = 'f';
+inline constexpr char buffer_format<float> = 'f';
 
 template<>
-constexpr char buffer_format<double> = 'd';
+inline constexpr char buffer_format<double> = 'd';
 
 namespace detail {
 // clang-format off

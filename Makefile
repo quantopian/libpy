@@ -19,19 +19,40 @@ CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
 GTEST_BREAK ?= 1
 
+COMPILER := $(shell CXX=$(CXX) ./etc/build-and-run etc/detect-compiler.cc)
+ifeq ($(COMPILER),UNKNOWN)
+	$(warning Could not detect which compiler is being used, assuming gcc.)
+	COMPILER := GCC
+endif
+
 OPTLEVEL ?= 3
 MAX_ERRORS ?= 5
-WARNINGS := -Werror -Wall -Wextra -Wno-register -Wno-missing-field-initializers \
-	-Wsign-compare -Wsuggest-override -Wparentheses -Waggressive-loop-optimizations \
-	-Wno-class-memaccess -Wno-maybe-uninitialized
-CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
+BASE_WARNINGS := \
+	-Werror -Wall -Wextra \
+	-Wno-register \
+	-Wno-missing-field-initializers \
+	-Wsign-compare \
+	-Wparentheses
+GCC_WARNINGS := \
+	-Wsuggest-override \
+	-Wno-maybe-uninitialized \
+	-Waggressive-loop-optimizations
+CLANG_WARNINGS := \
+	-Wno-gnu-string-literal-operator-template \
+	-Wno-missing-braces \
+	-Wno-self-assign-overloaded
+WARNINGS := $(BASE_WARNINGS) $($(COMPILER)_WARNINGS)
+
+BASE_CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 	-fwrapv -fno-strict-aliasing -pipe \
 	-march=x86-64 -mtune=generic \
 	-fvisibility=hidden \
-	-fmax-errors=$(MAX_ERRORS) $(WARNINGS) \
+	$(WARNINGS) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
 	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
-
+GCC_FLAGS = -fmax-errors=$(MAX_ERRORS)
+CLANG_FLAGS = -ferror-limit=$(MAX_ERRORS)
+CXXFLAGS = $(BASE_CXXFLAGS) $($(COMPILER)_FLAGS)
 
 # https://github.com/quantopian/libpy/pull/86/files#r309288697
 INCLUDE_DIRS := include/ \
@@ -51,8 +72,8 @@ OS := $(shell uname)
 ifeq ($(OS),Darwin)
 	SONAME_FLAG := install_name
 	SONAME_PATH := @rpath/$(SONAME)
-	AR := libtool
-	ARFLAGS := -static -o
+	AR := llvm-ar
+	ARFLAGS := rc
 	LDFLAGS += -undefined dynamic_lookup
 	LD_PRELOAD_VAR := DYLD_INSERT_LIBRARIES
 else
@@ -90,7 +111,6 @@ GCC_TRACE ?= 0
 ifneq ($(GCC_TRACE),0)
 	CXXFLAGS += -Q
 endif
-
 
 SANITIZE_UNDEFINED ?= 0
 ifneq ($(SANITIZE_UNDEFINED),0)

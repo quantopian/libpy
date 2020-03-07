@@ -100,7 +100,7 @@ inline std::ostream& operator<<(std::ostream& stream, const py_bool& value) {
 }
 
 template<>
-constexpr char buffer_format<py::py_bool> = '?';
+inline constexpr char buffer_format<py::py_bool> = '?';
 
 namespace detail {
 template<typename D>

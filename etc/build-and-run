@@ -1,0 +1,7 @@
+#!/bin/bash
+
+dir=$(mktemp -d)
+file=$dir/a.out
+${CXX:-g++} $@ -o $file
+$file
+rm -rf dir

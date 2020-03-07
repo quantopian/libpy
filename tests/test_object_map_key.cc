@@ -45,7 +45,7 @@ TEST_F(object_map_key, eq_fails) {
     Py_INCREF(b_ob);
     py::object_map_key b{py::scoped_ref<>(b_ob)};
 
-    EXPECT_THROW(a == b, py::exception);
+    EXPECT_THROW(static_cast<void>(a == b), py::exception);
     PyErr_Clear();
 }
 
@@ -105,7 +105,7 @@ TEST_F(object_map_key, hash_fails) {
     Py_INCREF(a_ob);
     py::object_map_key a{py::scoped_ref<>(a_ob)};
 
-    EXPECT_THROW(std::hash<py::object_map_key>{}(a), py::exception);
+    EXPECT_THROW(static_cast<void>(std::hash<py::object_map_key>{}(a)), py::exception);
     PyErr_Clear();
 }
 

@@ -18,7 +18,7 @@ using namespace py::cs::literals;
 
 template<typename T>
 class datetime64_all_units : public with_python_interpreter {};
-TYPED_TEST_CASE_P(datetime64_all_units);
+TYPED_TEST_SUITE_P(datetime64_all_units);
 
 using int64_limits = std::numeric_limits<std::int64_t>;
 
@@ -73,7 +73,7 @@ TYPED_TEST_P(datetime64_all_units, stream_format_nat) {
 }
 
 template<typename T>
-constexpr void* numpy_unit_str;
+constexpr void* numpy_unit_str = std::enable_if_t<!std::is_same_v<T, T>>{};
 
 template<>
 constexpr auto numpy_unit_str<py::chrono::ns> = "ns"_arr;
@@ -136,14 +136,8 @@ TYPED_TEST_P(datetime64_all_units, stream_format) {
     }
 }
 
-REGISTER_TYPED_TEST_CASE_P(datetime64_all_units,
-                           from_int,
-                           epoch,
-                           max,
-                           nat,
-                           min,
-                           stream_format_nat,
-                           stream_format);
+REGISTER_TYPED_TEST_SUITE_P(datetime64_all_units, from_int, epoch, max, nat,
+                            min, stream_format_nat, stream_format);
 
 using units = testing::Types<py::chrono::ns,
                              py::chrono::us,
@@ -152,5 +146,5 @@ using units = testing::Types<py::chrono::ns,
                              py::chrono::m,
                              py::chrono::h,
                              py::chrono::D>;
-INSTANTIATE_TYPED_TEST_CASE_P(typed_, datetime64_all_units, units);
+INSTANTIATE_TYPED_TEST_SUITE_P(typed_, datetime64_all_units, units);
 }  // namespace test_datetime64

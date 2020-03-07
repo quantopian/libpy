@@ -3,6 +3,7 @@
    `autoclass.h` need to read this cache, but `autoclass.h` depends on `from_object.h`.
 */
 #include <forward_list>
+#include <string>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
