@@ -72,8 +72,6 @@ OS := $(shell uname)
 ifeq ($(OS),Darwin)
 	SONAME_FLAG := install_name
 	SONAME_PATH := @rpath/$(SONAME)
-	AR := llvm-ar
-	ARFLAGS := rc
 	LDFLAGS += -undefined dynamic_lookup
 	LD_PRELOAD_VAR := DYLD_INSERT_LIBRARIES
 else
@@ -82,6 +80,11 @@ else
 	SONAME_PATH := $(SONAME)
 	LDFLAGS += $(shell $(PYTHON)-config --ldflags)
 	LD_PRELOAD_VAR := LD_PRELOAD
+endif
+
+ifeq ($(COMPILER),CLANG)
+	AR ?= llvm-ar
+	ARFLAGS := rc
 endif
 
 # Sanitizers

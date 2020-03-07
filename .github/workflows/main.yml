@@ -12,10 +12,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-18.04, macos-10.15]
         python-version: [2.7, 3.5, 3.6]
+        compiler: [gcc, clang]
+        exclude:
+          - os: macos-10.15
+            compiler: gcc
     steps:
     - uses: actions/checkout@v2
+    - name: Install newer clang (ubuntu)
+      if: startsWith(matrix.os, 'ubuntu') && matrix.compiler == 'clang'
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key 2>/dev/null | sudo apt-key add -
+        sudo add-apt-repository 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main' -y
+        sudo apt-get update -q
+        sudo apt-get install -y clang-9 lld-9 libc++-9-dev libc++abi-9-dev clang-tools-9
+        echo ::set-env name=AR::llvm-ar-9
+    - name: Install newer clang (macos)
+      if: startsWith(matrix.os, 'macos') && matrix.compiler == 'clang'
+      run: |
+        brew install llvm
     - name: Checkout submodules
       shell: bash
       run: |
@@ -34,19 +50,32 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest==4.4.1 numpy==1.13.3
-    - name: Install c++ dependencies for linux
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install c++ dependencies (ubuntu)
+      if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt-get -y install libpcre2-dev libsparsehash-dev
-    - name: Install c++ dependencies for MacOS
-      if: matrix.os == 'macos-latest'
+    - name: Install c++ dependencies (macos)
+      if: startsWith(matrix.os, 'macos')
       run: |
         brew install pcre2 google-sparsehash
-    - run: echo ::set-env name=EXTRA_INCLUDE_DIRS::/usr/local/include/
-      if: matrix.os == 'macos-latest'
+    - name: Set llvm related envvars (macos)
+      if: startsWith(matrix.os, 'macos')
+      run: |
+        echo ::set-env name=EXTRA_INCLUDE_DIRS::/usr/local/include/
+        echo ::add-path::/usr/local/opt/llvm/bin
+        echo ::set-env name=LDFLAGS::-L/usr/local/opt/llvm/lib
+        echo ::set-env name=CPPFLAGS::-I/usr/local/opt/llvm/include
+        echo ::set-env name=AR::llvm-ar
+    - name: Set clang envvars
+      if: matrix.compiler == 'clang'
+      run: |
+        echo ::set-env name=CC::clang-9
+        echo ::set-env name=CXX::clang++
+    - name: Set gcc envvars
+      if: matrix.compiler == 'gcc'
+      run: |
+        echo ::set-env name=CC::gcc-8
+        echo ::set-env name=CXX::g++-8
     - name: Run the tests
-      env:
-        CC: gcc-8
-        CXX: g++-8
       run: |
         make -j2 test
