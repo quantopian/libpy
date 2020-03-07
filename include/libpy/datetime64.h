@@ -313,7 +313,6 @@ inline constexpr auto time_since_epoch(int year, int month, int day) {
 }  // namespace chrono
 
 namespace detail {
-namespace {
 using namespace py::cs::literals;
 // Constant time access to zero padded numbers suitable for use in the months, days,
 // hours, minutes, and seconds field of a datetime.
@@ -328,36 +327,6 @@ static constexpr std::array<std::array<char, 2>, 60> datetime_strings =
      "56"_arr, "57"_arr, "58"_arr, "59"_arr};
 
 constexpr auto nat_string = "NaT"_arr;
-
-// The maximum size for a datetime string of the given units.
-template<typename unit>
-constexpr std::int64_t max_size = 0;
-
-template<>
-constexpr std::int64_t
-    max_size<py::chrono::ns> = "-2262-04-11T23:47:16.854775807"_arr.size();
-
-template<>
-constexpr std::int64_t
-    max_size<py::chrono::us> = "-294247-01-10T04:00:54.775807"_arr.size();
-
-template<>
-constexpr std::int64_t
-    max_size<py::chrono::ms> = "-292278994-08-17T07:12:55.807"_arr.size();
-
-template<>
-constexpr std::int64_t
-    max_size<py::chrono::s> = "-292277026596-12-04T15:30:07"_arr.size();
-
-template<>
-constexpr std::int64_t max_size<py::chrono::m> = "-17536621479585-08-30T18:07"_arr.size();
-
-template<>
-constexpr std::int64_t max_size<py::chrono::h> = "-1052197288658909-10-10T07"_arr.size();
-
-template<>
-constexpr std::int64_t max_size<py::chrono::D> = "-25252734927768524-07-27"_arr.size();
-}  // namespace
 
 /** Convert a count of days from 1970 to a year and the number of days into the year
 
@@ -425,52 +394,84 @@ month_day_for_year_days(std::int64_t year, std::int16_t days_into_year) {
     __builtin_unreachable();
 }
 
+struct errc_error {
+    std::errc err;
+};
+
 namespace formatting {
-inline void write(char* data, char*, int& ix, char v) {
+inline void write(char* data, char* end, std::ptrdiff_t& ix, char v) {
+    if (data + ix == end) {
+        throw errc_error{std::errc::no_buffer_space};
+    }
     data[ix++] = v;
 }
 
-inline void write(char* data, char*, int& ix, char c, std::int64_t count) {
+inline void write(char* data, char* end, std::ptrdiff_t& ix, char c, std::int64_t count) {
+    if (count > end - data + ix) {
+        throw errc_error{std::errc::no_buffer_space};
+    }
     std::memset(data + ix, c, count);
     ix += count;
 }
 
-inline void write(char* data, char* end, int& ix, std::int64_t v) {
+inline void write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v) {
+#if defined(_LIBCPP_VERSION)
+    // XXX: workaround for a bug in libc++ which adds unnecessary leading 0s to
+    // 64 bit integers with 9, 10, or 11 digits.
+    // https://github.com/llvm-mirror/libcxx/commit/5a466fcca7286c9635445d92f38504845f6298ea
+    if (v < 0) {
+        write(data, end, ix, '-');
+        v = -v;
+    }
+    // write the number string backwards then flip it in place
+    std::ptrdiff_t starting_ix = ix;
+    while (v) {
+        std::ptrdiff_t rem = v % 10;
+        write(data, end, ix, static_cast<char>(rem + '0'));
+        v /= 10;
+    }
+    std::reverse(data + starting_ix, data + ix);
+#else
     auto begin = data + ix;
     auto [p, ec] = std::to_chars(data + ix, end, v);
-    if (ec != std::errc()) {
-        throw std::runtime_error("failed to format integer");
+    if (ec != std::errc{}) {
+        throw errc_error{ec};
     }
     ix += p - begin;
+#endif
 }
 
 template<std::size_t size>
-void write(char* data, char*, int& ix, const std::array<char, size>& v) {
+void write(char* data, char* end, std::ptrdiff_t& ix, const std::array<char, size>& v) {
+    if (size > static_cast<std::size_t>(end - data + ix)) {
+        throw errc_error{std::errc::no_buffer_space};
+    }
     std::memcpy(data + ix, v.data(), size);
     ix += size;
 }
 
-inline void write(char* data, char*, int& ix, const std::string_view& v) {
+inline void write(char* data, char* end, std::ptrdiff_t& ix, const std::string_view& v) {
+    if (v.size() > static_cast<std::size_t>(end - data + ix)) {
+        throw errc_error{std::errc::no_buffer_space};
+    }
     std::memcpy(data + ix, v.data(), v.size());
     ix += v.size();
 }
 }  // namespace formatting
-}  // namespace detail
 
 template<typename unit>
-std::to_chars_result
-to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = false) {
-    if (last - first < detail::max_size<unit>) {
-        return {first, std::errc::value_too_large};
-    }
-
+char*
+to_chars_throws(char* first, char* last, const datetime64<unit>& dt, bool compress = false) {
     if (dt.isnat()) {
+        if (detail::nat_string.size() > static_cast<std::size_t>(last - first)) {
+            throw errc_error{std::errc::no_buffer_space};
+        }
         // format all `NaT` values in a uniform way, regardless of the unit
         std::memcpy(first, detail::nat_string.data(), detail::nat_string.size());
-        return {first + detail::nat_string.size(), std::errc()};
+        return first + detail::nat_string.size();
     }
 
-    int ix = 0;
+    std::ptrdiff_t ix = 0;
     auto write = [&](auto... args) {
         detail::formatting::write(first, last, ix, args...);
     };
@@ -483,7 +484,7 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
         }
     };
 
-    auto finalize = [&]() -> std::to_chars_result { return {first + ix, std::errc()}; };
+    auto finalize = [&] { return first + ix; };
 
     datetime64<chrono::D> as_days(dt);
     auto [year, days_into_year] = detail::days_to_year_and_days(
@@ -538,10 +539,22 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
     }
     return finalize();
 }
+}  // namespace detail
+
+template<typename unit>
+std::to_chars_result
+to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = false) {
+    try {
+        return {detail::to_chars_throws(first, last, dt, compress), std::errc{}};
+    }
+    catch (detail::errc_error e) {
+        return {nullptr, e.err};
+    }
+}
 
 template<typename unit>
 std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
-    std::array<char, detail::max_size<unit>> data;
+    std::array<char, 64> data;
     auto [end, errc] = to_chars(data.begin(), data.end(), dt);
     if (errc != std::errc()) {
         throw std::runtime_error("failed to format datetime64");

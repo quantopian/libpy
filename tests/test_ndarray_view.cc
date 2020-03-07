@@ -31,7 +31,7 @@ std::ostream& operator<<(std::ostream& s, const custom_object& ob) {
 
 template<typename T>
 class array_view : public testing::Test {};
-TYPED_TEST_CASE_P(array_view);
+TYPED_TEST_SUITE_P(array_view);
 
 template<typename Container>
 void from_container() {
@@ -261,7 +261,7 @@ TYPED_TEST_P(array_view, construction_from_const_view) {
     }
 }
 
-REGISTER_TYPED_TEST_CASE_P(array_view,
+REGISTER_TYPED_TEST_SUITE_P(array_view,
                            from_std_array,
                            from_std_vector,
                            iterator,
@@ -305,7 +305,7 @@ struct add_const<T, Ts...> {
 using array_view_test_types =
     typename add_const<char, unsigned char, int, float, double, custom_object>::type;
 
-INSTANTIATE_TYPED_TEST_CASE_P(typed_,
+INSTANTIATE_TYPED_TEST_SUITE_P(typed_,
                               array_view,
                               typename tuple_to_types<array_view_test_types>::type);
 

@@ -60,7 +60,7 @@ public:
     NOTE: Do not explicitly specialize this unless you really know what you are doing.
  */
 template<typename T>
-constexpr any_vtable_impl any_vtable_instance = {
+inline constexpr any_vtable_impl any_vtable_instance = {
     typeid(T),
     sizeof(T),
     alignof(T),
@@ -127,7 +127,7 @@ constexpr any_vtable_impl any_vtable_instance = {
 }
 
 template<>
-const any_vtable_impl any_vtable_instance<void> = {
+inline constexpr any_vtable_impl any_vtable_instance<void> = {
     typeid(void),
     0,
     0,
