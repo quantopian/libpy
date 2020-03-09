@@ -394,8 +394,18 @@ month_day_for_year_days(std::int64_t year, std::int16_t days_into_year) {
     __builtin_unreachable();
 }
 
+struct [[nodiscard]] no_discard_errc {
+    std::errc ec;
+
+    inline no_discard_errc() : ec() {}
+    inline no_discard_errc(std::errc ec) : ec(ec) {}
+    inline operator std::errc() const {
+        return ec;
+    }
+};
+
 namespace formatting {
-inline std::errc write(char* data, char* end, std::ptrdiff_t& ix, char v) {
+inline no_discard_errc write(char* data, char* end, std::ptrdiff_t& ix, char v) {
     if (data + ix == end) {
         return std::errc::no_buffer_space;
     }
@@ -403,7 +413,7 @@ inline std::errc write(char* data, char* end, std::ptrdiff_t& ix, char v) {
     return {};
 }
 
-inline std::errc
+inline no_discard_errc
 write(char* data, char* end, std::ptrdiff_t& ix, char c, std::int64_t count) {
     if (count > end - data + ix) {
         return std::errc::no_buffer_space;
@@ -413,22 +423,25 @@ write(char* data, char* end, std::ptrdiff_t& ix, char c, std::int64_t count) {
     return {};
 }
 
-inline std::errc write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v) {
+inline no_discard_errc
+write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v) {
 #if defined(_LIBCPP_VERSION)
     // XXX: workaround for a bug in libc++ which adds unnecessary leading 0s to
     // 64 bit integers with 9, 10, or 11 digits.
     // https://github.com/llvm-mirror/libcxx/commit/5a466fcca7286c9635445d92f38504845f6298ea
     if (v < 0) {
-        write(data, end, ix, '-');
+        if (auto ec = write(data, end, ix, '-'); ec != std::errc{}) {
+            return ec;
+        }
         v = -v;
     }
     // write the number string backwards then flip it in place
     std::ptrdiff_t starting_ix = ix;
     while (v) {
         std::ptrdiff_t rem = v % 10;
-        if (auto errc = write(data, end, ix, static_cast<char>(rem + '0'));
-            errc != std::errc{}) {
-            return errc;
+        if (auto ec = write(data, end, ix, static_cast<char>(rem + '0'));
+            ec != std::errc{}) {
+            return ec;
         }
         v /= 10;
     }
@@ -446,7 +459,7 @@ inline std::errc write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v
 }
 
 template<std::size_t size>
-std::errc
+no_discard_errc
 write(char* data, char* end, std::ptrdiff_t& ix, const std::array<char, size>& v) {
     if (size > static_cast<std::size_t>(end - data + ix)) {
         return std::errc::no_buffer_space;
@@ -456,7 +469,7 @@ write(char* data, char* end, std::ptrdiff_t& ix, const std::array<char, size>& v
     return {};
 }
 
-inline std::errc
+inline no_discard_errc
 write(char* data, char* end, std::ptrdiff_t& ix, const std::string_view& v) {
     if (v.size() > static_cast<std::size_t>(end - data + ix)) {
         return std::errc::no_buffer_space;
@@ -485,19 +498,19 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
         return detail::formatting::write(first, last, ix, args...);
     };
 
-    auto zero_pad = [&](int expected_digits, std::int64_t value) {
+    auto zero_pad = [&](int expected_digits, std::int64_t value) -> detail::no_discard_errc {
         std::int64_t digits = std::floor(std::log10(value));
         digits += 1;
         if (expected_digits > digits) {
-            if (auto errc = write('0', expected_digits - digits); errc != std::errc{}) {
-                return errc;
+            if (auto ec = write('0', expected_digits - digits); ec != std::errc{}) {
+                return ec;
             }
         }
         return std::errc{};
     };
 
-    auto finalize = [&](std::errc errc = std::errc{}) {
-        return std::to_chars_result{first + ix, errc};
+    auto finalize = [&](std::errc ec = std::errc{}) {
+        return std::to_chars_result{first + ix, ec};
     };
 
     datetime64<chrono::D> as_days(dt);
@@ -506,72 +519,72 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
     auto [month, day] = detail::month_day_for_year_days(year, days_into_year);
 
     if (year < 0 && year > -100) {
-        if (auto errc = write('-'); errc != std::errc{}) {
-            return finalize(errc);
+        if (auto ec = write('-'); ec != std::errc{}) {
+            return finalize(ec);
         }
         year = std::abs(year);
-        if (auto errc = zero_pad(3, year); errc != std::errc{}) {
-            return finalize(errc);
+        if (auto ec = zero_pad(3, year); ec != std::errc{}) {
+            return finalize(ec);
         }
     }
     else if (year > 0) {
-        if (auto errc = zero_pad(4, year); errc != std::errc{}) {
-            return finalize(errc);
+        if (auto ec = zero_pad(4, year); ec != std::errc{}) {
+            return finalize(ec);
         }
     }
-    if (auto errc = write(year); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write(year); ec != std::errc{}) {
+        return finalize(ec);
     }
-    if (auto errc = write('-'); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write('-'); ec != std::errc{}) {
+        return finalize(ec);
     }
-    if (auto errc = write(detail::datetime_strings[month]); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write(detail::datetime_strings[month]); ec != std::errc{}) {
+        return finalize(ec);
     }
-    if (auto errc = write('-'); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write('-'); ec != std::errc{}) {
+        return finalize(ec);
     }
-    if (auto errc = write(detail::datetime_strings[day]); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write(detail::datetime_strings[day]); ec != std::errc{}) {
+        return finalize(ec);
     }
     if (std::is_same_v<unit, py::chrono::D> || (compress && dt == as_days)) {
         return finalize();
     }
 
-    if (auto errc = write('T'); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write('T'); ec != std::errc{}) {
+        return finalize(ec);
     }
     datetime64<chrono::h> as_hours(dt);
-    if (auto errc = write(detail::datetime_strings[std::abs(
+    if (auto ec = write(detail::datetime_strings[std::abs(
             static_cast<std::int64_t>(as_hours - as_days))]);
-        errc != std::errc{}) {
-        return finalize(errc);
+        ec != std::errc{}) {
+        return finalize(ec);
     }
     if (std::is_same_v<unit, py::chrono::h>) {
         return finalize();
     }
 
-    if (auto errc = write(':'); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write(':'); ec != std::errc{}) {
+        return finalize(ec);
     }
     datetime64<chrono::m> as_minutes(dt);
-    if (auto errc = write(
+    if (auto ec = write(
             detail::datetime_strings[static_cast<std::int64_t>(as_minutes - as_hours)]);
-        errc != std::errc{}) {
-        return finalize(errc);
+        ec != std::errc{}) {
+        return finalize(ec);
     }
     if (std::is_same_v<unit, py::chrono::m>) {
         return finalize();
     }
 
-    if (auto errc = write(':'); errc != std::errc{}) {
-        return finalize(errc);
+    if (auto ec = write(':'); ec != std::errc{}) {
+        return finalize(ec);
     }
     datetime64<chrono::s> as_seconds(dt);
-    if (auto errc = write(
+    if (auto ec = write(
             detail::datetime_strings[static_cast<std::int64_t>(as_seconds - as_minutes)]);
-        errc != std::errc{}) {
-        return finalize(errc);
+        ec != std::errc{}) {
+        return finalize(ec);
     }
     if (std::is_same_v<unit, py::chrono::s> || (compress && dt == as_seconds)) {
         return finalize();
@@ -579,16 +592,16 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
 
     auto fractional_seconds = static_cast<std::int64_t>(dt - as_seconds);
     if (fractional_seconds) {
-        if (auto errc = write('.'); errc != std::errc{}) {
-            return finalize(errc);
+        if (auto ec = write('.'); ec != std::errc{}) {
+            return finalize(ec);
         }
         std::int64_t expected_digits = std::log10(unit::period::den);
-        if (auto errc = zero_pad(expected_digits, fractional_seconds);
-            errc != std::errc{}) {
-            return finalize(errc);
+        if (auto ec = zero_pad(expected_digits, fractional_seconds);
+            ec != std::errc{}) {
+            return finalize(ec);
         }
-        if (auto errc = write(fractional_seconds); errc != std::errc{}) {
-            return finalize(errc);
+        if (auto ec = write(fractional_seconds); ec != std::errc{}) {
+            return finalize(ec);
         }
     }
     return finalize();
@@ -598,7 +611,7 @@ template<typename unit>
 std::ostream& operator<<(std::ostream& stream, const datetime64<unit>& dt) {
     std::array<char, 64> data;
     auto [end, errc] = to_chars(data.begin(), data.end(), dt);
-    if (errc != std::errc()) {
+    if (errc != std::errc{}) {
         throw std::runtime_error("failed to format datetime64");
     }
     return stream.write(data.begin(), end - data.begin());
