@@ -1308,24 +1308,12 @@ private:
         return [](PyObject* self) -> PyObject* {
             try {
                 auto res = std::invoke(impl, unbox(self));
-                std::size_t size = std::size(res);
-                py::scoped_ref<> out;
-                char* buf;
+                std::string data(std::begin(res), std::end(res));
 #if PY_MAJOR_VERSION == 2
-                out = py::scoped_ref(PyString_FromStringAndSize(nullptr, size));
-                if (!out) {
-                    return nullptr;
-                }
-                buf = PyString_AS_STRING(out.get());
+                return PyString_FromStringAndSize(data.data(), data.size());
 #else
-                out = py::scoped_ref(PyUnicode_New(size, PyUnicode_1BYTE_KIND));
-                if (!out) {
-                    return nullptr;
-                }
-                buf = PyUnicode_AsUTF8(out.get());
+                return PyUnicode_FromStringAndSize(data.data(), data.size());
 #endif
-                std::copy(std::begin(res), std::end(res), buf);
-                return std::move(out).escape();
             }
             catch (const std::exception& e) {
                 return raise_from_cxx_exception(e);
