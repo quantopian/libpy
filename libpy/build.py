@@ -1,9 +1,32 @@
 import glob
 import os
+import subprocess
 import sys
+import warnings
 
 import setuptools
 import numpy as np
+
+
+def detect_compiler():
+    p = subprocess.Popen(
+        [
+            os.path.join(os.path.dirname(__file__), '_build-and-run'),
+            os.path.join(os.path.dirname(__file__), '_detect-compiler.cc'),
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+    )
+    stdout, _ = p.communicate()
+    if stdout == b'GCC\n':
+        return 'GCC'
+    elif stdout == b'CLANG\n':
+        return 'CLANG'
+
+    warnings.warn(
+        'Could not detect which compiler is being used, assuming gcc.',
+    )
+    return 'GCC'
 
 
 def get_include():
@@ -58,16 +81,44 @@ class LibpyExtension(setuptools.Extension, object):
     `extra_compile_args`. This gives the user the ability to override any of
     libpy's options.
     """
+    _compiler = detect_compiler()
+
+    _recommended_warnings = [
+        '-Werror',
+        '-Wall',
+        '-Wextra',
+        '-Wno-register',
+        '-Wno-missing-field-initializers',
+        '-Wsign-compare',
+        '-Wparentheses',
+    ]
+    if _compiler == 'GCC':
+        _recommended_warnings.extend([
+            '-Wsuggest-override',
+            '-Wno-maybe-uninitialized',
+            '-Waggressive-loop-optimizations',
+        ])
+    elif _compiler == 'CLANG':
+        _recommended_warnings.extend([
+            '-Wno-gnu-string-literal-operator-template',
+            '-Wno-missing-braces',
+            '-Wno-self-assign-overloaded',
+        ])
+    else:
+        raise AssertionError('unknown compiler: %s' % _compiler)
+
+    _base_flags = [
+        '-std=gnu++17',
+        '-pipe',
+        '-fvisibility-inlines-hidden',
+        '-DPY_MAJOR_VERSION=%d' % sys.version_info.major,
+        '-DPY_MINOR_VERSION=%d' % sys.version_info.minor,
+    ]
+
     def __init__(self, *args, **kwargs):
         kwargs['language'] = 'c++'
 
-        libpy_extra_compile_args = [
-            '-std=gnu++17',
-            '-pipe',
-            '-fvisibility-inlines-hidden',
-            '-DPY_MAJOR_VERSION=%d' % sys.version_info.major,
-            '-DPY_MINOR_VERSION=%d' % sys.version_info.minor,
-        ]
+        libpy_extra_compile_args = self._base_flags.copy()
 
         libpy_extra_link_args = []
 
@@ -83,22 +134,24 @@ class LibpyExtension(setuptools.Extension, object):
             libpy_extra_compile_args.append('-g')
 
         if kwargs.pop('use_libpy_suggested_warnings', True):
-            libpy_extra_compile_args.extend([
-                '-Wall',
-                '-Wextra',
-                '-Wno-maybe-uninitialized',
-                '-Wno-register',
-                '-Wno-missing-field-initializers',
-                '-Wsign-compare',
-                '-Wsuggest-override',
-                '-Wparentheses',
-                '-Waggressive-loop-optimizations',
-            ])
+            libpy_extra_compile_args.extend(self._recommended_warnings)
+
         if kwargs.pop('werror', True):
             libpy_extra_compile_args.append('-Werror')
+
         max_errors = kwargs.pop('max_errors', None)
         if max_errors is not None:
-            libpy_extra_compile_args.append('-fmax-errors=%d' % max_errors)
+            if self._compiler == 'GCC':
+                libpy_extra_compile_args.append(
+                    '-fmax-errors=%d' % max_errors,
+                )
+            elif self._compiler == 'CLANG':
+                libpy_extra_compile_args.append(
+                    '-ferror-limit=%d' % max_errors,
+                )
+            else:
+                raise AssertionError('unknown compiler: %s' % self._compiler)
+
         kwargs['extra_compile_args'] = (
             libpy_extra_compile_args +
             kwargs.get('extra_compile_args', [])
