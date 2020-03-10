@@ -24,9 +24,7 @@ class autoclass : public with_python_interpreter {
 
     void TearDown() override {
         // Types basically always participate in a cycle because the method descriptors.
-        // Run the collector until there is no more garbage.
-        while (PyGC_Collect())
-            ;
+        gc_collect();
         EXPECT_EQ(py::detail::autoclass_type_cache.get().size(), m_cache_start_size);
 
         with_python_interpreter::TearDown();
@@ -712,6 +710,48 @@ TEST_F(autoclass, python_exception) {
     Py_DECREF(type);
     Py_DECREF(value);
     Py_XDECREF(traceback);
+}
+
+TEST_F(autoclass, instance_extends_type_lifetime) {
+    struct s {};
+
+    using ac = py::autoclass<s>;
+
+    py::scoped_ref<> ns;
+    {
+        py::borrowed_ref<PyTypeObject> cls_borrowed;
+        py::scoped_ref<> inst;
+        {
+            py::scoped_ref cls = ac{"s"}.type();
+            cls_borrowed = cls;
+
+            // clang-format off
+            ns = RUN_PYTHON(R"(
+                import weakref
+
+                destroyed = False
+
+                def callback(ref):
+                    global destroyed
+                    destroyed = True
+
+                ref = weakref.ref(cls, callback)
+
+                del cls  # remove cls from the namespace to remove the owned ref
+            )", {{"cls", py::scoped_ref<>::new_reference(static_cast<PyObject*>(cls))}});
+            // clang-format on
+
+            inst = ac::construct();
+        }
+        gc_collect();
+        EXPECT_EQ(Py_REFCNT(inst.get()), 1);
+        EXPECT_GE(Py_REFCNT(cls_borrowed.get()), 1);
+    }
+    gc_collect();
+    py::borrowed_ref destroyed_ob = PyDict_GetItemString(ns.get(), "destroyed");
+    ASSERT_TRUE(destroyed_ob);  // check the dict look up, not the value
+    bool destroyed = py::from_object<bool>(destroyed_ob);
+    EXPECT_TRUE(destroyed);
 }
 
 #if LIBPY_AUTOCLASS_UNSAFE_API

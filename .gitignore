@@ -60,4 +60,4 @@ libpy_report.xml
 libpy.egg-info/*
 dist/*
 
-venv/*
+venv*/*

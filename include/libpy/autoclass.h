@@ -515,6 +515,11 @@ public:
 
 private:
     static object* alloc(bool have_gc, PyTypeObject* cls) {
+#if !(PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 8)
+        // in 3.8 and greater this incref happens in `PyObject_New`:
+        // https://github.com/python/cpython/pull/11661
+        Py_INCREF(cls);
+#endif
         if (have_gc) {
             return PyObject_GC_New(object, cls);
         }
@@ -527,6 +532,7 @@ private:
     }
 
     static void dealloc(bool have_gc, PyObject* ob) {
+        Py_DECREF(Py_TYPE(ob));
         if (have_gc) {
             PyObject_GC_Del(ob);
         }
