@@ -11,6 +11,11 @@
 #include "libpy/scoped_ref.h"
 #include "libpy/util.h"
 
+inline void gc_collect() {
+    while (PyGC_Collect())
+        ;
+}
+
 inline void expect_pyerr_type_and_message(PyObject* ptype, std::string_view pmsg) {
     ASSERT_TRUE(PyErr_Occurred()) << "no exception was thrown";
     EXPECT_TRUE(PyErr_ExceptionMatches(ptype));

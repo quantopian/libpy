@@ -30,6 +30,9 @@ public:
     constexpr borrowed_ref(T* ref) : m_ref(ref) {}
     constexpr borrowed_ref(const py::scoped_ref<T>& ref) : m_ref(ref.get()) {}
 
+    constexpr borrowed_ref(const borrowed_ref&) = default;
+    constexpr borrowed_ref& operator=(const borrowed_ref& ob) = default;
+
     constexpr T* get() const {
         return m_ref;
     }
@@ -57,11 +60,11 @@ public:
         return m_ref;
     }
 
-    bool operator==(py::borrowed_ref<> other) const {
+    bool operator==(borrowed_ref other) const {
         return m_ref == other.get();
     }
 
-    bool operator!=(py::borrowed_ref<> other) const {
+    bool operator!=(borrowed_ref other) const {
         return m_ref != other.get();
     }
 };
