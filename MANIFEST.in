@@ -1,3 +1,5 @@
 include LICENSE
 include libpy/libpy.so
+include libpy/_build-and-run
+include libpy/_detect-compiler.cc
 recursive-include libpy *.h
