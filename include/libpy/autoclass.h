@@ -1268,24 +1268,12 @@ private:
             try {
                 std::stringstream s;
                 s << unbox(self);
-                std::size_t size = s.tellp();
-                PyObject* out;
-                char* buf;
+                std::string data = s.str();
 #if PY_MAJOR_VERSION == 2
-                out = PyString_FromStringAndSize(nullptr, size);
-                if (!out) {
-                    return nullptr;
-                }
-                buf = PyString_AS_STRING(out);
+                return PyString_FromStringAndSize(data.data(), data.size());
 #else
-                out = PyUnicode_New(size, PyUnicode_1BYTE_KIND);
-                if (!out) {
-                    return nullptr;
-                }
-                buf = PyUnicode_AsUTF8(out);
+                return PyUnicode_FromStringAndSize(data.data(), data.size());
 #endif
-                s.read(buf, size);
-                return out;
             }
             catch (const std::exception& e) {
                 return raise_from_cxx_exception(e);
