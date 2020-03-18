@@ -1,6 +1,7 @@
 #include <type_traits>
 
 #include "libpy/any.h"
+#include "libpy/autoclass.h"
 #include "libpy/demangle.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
@@ -250,5 +251,71 @@ TEST_F(from_object, object_map_key) {
     EXPECT_EQ(key.get(), ob);
     // the key owns a new reference
     EXPECT_EQ(Py_REFCNT(ob), starting_ref_count + 1);
+}
+
+TEST_F(from_object, autoclass_const_ref) {
+    struct S {
+        int val;
+
+        S(int val) : val(val) {}
+    };
+
+    auto type = py::autoclass<S>("S").type();
+    auto ob = py::autoclass<S>::construct(12);
+    ASSERT_TRUE(ob);
+
+    const auto& const_ref = py::from_object<const S&>(ob);
+    EXPECT_EQ(const_ref.val, 12);
+
+    auto& unboxed = py::autoclass<S>::unbox(ob);
+    EXPECT_EQ(&const_ref, &unboxed);
+}
+
+TEST_F(from_object, autoclass_const_ref_wrong_type) {
+    struct S {
+        int val;
+
+        S(int val) : val(val) {}
+    };
+
+    auto type = py::autoclass<S>("S").type();
+    auto ob = py::to_object(12);
+    ASSERT_TRUE(ob);
+
+    EXPECT_THROW(py::from_object<const S&>(ob), py::invalid_conversion);
+    PyErr_Clear();
+}
+
+TEST_F(from_object, autoclass_mut_ref) {
+    struct S {
+        int val;
+
+        S(int val) : val(val) {}
+    };
+
+    auto type = py::autoclass<S>("S").type();
+    auto ob = py::autoclass<S>::construct(12);
+    ASSERT_TRUE(ob);
+
+    auto& mut_ref = py::from_object<S&>(ob);
+    EXPECT_EQ(mut_ref.val, 12);
+
+    auto& unboxed = py::autoclass<S>::unbox(ob);
+    EXPECT_EQ(&mut_ref, &unboxed);
+}
+
+TEST_F(from_object, autoclass_mut_ref_wrong_type) {
+    struct S {
+        int val;
+
+        S(int val) : val(val) {}
+    };
+
+    auto type = py::autoclass<S>("S").type();
+    auto ob = py::to_object(12);
+    ASSERT_TRUE(ob);
+
+    EXPECT_THROW(py::from_object<S&>(ob), py::invalid_conversion);
+    PyErr_Clear();
 }
 }  // namespace test_from_object
