@@ -117,9 +117,18 @@ public:
             if (search == py::detail::autoclass_type_cache.get().end()) {
                 throw invalid_conversion::make<T&>(ob);
             }
+            int res = PyObject_IsInstance(ob.get(),
+                                          reinterpret_cast<PyObject*>(
+                                              search->second->type));
+            if (res < 0) {
+                throw py::exception{};
+            }
+            if (!res) {
+                throw invalid_conversion::make<T&>(ob);
+            }
 
-            // NOTE: the parentheses change the behavior of `decltype(auto)` to make this
-            // resolve to a return type of `T&` instead of `T`
+            // NOTE: the parentheses change the behavior of `decltype(auto)` to make
+            // this resolve to a return type of `T&` instead of `T`
             return (py::detail::autoclass_object<mut_T>::unbox(ob));
         }
     }
