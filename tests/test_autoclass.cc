@@ -19,6 +19,8 @@ class autoclass : public with_python_interpreter {
     std::size_t m_cache_start_size;
 
     void SetUp() override {
+        // Ensure no types are hanging out before we check the cache size.
+        gc_collect();
         m_cache_start_size = py::detail::autoclass_type_cache.get().size();
     }
 
