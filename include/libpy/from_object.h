@@ -62,7 +62,7 @@ template<typename T>
 struct from_object;
 }  // namespace dispatch
 
-/** Convert a Python object into a C++ recursively.
+/** Convert a Python object into a C++ object recursively.
 
     @param ob The object to convert
     @return `ob` as a C++ object.
