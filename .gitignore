@@ -61,3 +61,5 @@ libpy.egg-info/*
 dist/*
 
 venv*/*
+
+.dir-locals.el
