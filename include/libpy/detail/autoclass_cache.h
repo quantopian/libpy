@@ -14,7 +14,12 @@
 #include "libpy/scoped_ref.h"
 
 namespace py::detail {
+using unbox_fn = void* (*)(py::borrowed_ref<>);
 struct autoclass_storage {
+    // Pointer to the function which handles unboxing objects of this type. The resulting
+    // pointer can be safely cast to the static type of the contained object.
+    unbox_fn unbox;
+
     // Borrowed reference to the type that this struct contains storage for.
     PyTypeObject* type;
 
@@ -46,8 +51,9 @@ struct autoclass_storage {
 
     autoclass_storage() = default;
 
-    autoclass_storage(std::string&& name)
-        : type(nullptr),
+    autoclass_storage(unbox_fn unbox, std::string&& name)
+        : unbox(unbox),
+          type(nullptr),
           strings({std::move(name)}),
           callback_method({nullptr, nullptr, 0, nullptr}) {}
 };
