@@ -372,11 +372,16 @@ private:
         return out;
     }
 
+    static void* dynamic_unbox(py::borrowed_ref<> ob) {
+        return reinterpret_cast<void*>(std::addressof(unbox(ob)));
+    }
+
 public:
     autoclass(std::string name = util::type_name<T>(),
               int extra_flags = 0,
               PyTypeObject* base_type = nullptr)
-        : m_storage(std::make_unique<detail::autoclass_storage>(std::move(name))),
+        : m_storage(std::make_unique<detail::autoclass_storage>(dynamic_unbox,
+                                                                std::move(name))),
           m_type(nullptr),
           m_spec({m_storage->strings.front().data(),
                   static_cast<int>(sizeof(object)),

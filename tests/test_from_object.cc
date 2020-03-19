@@ -318,4 +318,27 @@ TEST_F(from_object, autoclass_mut_ref_wrong_type) {
     EXPECT_THROW(py::from_object<S&>(ob), py::invalid_conversion);
     PyErr_Clear();
 }
+
+TEST_F(from_object, autoclass_ref_non_default_base_ob) {
+    struct base {
+        PyObject ob;
+        int extra_data;
+    };
+
+    struct S {
+        int val;
+
+        S(int val) : val(val) {}
+    };
+
+    auto type = py::autoclass<S, base>("S").type();
+    auto ob = py::autoclass<S, base>::construct(12);
+    ASSERT_TRUE(ob);
+
+    S& ref = py::from_object<S&>(ob);
+    EXPECT_EQ(ref.val, 12);
+
+    S& unboxed = py::autoclass<S, base>::unbox(ob);
+    EXPECT_EQ(&ref, &unboxed);
+}
 }  // namespace test_from_object
