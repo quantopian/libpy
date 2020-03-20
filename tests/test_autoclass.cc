@@ -1021,4 +1021,104 @@ TEST_F(autoclass, iter_throws) {
     PyErr_Clear();
 }
 #endif  // LIBPY_AUTOCLASS_UNSAFE_API
+
+TEST_F(autoclass, interface_type_is_abstract) {
+    struct interface {
+        virtual ~interface() = 0;
+    };
+
+    auto interface_type = py::autoclass_interface<interface>("interface").type();
+    auto inst = py::call_function(static_cast<PyObject*>(interface_type));
+    EXPECT_FALSE(inst);
+    expect_pyerr_type_and_message(PyExc_TypeError,
+                                  "cannot create instances of abstract type interface");
+    PyErr_Clear();
+}
+
+TEST_F(autoclass, interface_instance_without_interface_type) {
+    struct interface {
+        virtual ~interface() = default;
+
+        virtual std::string f() const = 0;
+    };
+
+    struct impl : public interface {
+        std::string f() const override {
+            return "impl";
+        }
+    };
+
+    EXPECT_THROW((py::autoclass_interface_instance<impl, interface>("impl").type()),
+                 std::runtime_error);
+}
+
+TEST_F(autoclass, interface_type_access_through_concrete) {
+    struct interface {
+        virtual ~interface() = default;
+
+        virtual std::string f() const = 0;
+    };
+
+    struct impl : public interface {
+        std::string f() const override {
+            return "impl";
+        }
+    };
+
+    auto interface_type = py::autoclass_interface<interface>("interface").type();
+    auto instance_type = py::autoclass_interface_instance<impl, interface>("impl").type();
+
+    auto inst = py::autoclass_interface_instance<impl, interface>::construct();
+    ASSERT_TRUE(inst);
+
+    auto& unboxed = py::from_object<impl&>(inst);
+    EXPECT_EQ(unboxed.f(), "impl");
+}
+
+TEST_F(autoclass, interface_type_access_through_interface) {
+    struct interface {
+        virtual ~interface() = default;
+
+        virtual std::string f() const = 0;
+    };
+
+    struct impl : public interface {
+        std::string f() const override {
+            return "impl";
+        }
+    };
+
+    auto interface_type = py::autoclass_interface<interface>("interface").type();
+    auto instance_type = py::autoclass_interface_instance<impl, interface>("impl").type();
+
+    auto inst = py::autoclass_interface_instance<impl, interface>::construct();
+    ASSERT_TRUE(inst);
+
+    auto& unboxed = py::from_object<interface&>(inst);
+    EXPECT_EQ(unboxed.f(), "impl");
+}
+
+TEST_F(autoclass, interface_type_inherited_method) {
+    struct interface {
+        virtual ~interface() = default;
+
+        virtual std::string f() const = 0;
+    };
+
+    struct impl : public interface {
+        std::string f() const override {
+            return "impl";
+        }
+    };
+
+    [[maybe_unused]] auto interface_type =
+        py::autoclass_interface<interface>("interface").def<&interface::f>("f").type();
+    auto instance_type = py::autoclass_interface_instance<impl, interface>("impl").type();
+
+    auto inst = py::autoclass_interface_instance<impl, interface>::construct();
+    ASSERT_TRUE(inst);
+
+    auto res = py::from_object<std::string>(py::call_method_throws(inst, "f"));
+    EXPECT_EQ(res, "impl");
+}
 }  // namespace test_autoclass
