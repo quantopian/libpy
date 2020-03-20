@@ -134,6 +134,14 @@ public:
     }
 };
 
+template<typename T>
+struct from_object<std::reference_wrapper<T>> {
+public:
+    static std::reference_wrapper<T> f(borrowed_ref<> ob) {
+        return from_object<T&>::f(ob);
+    }
+};
+
 template<std::size_t n>
 struct from_object<std::array<char, n>> {
     static std::array<char, n> f(py::borrowed_ref<> cs) {
