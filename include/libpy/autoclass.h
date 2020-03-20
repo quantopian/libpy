@@ -36,105 +36,23 @@ template<typename T>
 constexpr void nop_clear_base(T*) {}
 }  // namespace detail
 
-/** A factory for generating a Python class that wraps instances of a C++ type.
-
-    @tparam T The C++ type to be wrapped.
-    @tparam base The static base type of the Python instances created.
-    @tparam initialize_base A function used to initialize the Python base object.
-    @tparam clear_base A function used to clear the Python base object fields.
-
-    ### Usage
-
-    To create a new Python type for an object that wraps a C++ type, `my_type`,
-    you can write the following:
-
-    \code
-    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
-    \endcode
-
-    The resulting type will have a `__name__` of "PythonName", and a
-    `__module__` of "modname".
-
-    By default, types created with `autoclass` expose no functionality to
-    Python, not even a constructor. To add a constructor to your python object,
-    invoke the `.new_` method of the `autoclass`, templated with the C++
-    signature of the constructor. For example, to create a constructor that
-    accepts an int and a double, we would write:
-
-    \code
-    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
-                                         .new_<int, double>()
-                                         .type();
-    \endcode
-
-    Only one constructor overload may be exposed to Python because Python
-    doesn't support function overloading. If a constructor is not provided,
-    instances can only be constructed from C++ using
-    `py::autoclass<my_type>::construct(Args&&...)`.
-
-    To expose methods of your C++ type to Python, call `.def`, templated on the
-    address of the C++ method you want to expose, and pass the name of the
-    Python method to generate. For example, to expose a C++ method called `foo`
-    as a Python method named `bar`, we would write:
-
-    \code
-    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
-                                         .new_<int, double>()
-                                         .def<&my_type::foo>("bar")
-                                         .type();
-    \endcode
-
-    ### Subclassing Existing Python Types
-
-    Python instances are composed of two parts:
-
-    - A static C or C++ type that defines the layout of instances in memory. A
-    - runtime value of type `PyTypeObject`, which represents the Python type of
-      the object.
-
-    An object's static type must contain at least the state defined by the base
-    `PyObject` struct, which includes a `PyTypeObject*` that points to the
-    object's python type. In general, there is a one-to-many relationship
-    between static object layouts and Python types (i.e. `PyTypeObject*`s).
-    Objects of a given Python type always have the same layout, but multiple
-    objects of different Python types may have the same layout if they have the
-    same state. For example, the standard Python exceptions all have the same
-    layout (defined by the `PyBaseExceptionObject` struct), but they have
-    different Python types so that users can catch specific exceptions types.
-
-    By default, Python objects defined with `autoclass<T>.type()` will have a
-    layout that looks like:
-
-    \code
-    class autoclass_object : public PyObject {
-        T value;
-    };
-    \endcode
-
-    The `PyTypeObject` returned by `autoclass::type` will be a (Python) subclass
-    of Python's `object` type.
-
-    In rare cases, it may be useful to use autoclass to define a type that
-    subclasses from a Python type other than `object`. To support this use-case,
-    `autoclass` allows you to provide a few optional arguments:
-
-    - `base`: the static instance type to subclass instead of `PyObject`.
-    - `initialize_base`: a function which initializes the non-`PyObject` fields
-       of the `base` struct.
-    - `clear_base`: a function which tears down the non-`PyObject` fields of the
-      `base` struct.
-
-    By default, the non-`PyObject` fields of `base` will just be zeroed and no
-    cleanup is performed. Subclassing existing Python types is an advanced
-    autoclass feature and is not guaranteed to be safe in all configurations.
-    Please use this feature with care.
- */
+// forward declare for use in autoclass_impl for iterator stuff
 template<typename T,
          typename base = PyObject,
          auto initialize_base = zero_non_pyobject_base<base>,
          auto clear_base = detail::nop_clear_base<base>>
-class autoclass {
+struct autoclass;
+
+namespace detail {
+template<typename concrete,
+         typename T,
+         typename object = autoclass_object<T>,
+         auto initialize_base = zero_non_pyobject_base<PyObject>,
+         auto clear_base = nop_clear_base<PyObject>>
+class autoclass_impl {
 private:
+    using base = typename object::base;
+
     /** Marker that statically asserts that the unsafe API is enabled.
 
         Call this function first in any top-level function that is part of the unsafe API.
@@ -158,11 +76,9 @@ private:
     }
 
 public:
-    using object = detail::autoclass_object<T, base>;
-
     template<typename U>
     static T& unbox(const U& ptr) {
-        return object::unbox(ptr);
+        return static_cast<T&>(object::unbox(ptr));
     }
 
 private:
@@ -179,17 +95,51 @@ private:
         return m_spec.flags & Py_TPFLAGS_HAVE_GC;
     }
 
+    template<typename, auto>
+    struct free_function_impl;
+
+    template<typename, auto>
+    struct member_function_impl;
+
+    template<bool cond,
+             template<typename, auto>
+             typename true_template,
+             template<typename, auto>
+             typename false_template,
+             typename F,
+             auto f>
+    struct conditional_template {
+        using type = true_template<F, f>;
+    };
+
+    template<template<typename, auto> typename true_template,
+             template<typename, auto>
+             typename false_template,
+             typename F,
+             auto f>
+    struct conditional_template<false, true_template, false_template, F, f> {
+        using type = false_template<F, f>;
+    };
+
     /** Helper for adapting a member function of `T` into a Python method.
+
+        NOTE JJ: we shouldn't need to split the partial specializations across
+        different types for free functions and member functions; however, GCC
+        9.3 fails to compile this code (though clang accepts it) when they are
+        merged. It appears that the code for pointer to member function pattern
+        matching is broken when there are any partial specializations for free
+        functions. `conditional_template` works like `std::conditional` except
+        it accepts template template parameters instead of type parameters. The
+        conditional template ensures we don't try specializing the template is
+        causing issues.
      */
     template<typename F, auto f>
-    struct member_function;
-
-    template<auto impl, typename R, typename... Args>
-    struct pointer_to_member_function_base {
-        static R f(PyObject* self, Args... args) {
-            return (unbox(self).*impl)(std::forward<Args>(args)...);
-        }
-    };
+    using python_member_function =
+        typename conditional_template<std::is_member_function_pointer_v<F>,
+                                      member_function_impl,
+                                      free_function_impl,
+                                      F,
+                                      f>::type;
 
     template<auto impl, typename R, typename... Args>
     struct free_function_base {
@@ -198,55 +148,61 @@ private:
         }
     };
 
-    // dispatch for non-const member function
-    template<typename C, typename R, typename... Args, auto impl>
-    struct member_function<R (C::*)(Args...), impl>
-        : public pointer_to_member_function_base<impl, R, Args...> {};
-
-    // dispatch for non-const noexcept member function
-    template<typename C, typename R, typename... Args, auto impl>
-    struct member_function<R (C::*)(Args...) noexcept, impl>
-        : public pointer_to_member_function_base<impl, R, Args...> {};
-
-    // dispatch for const member function
-    template<typename C, typename R, typename... Args, auto impl>
-    struct member_function<R (C::*)(Args...) const, impl>
-        : public pointer_to_member_function_base<impl, R, Args...> {};
-
-    // dispatch for const noexcept member function
-    template<typename C, typename R, typename... Args, auto impl>
-    struct member_function<R (C::*)(Args...) const noexcept, impl>
-        : public pointer_to_member_function_base<impl, R, Args...> {};
-
     // dispatch for free function that accepts as a first argument `T`
     template<typename R, typename... Args, auto impl>
-    struct member_function<R(T, Args...), impl>
+    struct free_function_impl<R(T, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for free function that accepts as a first argument `T&`
     template<typename R, typename... Args, auto impl>
-    struct member_function<R(T&, Args...), impl>
+    struct free_function_impl<R(T&, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for free function that accepts as a first argument `const T&`
     template<typename R, typename... Args, auto impl>
-    struct member_function<R(const T&, Args...), impl>
+    struct free_function_impl<R(const T&, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for a noexcept free function that accepts as a first argument `T`
     template<typename R, typename... Args, auto impl>
-    struct member_function<R(T, Args...) noexcept, impl>
+    struct free_function_impl<R(T, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for noexcept free function that accepts as a first argument `T&`
     template<typename R, typename... Args, auto impl>
-    struct member_function<R(T&, Args...) noexcept, impl>
+    struct free_function_impl<R(T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for a noexcept free function that accepts as a first argument `const T&`
     template<typename R, typename... Args, auto impl>
-    struct member_function<R(const T&, Args...) noexcept, impl>
+    struct free_function_impl<R(const T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
+
+    template<auto impl, typename R, typename... Args>
+    struct pointer_to_member_function_base {
+        static R f(PyObject* self, Args... args) {
+            return (unbox(self).*impl)(std::forward<Args>(args)...);
+        }
+    };
+    // dispatch for non-const member function
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function_impl<R (C::*)(Args...), impl>
+        : public pointer_to_member_function_base<impl, R, Args...> {};
+
+    // dispatch for non-const noexcept member function
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function_impl<R (C::*)(Args...) noexcept, impl>
+        : public pointer_to_member_function_base<impl, R, Args...> {};
+
+    // dispatch for const member function
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function_impl<R (C::*)(Args...) const, impl>
+        : public pointer_to_member_function_base<impl, R, Args...> {};
+
+    // dispatch for const noexcept member function
+    template<typename C, typename R, typename... Args, auto impl>
+    struct member_function_impl<R (C::*)(Args...) const noexcept, impl>
+        : public pointer_to_member_function_base<impl, R, Args...> {};
 
     /** Assert that `m_storage->type` isn't yet initialized. Many operations like adding
        methods will not have any affect after the type is initialized.
@@ -261,8 +217,8 @@ private:
     }
 
 protected:
-    template<typename, typename, auto, auto>
-    friend class autoclass;
+    template<typename, typename, typename, auto, auto>
+    friend class autoclass_impl;
 
     /** Add a slot to the spec.
 
@@ -270,9 +226,9 @@ protected:
         @param to_add The value of the slot.
      */
     template<typename U>
-    autoclass& add_slot(int slot_id, U* to_add) {
+    concrete& add_slot(int slot_id, U* to_add) {
         m_slots.push_back(PyType_Slot{slot_id, reinterpret_cast<void*>(to_add)});
-        return *this;
+        return *static_cast<concrete*>(this);
     }
 
 private:
@@ -363,7 +319,7 @@ private:
         @param base_type A potentially null pointer to the Python base type.
         @return The `tp_flags` to use for this autoclass generated type.
      */
-    static unsigned int flags(int extra_flags, PyTypeObject* base_type) {
+    static unsigned int flags(int extra_flags, py::borrowed_ref<PyTypeObject> base_type) {
         unsigned int out = detail::autoclass_base_flags;
         out |= extra_flags;
         if (base_type && base_type->tp_flags & Py_TPFLAGS_HAVE_GC) {
@@ -377,9 +333,9 @@ private:
     }
 
 public:
-    autoclass(std::string name = util::type_name<T>(),
-              int extra_flags = 0,
-              PyTypeObject* base_type = nullptr)
+    autoclass_impl(std::string name = util::type_name<T>(),
+                   int extra_flags = 0,
+                   py::borrowed_ref<PyTypeObject> base_type = nullptr)
         : m_storage(std::make_unique<detail::autoclass_storage>(dynamic_unbox,
                                                                 std::move(name))),
           m_type(nullptr),
@@ -412,7 +368,7 @@ public:
                     "autoclass type's base type"};
             }
 
-            add_slot(Py_tp_base, base_type);
+            add_slot(Py_tp_base, base_type.get());
         }
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
         if (type_search != detail::autoclass_type_cache.get().end()) {
@@ -445,9 +401,9 @@ public:
     // Delete the copy constructor, the intermediate string data points into
     // storage that is managed by the type until `.type()` is called.
     // Also, don't try to create 2 versions of the same type.
-    autoclass(const autoclass&) = delete;
-    autoclass(autoclass&&) = default;
-    autoclass& operator=(autoclass&&) = default;
+    autoclass_impl(const autoclass_impl&) = delete;
+    autoclass_impl(autoclass_impl&&) = default;
+    autoclass_impl& operator=(autoclass_impl&&) = default;
 
     /** Add a `tp_traverse` field to this type. This is only allowed, but required if
         `extra_flags & Py_TPFLAGS_HAVE_GC`.
@@ -456,7 +412,7 @@ public:
                      `int(T&, visitproc, void*)` or `int (T::*)(visitproc, void*)`.
      */
     template<auto impl>
-    autoclass& traverse() {
+    concrete& traverse() {
         require_uninitialized(
             "cannot add traverse method after the class has been created");
 
@@ -485,7 +441,7 @@ public:
                      `int(T&)` or `int (T::*)()`.
      */
     template<auto impl>
-    autoclass& clear() {
+    concrete& clear() {
         require_uninitialized("cannot add clear method after the class has been created");
 
         if (!have_gc()) {
@@ -511,7 +467,7 @@ public:
         @param doc
         @return *this.
      */
-    autoclass& doc(std::string doc) {
+    concrete& doc(std::string doc) {
         require_uninitialized("cannot add docstring after the class has been created");
 
         std::string& copied_doc = m_storage->strings.emplace_front(std::move(doc));
@@ -609,7 +565,7 @@ public:
         @return *this.
      */
     template<auto impl>
-    autoclass& new_() {
+    concrete& new_() {
         require_uninitialized("cannot add __new__ after the class has been created");
 
         PyObject* (*new_)(PyTypeObject*, PyObject*, PyObject*);
@@ -628,7 +584,7 @@ public:
         @return *this.
      */
     template<typename... ConstructorArgs>
-    autoclass& new_() {
+    concrete& new_() {
         require_uninitialized("cannot add __new__ after the class has been created");
 
         PyObject* (*new_)(PyTypeObject*, PyObject*, PyObject*);
@@ -670,7 +626,7 @@ private:
 public:
     /** Add a `__len__` method from `T::size()`
      */
-    autoclass& len() {
+    concrete& len() {
         // this isn't really unsafe, but it is just dumb without `iter()` or `mapping()`.
         unsafe_api();
         require_uninitialized("cannot add size method after the class has been created");
@@ -854,7 +810,7 @@ public:
         @tparam BinOpRHSTypes The types to consider as valid RHS types for arithmetic.
      */
     template<typename... BinOpRHSTypes>
-    autoclass& arithmetic() {
+    concrete& arithmetic() {
         require_uninitialized(
             "cannot add arithmetic methods after the class has been created");
 
@@ -870,7 +826,7 @@ public:
         add_slot(Py_nb_and, arith_func<T, meta::op::and_, RHS>);
         add_slot(Py_nb_xor, arith_func<T, meta::op::xor_, RHS>);
         add_slot(Py_nb_or, arith_func<T, meta::op::or_, RHS>);
-        return *this;
+        return *static_cast<concrete*>(this);
     }
 
 private:
@@ -907,7 +863,7 @@ public:
                 comparisons.
     */
     template<typename... BinOpRHSTypes>
-    autoclass& comparisons() {
+    concrete& comparisons() {
         static_assert(sizeof...(BinOpRHSTypes) > 0,
                       "comparisons() requires at least one BinOpRHSTypes");
 
@@ -943,14 +899,14 @@ public:
         `operator-`, `operator+`, and `operator~` respectively.  interface.
 
      */
-    autoclass& unary() {
+    concrete& unary() {
         require_uninitialized(
             "cannot add unary operator methods after the class has been created");
 
         add_slot(Py_nb_negative, get_unop_func<T, meta::op::neg>(0));
         add_slot(Py_nb_positive, get_unop_func<T, meta::op::pos>(0));
         add_slot(Py_nb_invert, get_unop_func<T, meta::op::inv>(0));
-        return *this;
+        return *static_cast<concrete*>(this);
     }
 
 private:
@@ -999,7 +955,7 @@ public:
     /** Add conversions to `int`, `float`, and `bool` by delegating to
         `static_cast<U>(T)`.
      */
-    autoclass& conversions() {
+    concrete& conversions() {
         require_uninitialized(
             "cannot add conversion methods after the class has been created");
 
@@ -1007,7 +963,7 @@ public:
         add_slot(Py_nb_int, get_convert_func<T, std::int64_t>(0));
         add_slot(Py_nb_float, get_convert_func<T, double>(0));
         add_slot(Py_nb_bool, get_convert_bool_func<T>(0));
-        return *this;
+        return *static_cast<concrete*>(this);
     }
 
 private:
@@ -1057,14 +1013,14 @@ public:
                 the `__setitem__` method will not be generated.
      */
     template<typename KeyType, typename ValueType = void>
-    autoclass& mapping() {
+    concrete& mapping() {
         unsafe_api();
         require_uninitialized("cannot add mapping methods after type has been created");
 
         add_slot(Py_mp_subscript, get_getitem_func<T, KeyType>());
         add_slot(Py_mp_ass_subscript, get_setitem_func<T, KeyType, ValueType>(0));
         add_slot(Py_mp_length, maybe_get_length_func<T>(0));
-        return *this;
+        return *static_cast<concrete*>(this);
     }
 
     /** Add a method to this class.
@@ -1082,7 +1038,7 @@ public:
         @return *this.
      */
     template<auto impl, int flags = 0>
-    autoclass& def(std::string name) {
+    concrete& def(std::string name) {
         require_uninitialized("cannot add methods after the class has been created");
 
         std::string& name_copy = m_storage->strings.emplace_front(std::move(name));
@@ -1091,9 +1047,10 @@ public:
         }
         else {
             m_storage->methods.emplace_back(
-                automethod<member_function<decltype(impl), impl>::f>(name_copy.data()));
+                automethod<python_member_function<decltype(impl), impl>::f>(
+                    name_copy.data()));
         }
-        return *this;
+        return *static_cast<concrete*>(this);
     }
 
     /** Add a method to this class.
@@ -1109,7 +1066,7 @@ public:
         @return *this.
      */
     template<auto impl, int flags = 0>
-    autoclass& def(std::string name, std::string doc) {
+    concrete& def(std::string name, std::string doc) {
         require_uninitialized("cannot add methods after the class has been created");
 
         std::string& name_copy = m_storage->strings.emplace_front(std::move(name));
@@ -1120,10 +1077,10 @@ public:
         }
         else {
             m_storage->methods.emplace_back(
-                automethod<member_function<decltype(impl), impl>::f>(name_copy.data(),
-                                                                     doc_copy.data()));
+                automethod<python_member_function<decltype(impl), impl>::f>(
+                    name_copy.data(), doc_copy.data()));
         }
-        return *this;
+        return *static_cast<concrete*>(this);
     }
 
 private:
@@ -1198,7 +1155,7 @@ public:
     /** Add a `__iter__` which produces objects of a further `autoclass` generated type
         that holds onto the iterator-sentinel pair for this type.
     */
-    autoclass& iter() {
+    concrete& iter() {
         unsafe_api();
         require_uninitialized(
             "cannot add iteration methods after class has been created");
@@ -1231,7 +1188,7 @@ private:
 public:
     /** Add a `__hash__` which uses `std::hash<T>::operator()`.
      */
-    autoclass& hash() {
+    concrete& hash() {
         require_uninitialized("cannot add a hash method after class has been created");
 
         return add_slot(Py_tp_hash, get_hash_func<T>());
@@ -1246,7 +1203,7 @@ private:
         using type = std::invoke_result_t<U, Args...>;
 
         static decltype(auto) call(PyObject* self, Args... args) {
-            return (autoclass<U>::unbox(self)(args...));
+            return (autoclass_impl<concrete, U, object>::unbox(self)(args...));
         }
     };
 
@@ -1266,7 +1223,7 @@ public:
                      `__call__`.
      */
     template<typename... Args>
-    autoclass& callable() {
+    concrete& callable() {
         require_uninitialized("cannot add a call method after class has been created");
 
         return add_slot(Py_tp_call, get_call_func<T, std::tuple<Args...>>());
@@ -1295,7 +1252,7 @@ private:
 public:
     /** Add a `__str__` method which uses `operator<<(std::ostrea&, T)`.
      */
-    autoclass& str() {
+    concrete& str() {
         require_uninitialized("cannot add a str method after class has been created");
 
         return add_slot(Py_tp_str, get_str_func<T>());
@@ -1327,7 +1284,7 @@ public:
         interpreted as utf-8.
      */
     template<auto impl>
-    autoclass& repr() {
+    concrete& repr() {
         require_uninitialized("cannot add a str method after class has been created");
 
         return add_slot(Py_tp_repr, get_repr_func<impl>());
@@ -1483,6 +1440,346 @@ public:
             }
         }
     };
+};
+}  // namespace detail
+
+/** A factory for generating a Python class that wraps instances of a C++ type.
+
+    @tparam T The C++ type to be wrapped.
+    @tparam base The static base type of the Python instances created.
+    @tparam initialize_base A function used to initialize the Python base object.
+    @tparam clear_base A function used to clear the Python base object fields.
+
+    ### Usage
+
+    To create a new Python type for an object that wraps a C++ type, `my_type`,
+    you can write the following:
+
+    \code
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
+    \endcode
+
+    The resulting type will have a `__name__` of "PythonName", and a
+    `__module__` of "modname".
+
+    By default, types created with `autoclass` expose no functionality to
+    Python, not even a constructor. To add a constructor to your python object,
+    invoke the `.new_` method of the `autoclass`, templated with the C++
+    signature of the constructor. For example, to create a constructor that
+    accepts an int and a double:
+
+    \code
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+                                         .new_<int, double>()
+                                         .type();
+    \endcode
+
+    Only one constructor overload may be exposed to Python because Python
+    doesn't support function overloading. If a constructor is not provided,
+    instances can only be constructed from C++ using
+    `py::autoclass<my_type>::construct(Args&&...)`.
+
+    To expose methods of your C++ type to Python, call `.def`, templated on the
+    address of the C++ method you want to expose, and pass the name of the
+    Python method to generate. For example, to expose a C++ method called `foo`
+    as a Python method named `bar`:
+
+    \code
+    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+                                         .new_<int, double>()
+                                         .def<&my_type::foo>("bar")
+                                         .type();
+    \endcode
+
+    ### Subclassing Existing Python Types
+
+    Python instances are composed of two parts:
+
+    - A static C or C++ type that defines the layout of instances in memory. A
+    - runtime value of type `PyTypeObject`, which represents the Python type of
+      the object.
+
+    An object's static type must contain at least the state defined by the base
+    `PyObject` struct, which includes a `PyTypeObject*` that points to the
+    object's python type. In general, there is a one-to-many relationship
+    between static object layouts and Python types (i.e. `PyTypeObject*`s).
+    Objects of a given Python type always have the same layout, but multiple
+    objects of different Python types may have the same layout if they have the
+    same state. For example, the standard Python exceptions all have the same
+    layout (defined by the `PyBaseExceptionObject` struct), but they have
+    different Python types so that users can catch specific exceptions types.
+
+    By default, Python objects defined with `autoclass<T>.type()` will have a
+    layout that looks like:
+
+    \code
+    class autoclass_object : public PyObject {
+        T value;
+    };
+    \endcode
+
+    The `PyTypeObject` returned by `autoclass::type` will be a (Python) subclass
+    of Python's `object` type.
+
+    In rare cases, it may be useful to use autoclass to define a type that
+    subclasses from a Python type other than `object`. To support this use-case,
+    `autoclass` allows you to provide a few optional arguments:
+
+    - `base`: the static instance type to subclass instead of `PyObject`.
+    - `initialize_base`: a function which initializes the non-`PyObject` fields
+       of the `base` struct.
+    - `clear_base`: a function which tears down the non-`PyObject` fields of the
+      `base` struct.
+
+    By default, the non-`PyObject` fields of `base` will just be zeroed and no
+    cleanup is performed. Subclassing existing Python types is an advanced
+    autoclass feature and is not guaranteed to be safe in all configurations.
+    Please use this feature with care.
+ */
+template<typename T, typename base, auto initialize_base, auto clear_base>
+struct autoclass final
+    : public detail::autoclass_impl<autoclass<T, base, initialize_base, clear_base>,
+                                    T,
+                                    detail::autoclass_object<T, base>,
+                                    initialize_base,
+                                    clear_base> {
+    using detail::autoclass_impl<autoclass,
+                                 T,
+                                 detail::autoclass_object<T, base>,
+                                 initialize_base,
+                                 clear_base>::autoclass_impl;
+};
+
+namespace detail {
+template<typename object>
+void initialize_interface_type(typename object::base* ptr) {
+    // initalize the virt_storage_ptr to the address of the wrapped value
+    ptr->virt_storage_ptr = std::addressof(static_cast<object*>(ptr)->value);
+}
+}  // namespace detail
+
+/** Create a Python interface type from a C++ polymorphic type.
+
+    @tparam I The polymorphic type to adapt.
+
+    ### Purpose
+
+    Given a polymorphic type in C++,  want to be able to adapt concrete
+    subclasses of the base type to Python types and have the following:
+
+    - `isinstance(PythonConcreteType, PythonBaseType)`
+    - `py::from_object<const base_type&>.virtual_method()` resolves to derived
+      type's implementation.
+    - No undefined casts.
+
+    ### Creating Python Types
+
+    \code
+    // some type with virtual methods
+    struct interface {
+        ~interface();
+
+        std::string f() const = 0;
+    };
+
+    // a concrete type that implements the interface
+    struct concrete_a : public interface{
+        std::string f() const override {
+            return  "concrete_a::f()";
+        }
+    };
+
+    // a second concrete type that implements the interface
+    struct concrete_b : public interface{
+    private:
+        std::string m_state;
+
+    public:
+        concrete_b(std::string_view state) : m_state(state) {}
+
+        std::string f() const override {
+            return  "concrete_b::f(): "s + m_state;
+        }
+
+        int non_interface_method() const {
+            return 42;
+        }
+    };
+    \endcode
+
+    To adapt these types to Python, first define the Python base type by using
+    `py::autoclass_interface`:
+
+    \code
+    py::scoped_ref interface_pytype =
+        py::autoclass_interface<I>("Interface").type();
+    \endcode
+
+    An interface looks mostly like a regular `py::autoclass` with one key
+    restriction: `new_()` may not be called and the resulting Python type is
+    abstract.
+
+    In the example above, none of the interface methods were defined on the
+    types; however, interface methods may be defined on the interface adapting
+    Python type and then be inherited by all types that implement this
+    interface. Adding methods is the same as `py::automethod`:
+
+    \code
+    py::scoped_ref interface_pytype =
+        py::autoclass_interface<I>("Interface")
+        .def<&interface::f>("f")
+        .type();
+    \endcode
+
+    Now, the Python interface type has an `f` method, which is implemented by
+    doing a virtual lookup of `f` on wrapped C++ data.
+
+    To register instances of an interface, you must use
+    `py::autoclass_interface_instance`. For example:
+
+    \code
+    py::scoped_ref concrete_a_pytype =
+        py::autoclass_interface_instance<concrete_a, interface>("ConcreteA")
+        .new_()
+        .type();
+
+    py::scoped_ref concrete_b_pytype =
+        py::autoclass_interface_instance<concrete_b, interface>("ConcreteB")
+        .new_<std::string_view>()
+        .def<&concrete_b::non_interface_method>("non_interface_method")
+        .type();
+    \endcode
+
+    Note that neither adapters for the concrete derived types needed to add the
+    `f` method; however, it will be accessible from Python. Each concrete type
+    may have different constructors or include extra non-interface methods.
+
+    NOTE: To find the Python base class to give the Python types created by
+    `py::autoclass_interface_instance`, the autoclass type cache is used. This
+    means that the Python type object returned by `py::autoclass_interface` must
+    not be destroyed before the call to `py::autoclass_interface_instance`.
+    `py::autoclass_interface_instance` take an owning reference to the type, so
+    you won't need to artificially extend its lifetime.
+
+    ### Consuming Interfaces in C++
+
+    The primary reason to use an interface type over a regular `py::autoclass`
+    is to be able to get polymorphic references to instances in C++. To get a
+    polymorphic reference to an object which is an instance of a type created by
+    `py::autoclass_interface_instance`, use `py::from_object<const
+    interface&>(ob)` or `py::from_object<interface&>(ob)`. Because
+    `autofunction` defaults to using `py::from_objects` to adapt argument,
+    polymorphic reference parameters may be adapted.
+
+    As an example, a free function will be added to the same module that
+    contains the Python adapted types for `interface`, `concrete_a`, and
+    `concrete_b`:
+
+    \code
+    std::string which_f(const interface& ob) {
+        return "called: "s + f();
+    }
+    \endcode
+
+    Below is some Python code that illustrates the behavior of the given types
+    and function.
+
+    \code
+    from extension_module import Interface, ConcreteA, ConcreteB, which_f
+
+    a = ConcreteA()
+    b = ConcreteB(b'state')
+
+    assert issubclass(ConcreteA, Interface)
+    assert issubclass(ConcreteB, Interface)
+
+    assert isinstance(a, ConcreteA)
+    assert isinstance(a, Interface)
+
+    assert isinstance(b, ConcreteB)
+    assert isinstance(a, Interface)
+
+    which_f(a)  # b'called: concrete_a::f()'
+    which_f(b)  # b'called: concrete_b::f() state'
+    \endcode
+ */
+template<typename I>
+struct autoclass_interface final
+    : public detail::autoclass_impl<autoclass_interface<I>,
+                                    I,
+                                    detail::autoclass_interface_object<I>> {
+    static_assert(std::is_polymorphic_v<I>, "interface types must be polymorphic");
+
+private:
+    static PyObject* disabled_new(PyTypeObject* cls, PyObject*) {
+        py::raise(PyExc_TypeError)
+            << "cannot create instances of abstract type " << cls->tp_name;
+        return nullptr;
+    }
+
+public:
+    autoclass_interface(std::string name = util::type_name<I>(), int extra_flags = 0)
+        : detail::autoclass_impl<autoclass_interface<I>,
+                                 I,
+                                 detail::autoclass_interface_object<I>>(
+              std::move(name),
+              extra_flags | Py_TPFLAGS_BASETYPE) {
+
+        // explicitly disable the new, `new_()` cannot be called to overwrite this
+        this->add_slot(Py_tp_new, disabled_new);
+    }
+
+    template<auto impl, typename U = I>
+    [[noreturn]] autoclass_interface& new_() {
+        static_assert(!std::is_same_v<U, U>, "cannot add a new to interface types");
+    }
+
+    template<typename U = I, typename... ConstructorArgs>
+    [[noreturn]] autoclass_interface& new_() {
+        static_assert(!std::is_same_v<U, U>, "cannot add a new to interface types");
+    }
+};
+
+/** Create an instance of a `py::autoclass_interface`.
+
+    @param T The concrete C++ type which is a derived type of the interface type
+          `I`.
+    @param I The C++ type which defines the interface.
+    @note `I` must have already been adapted with `py::autoclass_interface` and
+          the resulting Python type object must still be alive during this call.
+    @see py::autoclass_interface
+ */
+template<typename T, typename I>
+struct autoclass_interface_instance final
+    : public detail::autoclass_impl<
+          autoclass_interface_instance<T, I>,
+          T,
+          detail::autoclass_interface_instance_object<T, I>,
+          detail::initialize_interface_type<
+              detail::autoclass_interface_instance_object<T, I>>> {
+    static_assert(std::is_base_of_v<I, T>, "interface type is not a base of T");
+
+private:
+    static py::scoped_ref<PyTypeObject> resolve_pybase() {
+        auto res = py::autoclass_interface<I>::lookup_type();
+        if (!res) {
+            throw std::runtime_error{
+                "cannot find Python type for the C++ interface type"};
+        }
+        return res;
+    }
+
+public:
+    autoclass_interface_instance(std::string name = util::type_name<T>(),
+                                 int extra_flags = 0)
+        : detail::autoclass_impl<autoclass_interface_instance,
+                                 T,
+                                 detail::autoclass_interface_instance_object<T, I>,
+                                 detail::initialize_interface_type<
+                                     detail::autoclass_interface_instance_object<T, I>>>(
+              std::move(name),
+              extra_flags,
+              resolve_pybase()) {}
 };
 
 template<typename T>
