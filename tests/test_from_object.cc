@@ -341,4 +341,41 @@ TEST_F(from_object, autoclass_ref_non_default_base_ob) {
     S& unboxed = py::autoclass<S, base>::unbox(ob);
     EXPECT_EQ(&ref, &unboxed);
 }
+
+TEST_F(from_object, autoclass_const_ref_wrapper) {
+    struct S {
+        int val;
+
+        S(int val) : val(val) {}
+    };
+
+    auto type = py::autoclass<S>("S").type();
+    auto ob = py::autoclass<S>::construct(12);
+    ASSERT_TRUE(ob);
+
+    auto const_ref = py::from_object<std::reference_wrapper<const S>>(ob);
+    EXPECT_EQ(const_ref.get().val, 12);
+
+    auto& unboxed = py::autoclass<S>::unbox(ob);
+    EXPECT_EQ(&const_ref.get(), &unboxed);
+}
+
+TEST_F(from_object, autoclass_mut_ref_wrapper) {
+    struct S {
+        int val;
+
+        S(int val) : val(val) {}
+    };
+
+    auto type = py::autoclass<S>("S").type();
+    auto ob = py::autoclass<S>::construct(12);
+    ASSERT_TRUE(ob);
+
+    auto mut_ref = py::from_object<std::reference_wrapper<S>>(ob);
+    EXPECT_EQ(mut_ref.get().val, 12);
+
+    auto& unboxed = py::autoclass<S>::unbox(ob);
+    EXPECT_EQ(&mut_ref.get(), &unboxed);
+}
+
 }  // namespace test_from_object
