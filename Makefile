@@ -79,7 +79,6 @@ else
 	SONAME_FLAG := soname
 	SONAME_PATH := $(SONAME)
 	LDFLAGS += $(shell $(PYTHON)-config --ldflags)
-	LDFLAGS += -lstdc++fs
 	LD_PRELOAD_VAR := LD_PRELOAD
 endif
 
