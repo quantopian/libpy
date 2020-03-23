@@ -26,7 +26,7 @@ constexpr bool defer_check = cond;
 // used.
 template<typename T = void>
 std::filesystem::path fs_path(py::borrowed_ref<> ob) {
-    if constexpr(PY_VERSION_HEX >= 0x03060000) {
+    if constexpr (PY_VERSION_HEX >= 0x03060000) {
         py::scoped_ref path_obj{PyOS_FSPath(ob.get())};
 
         if (!path_obj) {
@@ -45,9 +45,8 @@ std::filesystem::path fs_path(py::borrowed_ref<> ob) {
     }
     else {
         static_assert(detail::defer_check<T, (PY_VERSION_HEX >= 0x03060000)>,
-                  "cannot use fs_path in Python older than 3.6");
+                      "cannot use fs_path in Python older than 3.6");
     }
 }
-
 
 }  // namespace py::filesystem
