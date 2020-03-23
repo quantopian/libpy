@@ -17,7 +17,7 @@ template<typename T, bool cond>
 constexpr bool defer_check = cond;
 }  // namespace detail
 
-
+#if PY_VERSION_HEX >= 0x03060000
 /** Get an std::filesystem::path from an object implementing __fspath__
 
     @param ob Object implementing __fspath__.
@@ -25,11 +25,8 @@ constexpr bool defer_check = cond;
 */
 // make this a template to defer the static_assert check until the function is
 // used.
-template<typename T = void>
 std::filesystem::path fs_path(py::borrowed_ref<> ob) {
-    static_assert(detail::defer_check<T, (PY_VERSION_HEX >= 0x03060000)>,
-                  "cannot use fs_path in Python older than 3.6");
-    #if PY_VERSION_HEX >= 0x03060000
+
     py::scoped_ref path_obj{PyOS_FSPath(ob.get())};
 
     if (!path_obj) {
@@ -45,11 +42,7 @@ std::filesystem::path fs_path(py::borrowed_ref<> ob) {
     }
 
     return path;
-    #else
-    return std::filesystem::path();
-
-    #endif
 }
-
+#endif
 
 }  // namespace py::filesystem
