@@ -7,7 +7,7 @@ using namespace std::literals;
 class filesystem : public with_python_interpreter {};
 
 TEST_F(filesystem, to_path) {
-#if PY_VERSION_HEX >= 0x0306
+#if PY_VERSION_HEX >= 0x03060000
     py::scoped_ref ns = RUN_PYTHON(R"(
         class C(object):
             def __fspath__(self):

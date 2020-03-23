@@ -17,6 +17,7 @@ template<typename T, bool cond>
 constexpr bool defer_check = cond;
 }  // namespace detail
 
+#if PY_VERSION_HEX >= 0x03060000
 /** Get an std::filesystem::path from an object implementing __fspath__
 
     @param ob Object implementing __fspath__.
@@ -45,5 +46,6 @@ std::filesystem::path fs_path(py::borrowed_ref<> ob) {
 
     return path;
 }
+#endif
 
 }  // namespace py::filesystem
