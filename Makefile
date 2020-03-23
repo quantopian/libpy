@@ -74,6 +74,10 @@ ifeq ($(OS),Darwin)
 	SONAME_PATH := @rpath/$(SONAME)
 	LDFLAGS += -undefined dynamic_lookup
 	LD_PRELOAD_VAR := DYLD_INSERT_LIBRARIES
+ifeq ($(COMPILER),GCC)
+	# #sparseahash uses realloc which osx+gcc are not happy about
+	CXXFLAGS += -Wno-class-memaccess
+endif
 else
 	CXXFLAGS += -fstack-protector-strong
 	SONAME_FLAG := soname
