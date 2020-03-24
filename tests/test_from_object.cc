@@ -253,6 +253,43 @@ TEST_F(from_object, object_map_key) {
     EXPECT_EQ(Py_REFCNT(ob), starting_ref_count + 1);
 }
 
+TEST_F(from_object, to_path) {
+#if PY_VERSION_HEX >= 0x03060000
+    py::scoped_ref ns = RUN_PYTHON(R"(
+        class C(object):
+            def __fspath__(self):
+                return "/tmp/"
+
+        ob = C()
+        good = "/tmp/"
+        goodb = b"/tmp/"
+        bad = 4
+    )");
+    ASSERT_TRUE(ns);
+    std::filesystem::path test_path = "/tmp/";
+
+    PyObject* ob = PyDict_GetItemString(ns.get(), "ob");
+    ASSERT_TRUE(ob);
+    EXPECT_EQ(test_path, py::from_object<std::filesystem::path>(ob));
+
+    PyObject* good = PyDict_GetItemString(ns.get(), "good");
+    ASSERT_TRUE(good);
+    EXPECT_EQ(test_path, py::from_object<std::filesystem::path>(good));
+
+    PyObject* goodb = PyDict_GetItemString(ns.get(), "goodb");
+    ASSERT_TRUE(goodb);
+    EXPECT_EQ(test_path, py::from_object<std::filesystem::path>(goodb));
+
+    PyObject* bad = PyDict_GetItemString(ns.get(), "bad");
+    ASSERT_TRUE(bad);
+    EXPECT_THROW(auto bad_path = py::from_object<std::filesystem::path>(bad), py::exception);
+    expect_pyerr_type_and_message(PyExc_TypeError,
+                                  "expected str, bytes or os.PathLike object, not int");
+    PyErr_Clear();
+#endif
+}
+
+
 TEST_F(from_object, autoclass_const_ref) {
     struct S {
         int val;
