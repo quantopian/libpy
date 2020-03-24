@@ -129,7 +129,7 @@ public:
 
             // NOTE: the parentheses change the behavior of `decltype(auto)` to make
             // this resolve to a return type of `T&` instead of `T`
-            return (*reinterpret_cast<T*>(search->second->unbox(ob)));
+            return (*static_cast<T*>(search->second->unbox(ob)));
         }
     }
 };
