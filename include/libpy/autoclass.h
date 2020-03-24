@@ -373,7 +373,7 @@ private:
     }
 
     static void* dynamic_unbox(py::borrowed_ref<> ob) {
-        return reinterpret_cast<void*>(std::addressof(unbox(ob)));
+        return static_cast<void*>(std::addressof(unbox(ob)));
     }
 
 public:
