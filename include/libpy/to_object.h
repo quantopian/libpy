@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -12,6 +13,7 @@
 
 #include "libpy/char_sequence.h"
 #include "libpy/detail/python.h"
+#include "libpy/exception.h"
 #include "libpy/scoped_ref.h"
 #include "libpy/singletons.h"
 #include "libpy/str_convert.h"
@@ -132,6 +134,33 @@ template<>
 struct to_object<std::string_view> {
     static py::scoped_ref<> f(const std::string_view& cs) {
         return py::scoped_ref{PyBytes_FromStringAndSize(cs.data(), cs.size())};
+    }
+};
+
+template<>
+struct to_object<std::filesystem::path> {
+    static py::scoped_ref<> f(const std::filesystem::path& path) {
+        py::scoped_ref path_str{
+            PyUnicode_FromStringAndSize(path.c_str(), strlen(path.c_str()))};
+#if PY_VERSION_HEX >= 0x03040000
+        py::scoped_ref pathlib(PyImport_ImportModule("pathlib"));
+        if (!pathlib) {
+            throw py::exception();
+        }
+        py::scoped_ref pathclass(PyObject_GetAttrString(pathlib.get(), "Path"));
+        if (!pathclass) {
+            throw py::exception();
+        }
+
+        py::scoped_ref path_obj{
+            PyObject_CallFunctionObjArgs(pathclass.get(), path_str.get(), NULL)};
+        if (!path_obj) {
+            throw py::exception();
+        }
+        return path_obj;
+#else
+        return path_str;
+#endif
     }
 };
 
