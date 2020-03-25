@@ -283,7 +283,7 @@ TEST_F(to_object, filesystem_path) {
     py::scoped_ref py_path_ob{PyDict_GetItemString(ns.get(), "py_path")};
     ASSERT_TRUE(py_path_ob);
 #else
-    py::scoped_ref py_path_ob = py::to_object("/tmp/")
+    py::scoped_ref py_path_ob = py::to_object("/tmp/");
 
 #endif
     int eq = PyObject_RichCompareBool(ob.get(), py_path_ob.get(), Py_EQ);
