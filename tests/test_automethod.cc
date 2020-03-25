@@ -531,9 +531,29 @@ TEST_F(automethod, optional_arg) {
     int unboxed = py::from_object<int>(res);
     EXPECT_EQ(unboxed, -1);
 
+    // explicitly passed None
+    res = py::call_function_throws(f, py::none);
+    unboxed = py::from_object<int>(res);
+    EXPECT_EQ(unboxed, -1);
+
     res = py::call_function_throws(f, 12);
     unboxed = py::from_object<int>(res);
     EXPECT_EQ(unboxed, 12);
+}
+
+int optional_arg_none_isnt_missing(py::arg::opt<int, false> a) {
+    return a.get().value_or(-1);
+}
+
+TEST_F(automethod, optional_arg_none_isnt_missing) {
+    auto f = make_f<optional_arg_none_isnt_missing>("f");
+
+    auto res = py::call_function(f, py::none);
+    EXPECT_FALSE(res);
+    expect_pyerr_type_and_message(PyExc_TypeError,
+                                  "failed to convert Python object of type NoneType to a "
+                                  "C++ object of type int: ob=None");
+    PyErr_Clear();
 }
 
 int req_then_optional_arg(int a, py::arg::opt<int> b) {
@@ -652,15 +672,51 @@ TEST_F(automethod, opt_keyword_arg) {
     int unboxed = py::from_object<int>(res);
     EXPECT_EQ(unboxed, -1);
 
+    // positional explicit None
+    res = py::call_function_throws(f, py::none);
+    unboxed = py::from_object<int>(res);
+    EXPECT_EQ(unboxed, -1);
+
     // call positionally
     res = py::call_function_throws(f, 12);
     unboxed = py::from_object<int>(res);
     EXPECT_EQ(unboxed, 12);
 
+    // kw explicit None
+    res = EVAL_PYTHON("f(kw_arg=None)", {{"f", f}});
+    ASSERT_TRUE(res);
+    unboxed = py::from_object<int>(res);
+    EXPECT_EQ(unboxed, -1);
+
+    // kw value
     res = EVAL_PYTHON("f(kw_arg=12)", {{"f", f}});
     ASSERT_TRUE(res);
     unboxed = py::from_object<int>(res);
     EXPECT_EQ(unboxed, 12);
+}
+
+int opt_keyword_arg_none_isnt_missing(
+    py::arg::opt_kwd<decltype("kw_arg"_cs), int, false> kw_arg) {
+    return kw_arg.get().value_or(-1);
+}
+
+TEST_F(automethod, opt_keyword_arg_none_isnt_missing) {
+    auto f = make_f<opt_keyword_arg_none_isnt_missing>("f");
+
+    auto res = py::call_function(f, py::none);
+    EXPECT_FALSE(res);
+    expect_pyerr_type_and_message(PyExc_TypeError,
+                                  "failed to convert Python object of type NoneType to a "
+                                  "C++ object of type int: ob=None");
+    PyErr_Clear();
+
+    // kw explicit None
+    res = EVAL_PYTHON("f(kw_arg=None)", {{"f", f}});
+    EXPECT_FALSE(res);
+    expect_pyerr_type_and_message(PyExc_TypeError,
+                                  "failed to convert Python object of type NoneType to a "
+                                  "C++ object of type int: ob=None");
+    PyErr_Clear();
 }
 
 struct non_copyable_type {

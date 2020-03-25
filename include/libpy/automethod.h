@@ -197,7 +197,7 @@ public:
 /** A wrapper for specifying that a function accepts an optional argument
     from Python.
  */
-template<typename T>
+template<typename T, bool none_is_missing = true>
 class optional {
 private:
     std::optional<T> m_value;
@@ -224,8 +224,8 @@ public:
 
 // partial specialization to peek through the `keyword` type to avoid
 // `.get().get()` calls.
-template<typename Name, typename T>
-struct optional<keyword<Name, T>> {
+template<typename Name, typename T, bool none_is_missing>
+struct optional<keyword<Name, T>, none_is_missing> {
 private:
     std::optional<T> m_value;
 
@@ -255,11 +255,11 @@ public:
 template<typename Name, typename T>
 using kwd = keyword<Name, T>;
 
-template<typename T>
-using opt = optional<T>;
+template<typename T, bool none_is_missing = true>
+using opt = optional<T, none_is_missing>;
 
-template<typename Name, typename T>
-using opt_kwd = opt<kwd<Name, T>>;
+template<typename Name, typename T, bool none_is_missing = true>
+using opt_kwd = opt<kwd<Name, T>, none_is_missing>;
 }  // namespace arg
 
 namespace dispatch {
@@ -276,8 +276,8 @@ public:
     }
 };
 
-template<typename T>
-class adapt_argument<arg::optional<T>> {
+template<typename T, bool none_is_missing>
+class adapt_argument<arg::optional<T, none_is_missing>> {
 private:
     std::optional<dispatch::adapt_argument<T>> m_adapted;
 
@@ -285,12 +285,12 @@ public:
     adapt_argument() = default;
 
     adapt_argument(py::borrowed_ref<> ob) {
-        if (ob) {
+        if (ob && !(none_is_missing && ob.get() == Py_None)) {
             m_adapted = adapt_argument<T>{ob};
         }
     }
 
-    arg::optional<T> get() {
+    arg::optional<T, none_is_missing> get() {
         if (m_adapted) {
             return m_adapted->get();
         }
@@ -298,8 +298,8 @@ public:
     }
 };
 
-template<typename Name, typename T>
-class adapt_argument<arg::optional<arg::keyword<Name, T>>> {
+template<typename Name, typename T, bool none_is_missing>
+class adapt_argument<arg::optional<arg::keyword<Name, T>, none_is_missing>> {
 private:
     std::optional<dispatch::adapt_argument<T>> m_adapted;
 
@@ -307,12 +307,12 @@ public:
     adapt_argument() = default;
 
     adapt_argument(py::borrowed_ref<> ob) {
-        if (ob) {
+        if (ob && !(none_is_missing && ob.get() == Py_None)) {
             m_adapted = adapt_argument<T>{ob};
         }
     }
 
-    arg::optional<arg::keyword<Name, T>> get() {
+    arg::optional<arg::keyword<Name, T>, none_is_missing> get() {
         if (m_adapted) {
             return m_adapted->get();
         }
@@ -341,8 +341,8 @@ public:
     using keywords = typename R::keywords;
 };
 
-template<std::size_t ix, typename T, typename... Ts>
-struct optionals_and_keywords<ix, arg::optional<T>, Ts...> {
+template<std::size_t ix, typename T, typename... Ts, bool none_is_missing>
+struct optionals_and_keywords<ix, arg::optional<T, none_is_missing>, Ts...> {
 private:
     using R = optionals_and_keywords<ix + 1, Ts...>;
 
@@ -367,8 +367,10 @@ public:
     using keywords = meta::type_cat<std::tuple<keyword<Name, ix>>, typename R::keywords>;
 };
 
-template<std::size_t ix, typename Name, typename T, typename... Ts>
-struct optionals_and_keywords<ix, arg::optional<arg::keyword<Name, T>>, Ts...> {
+template<std::size_t ix, typename Name, typename T, typename... Ts, bool none_is_missing>
+struct optionals_and_keywords<ix,
+                              arg::optional<arg::keyword<Name, T>, none_is_missing>,
+                              Ts...> {
 private:
     using R = optionals_and_keywords<ix + 1, Ts...>;
 
