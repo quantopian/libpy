@@ -141,7 +141,7 @@ template<>
 struct to_object<std::filesystem::path> {
     static py::scoped_ref<> f(const std::filesystem::path& path) {
         py::scoped_ref path_str{
-            PyUnicode_FromStringAndSize(path.c_str(), strlen(path.c_str()))};
+            PyUnicode_FromStringAndSize(path.c_str(), path.native().length())};
 #if PY_VERSION_HEX >= 0x03040000
         py::scoped_ref pathlib(PyImport_ImportModule("pathlib"));
         if (!pathlib) {
