@@ -253,7 +253,7 @@ TEST_F(from_object, object_map_key) {
     EXPECT_EQ(Py_REFCNT(ob), starting_ref_count + 1);
 }
 
-TEST_F(from_object, to_path) {
+TEST_F(from_object, path) {
 #if PY_VERSION_HEX >= 0x03060000
     py::scoped_ref ns = RUN_PYTHON(R"(
         class C(object):
