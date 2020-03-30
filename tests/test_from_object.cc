@@ -270,15 +270,15 @@ TEST_F(from_object, to_path) {
 
     py::borrowed_ref<> ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
-    EXPECT_EQ(test_path, py::from_object<std::filesystem::path>(ob));
+    EXPECT_EQ(py::from_object<std::filesystem::path>(ob), test_path);
 
     py::borrowed_ref<> good = PyDict_GetItemString(ns.get(), "good");
     ASSERT_TRUE(good);
-    EXPECT_EQ(test_path, py::from_object<std::filesystem::path>(good));
+    EXPECT_EQ(py::from_object<std::filesystem::path>(good), test_path);
 
     py::borrowed_ref<> goodb = PyDict_GetItemString(ns.get(), "goodb");
     ASSERT_TRUE(goodb);
-    EXPECT_EQ(test_path, py::from_object<std::filesystem::path>(goodb));
+    EXPECT_EQ(py::from_object<std::filesystem::path>(goodb), test_path);
 
     py::borrowed_ref<> bad = PyDict_GetItemString(ns.get(), "bad");
     ASSERT_TRUE(bad);
