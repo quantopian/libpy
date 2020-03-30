@@ -249,7 +249,7 @@ struct from_object<std::filesystem::path> {
 #if PY_VERSION_HEX < 0x03060000
         static_assert(detail::defer_check<T, (PY_VERSION_HEX >= 0x03060000)>,
                       "cannot use fs_path in Python older than 3.6");
-        return std::filesystem::path();
+        throw std::runtime_error("cannot use fs_path in Python older than 3.6")
 #else
         py::scoped_ref path_obj{PyOS_FSPath(ob.get())};
 
