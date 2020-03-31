@@ -425,7 +425,7 @@ TEST_F(array_view_extra, from_buffer_protocol) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* view = PyDict_GetItemString(ns.get(), "view");
+    py::borrowed_ref view = PyDict_GetItemString(ns.get(), "view");
     ASSERT_TRUE(view);
 
     auto [array_view, buf] = py::array_view<double>::from_buffer_protocol(view);

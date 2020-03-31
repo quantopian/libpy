@@ -13,7 +13,7 @@ TEST_F(call_function, basic) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* f = PyDict_GetItemString(ns.get(), "f");
+    py::borrowed_ref f = PyDict_GetItemString(ns.get(), "f");
     ASSERT_TRUE(f);
 
     // Python functions are duck-typed, `f` should be callable with both ints and strings
@@ -38,7 +38,7 @@ TEST_F(call_function, exception) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* f = PyDict_GetItemString(ns.get(), "f");
+    py::borrowed_ref f = PyDict_GetItemString(ns.get(), "f");
     ASSERT_TRUE(f);
 
     py::scoped_ref<> result = py::call_function(f);
@@ -60,7 +60,7 @@ TEST_F(call_function, method) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* ob = PyDict_GetItemString(ns.get(), "ob");
+    py::borrowed_ref ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
 
     // Python functions are duck-typed, `f` should be callable with both ints and doubles
@@ -88,7 +88,7 @@ TEST_F(call_function, method_exception) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* ob = PyDict_GetItemString(ns.get(), "ob");
+    py::borrowed_ref ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
 
     py::scoped_ref<> result = py::call_method(ob, "f");
@@ -113,7 +113,7 @@ TEST_F(call_function_throws, basic) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* f = PyDict_GetItemString(ns.get(), "f");
+    py::borrowed_ref f = PyDict_GetItemString(ns.get(), "f");
     ASSERT_TRUE(f);
 
     // Python functions are duck-typed, `f` should be callable with both ints and strings
@@ -138,7 +138,7 @@ TEST_F(call_function_throws, exception) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* f = PyDict_GetItemString(ns.get(), "f");
+    py::borrowed_ref f = PyDict_GetItemString(ns.get(), "f");
     ASSERT_TRUE(f);
 
     EXPECT_THROW(py::call_function_throws(f), py::exception);
@@ -159,7 +159,7 @@ TEST_F(call_function_throws, method) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* ob = PyDict_GetItemString(ns.get(), "ob");
+    py::borrowed_ref ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
 
     // Python functions are duck-typed, `f` should be callable with both ints and doubles
@@ -187,7 +187,7 @@ TEST_F(call_function_throws, method_exception) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* ob = PyDict_GetItemString(ns.get(), "ob");
+    py::borrowed_ref ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
 
     EXPECT_THROW(py::call_method_throws(ob, "f"), py::exception);
