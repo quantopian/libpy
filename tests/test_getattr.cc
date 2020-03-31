@@ -19,17 +19,17 @@ TEST_F(getattr, simple) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     py::owned_ref<> actual = py::getattr(A, "b");
     ASSERT_TRUE(actual);
 
-    PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
+    py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
     ASSERT_TRUE(expected);
 
     // compare them using object identity
-    EXPECT_EQ(actual.get(), expected);
+    EXPECT_EQ(actual, expected);
 }
 
 TEST_F(getattr, attribute_error) {
@@ -39,7 +39,7 @@ TEST_F(getattr, attribute_error) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     py::owned_ref<> actual = py::getattr(A, "b");
@@ -60,17 +60,17 @@ TEST_F(getattr, nested) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     py::owned_ref<> actual = py::nested_getattr(A, "B", "C", "d");
     ASSERT_TRUE(actual);
 
-    PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
+    py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
     ASSERT_TRUE(expected);
 
     // compare them using object identity
-    EXPECT_EQ(actual.get(), expected);
+    EXPECT_EQ(actual, expected);
 }
 
 TEST_F(getattr, nested_failure) {
@@ -82,7 +82,7 @@ TEST_F(getattr, nested_failure) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     // attempt to access a few fields past the end of the real attribute chain.
@@ -104,17 +104,17 @@ TEST_F(getattr_throws, simple) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     py::owned_ref<> actual = py::getattr_throws(A, "b");
     ASSERT_TRUE(actual);
 
-    PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
+    py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
     ASSERT_TRUE(expected);
 
     // compare them using object identity
-    EXPECT_EQ(actual.get(), expected);
+    EXPECT_EQ(actual, expected);
 }
 
 TEST_F(getattr_throws, attribute_error) {
@@ -124,7 +124,7 @@ TEST_F(getattr_throws, attribute_error) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     EXPECT_THROW(py::getattr_throws(A, "b"), py::exception);
@@ -144,17 +144,17 @@ TEST_F(getattr_throws, nested) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     py::owned_ref<> actual = py::nested_getattr_throws(A, "B", "C", "d");
     ASSERT_TRUE(actual);
 
-    PyObject* expected = PyDict_GetItemString(ns.get(), "expected");
+    py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
     ASSERT_TRUE(expected);
 
     // compare them using object identity
-    EXPECT_EQ(actual.get(), expected);
+    EXPECT_EQ(actual, expected);
 }
 
 TEST_F(getattr_throws, nested_failure) {
@@ -166,7 +166,7 @@ TEST_F(getattr_throws, nested_failure) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* A = PyDict_GetItemString(ns.get(), "A");
+    py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
     // attempt to access a few fields past the end of the real attribute chain.

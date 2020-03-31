@@ -22,7 +22,7 @@ TEST_F(dict_range, iteration) {
     ASSERT_TRUE(ns);
 
     {
-        PyObject* dict_0 = PyDict_GetItemString(ns.get(), "dict_0");
+        py::borrowed_ref dict_0 = PyDict_GetItemString(ns.get(), "dict_0");
         ASSERT_TRUE(dict_0);
 
         for ([[maybe_unused]] auto item : py::dict_range(dict_0)) {
@@ -31,7 +31,7 @@ TEST_F(dict_range, iteration) {
     }
 
     {
-        PyObject* dict_1 = PyDict_GetItemString(ns.get(), "dict_1");
+        py::borrowed_ref dict_1 = PyDict_GetItemString(ns.get(), "dict_1");
         ASSERT_TRUE(dict_1);
 
         std::unordered_map<std::string, std::int64_t> expected = {{"a"s, 1}};
@@ -46,7 +46,7 @@ TEST_F(dict_range, iteration) {
     }
 
     {
-        PyObject* dict_2 = PyDict_GetItemString(ns.get(), "dict_2");
+        py::borrowed_ref dict_2 = PyDict_GetItemString(ns.get(), "dict_2");
         ASSERT_TRUE(dict_2);
 
         std::unordered_map<std::string, std::int64_t> expected = {{"a"s, 1},

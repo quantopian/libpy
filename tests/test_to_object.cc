@@ -87,10 +87,10 @@ void test_map_to_object_impl(M m) {
             auto py_key = py::to_object(cxx_key);
             auto py_value = py::to_object(cxx_value);
 
-            PyObject* result = PyDict_GetItem(ob.get(), py_key.get());
+            py::borrowed_ref result = PyDict_GetItem(ob.get(), py_key.get());
             ASSERT_TRUE(result) << "Key should have been in the map";
 
-            bool values_equal = PyObject_RichCompareBool(py_value.get(), result, Py_EQ);
+            bool values_equal = PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
             EXPECT_EQ(values_equal, 1) << "Dict values were not equal";
         }
     };
@@ -137,10 +137,10 @@ void test_sequence_to_object_impl(V v) {
         for (auto [i, cxx_value] : py::enumerate(v)) {
             auto py_value = py::to_object(cxx_value);
 
-            PyObject* result = PyList_GetItem(ob.get(), i);
+            py::borrowed_ref result = PyList_GetItem(ob.get(), i);
             ASSERT_TRUE(result) << "Should have had a value at index " << i;
 
-            bool values_equal = PyObject_RichCompareBool(py_value.get(), result, Py_EQ);
+            bool values_equal = PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
             EXPECT_EQ(values_equal, 1)
                 << "List values at index " << i << " were not equal";
         }
@@ -267,6 +267,27 @@ TEST_F(to_object, owned_ref_nonstandard) {
     py::owned_ref ob = py::to_object(t);
     ASSERT_TRUE(ob);
     EXPECT_EQ(static_cast<PyObject*>(ob), static_cast<PyObject*>(t));
+}
+
+TEST_F(to_object, filesystem_path) {
+    std::filesystem::path test_path = "/tmp/";
+    py::owned_ref ob = py::to_object(test_path);
+    ASSERT_TRUE(ob);
+#if PY_VERSION_HEX >= 0x03040000
+    py::owned_ref ns = RUN_PYTHON(R"(
+        from pathlib import Path
+        py_path = Path("/tmp/")
+    )");
+    ASSERT_TRUE(ns);
+
+    py::owned_ref py_path_ob{PyDict_GetItemString(ns.get(), "py_path")};
+    ASSERT_TRUE(py_path_ob);
+#else
+    py::owned_ref py_path_ob = py::to_object("/tmp/");
+
+#endif
+    int eq = PyObject_RichCompareBool(ob.get(), py_path_ob.get(), Py_EQ);
+    EXPECT_EQ(eq, 1);
 }
 
 }  // namespace test_to_object

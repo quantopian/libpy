@@ -29,7 +29,7 @@ TEST_F(range, iteration) {
     ASSERT_TRUE(ns);
 
     {
-        PyObject* it_0 = PyDict_GetItemString(ns.get(), "it_0");
+        py::borrowed_ref it_0 = PyDict_GetItemString(ns.get(), "it_0");
         ASSERT_TRUE(it_0);
 
         for ([[maybe_unused]] auto item : py::range(it_0)) {
@@ -41,7 +41,7 @@ TEST_F(range, iteration) {
         std::vector<std::int64_t> expected = {1, 2, 3};
 
         for (const auto name : {"it_1", "it_2", "it_3"}) {
-            PyObject* it = PyDict_GetItemString(ns.get(), name);
+            py::borrowed_ref it = PyDict_GetItemString(ns.get(), name);
             ASSERT_TRUE(it);
 
             std::vector<std::int64_t> actual;
@@ -72,7 +72,7 @@ TEST_F(range, exception_in_next) {
     )");
     ASSERT_TRUE(ns);
 
-    PyObject* it = PyDict_GetItemString(ns.get(), "it");
+    py::borrowed_ref it = PyDict_GetItemString(ns.get(), "it");
     ASSERT_TRUE(it);
 
     std::vector<std::int64_t> expected = {1, 2};
