@@ -7,7 +7,7 @@ using namespace std::literals;
 class call_function : public with_python_interpreter {};
 
 TEST_F(call_function, basic) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         def f(a, b):
             return a + b
     )");
@@ -32,7 +32,7 @@ TEST_F(call_function, basic) {
 }
 
 TEST_F(call_function, exception) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         def f():
             raise ValueError('ayy lmao');
     )");
@@ -41,14 +41,14 @@ TEST_F(call_function, exception) {
     PyObject* f = PyDict_GetItemString(ns.get(), "f");
     ASSERT_TRUE(f);
 
-    py::scoped_ref<> result = py::call_function(f);
+    py::owned_ref<> result = py::call_function(f);
     EXPECT_FALSE(result);
     expect_pyerr_type_and_message(PyExc_ValueError, "ayy lmao");
     PyErr_Clear();
 }
 
 TEST_F(call_function, method) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class C(object):
             def __init__(self):
                 self.a = 1
@@ -79,7 +79,7 @@ TEST_F(call_function, method) {
 }
 
 TEST_F(call_function, method_exception) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class C(object):
             def f(self):
                 raise ValueError('ayy lmao')
@@ -91,7 +91,7 @@ TEST_F(call_function, method_exception) {
     PyObject* ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
 
-    py::scoped_ref<> result = py::call_method(ob, "f");
+    py::owned_ref<> result = py::call_method(ob, "f");
     EXPECT_FALSE(result);
     expect_pyerr_type_and_message(PyExc_ValueError, "ayy lmao");
     PyErr_Clear();
@@ -107,7 +107,7 @@ TEST_F(call_function, method_exception) {
 class call_function_throws : public with_python_interpreter {};
 
 TEST_F(call_function_throws, basic) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         def f(a, b):
             return a + b
     )");
@@ -132,7 +132,7 @@ TEST_F(call_function_throws, basic) {
 }
 
 TEST_F(call_function_throws, exception) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         def f():
             raise ValueError('ayy lmao');
     )");
@@ -147,7 +147,7 @@ TEST_F(call_function_throws, exception) {
 }
 
 TEST_F(call_function_throws, method) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class C(object):
             def __init__(self):
                 self.a = 1
@@ -178,7 +178,7 @@ TEST_F(call_function_throws, method) {
 }
 
 TEST_F(call_function_throws, method_exception) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class C(object):
             def f(self):
                 raise ValueError('ayy lmao')

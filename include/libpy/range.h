@@ -6,7 +6,7 @@
 #include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 
 namespace py {
 LIBPY_BEGIN_EXPORT
@@ -14,11 +14,11 @@ LIBPY_BEGIN_EXPORT
  */
 class range {
 private:
-    py::scoped_ref<> m_iterator;
+    py::owned_ref<> m_iterator;
 
     class iterator {
     public:
-        using value_type = py::scoped_ref<>;
+        using value_type = py::owned_ref<>;
         using reference = value_type&;
 
     private:

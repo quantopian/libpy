@@ -9,14 +9,14 @@
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/numpy_utils.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/to_object.h"
 
 namespace py {
 namespace detail {
 template<typename... Args>
-scoped_ref<> build_pyargs_tuple(Args&&... args) {
-    py::scoped_ref out(PyTuple_New(sizeof...(args)));
+owned_ref<> build_pyargs_tuple(Args&&... args) {
+    py::owned_ref out(PyTuple_New(sizeof...(args)));
     if (!out) {
         return nullptr;
     }
@@ -36,9 +36,9 @@ scoped_ref<> build_pyargs_tuple(Args&&... args) {
     @return The result of the function call or nullptr if an error occurred.
  */
 template<typename... Args>
-scoped_ref<> call_function(py::borrowed_ref<> function, Args&&... args) {
+owned_ref<> call_function(py::borrowed_ref<> function, Args&&... args) {
     auto pyargs = detail::build_pyargs_tuple(std::forward<Args>(args)...);
-    return scoped_ref(PyObject_CallObject(function.get(), pyargs.get()));
+    return owned_ref(PyObject_CallObject(function.get(), pyargs.get()));
 }
 
 /** Call a python function on C++ data.
@@ -50,9 +50,9 @@ scoped_ref<> call_function(py::borrowed_ref<> function, Args&&... args) {
             exception, a `py::exception` will be thrown.
  */
 template<typename... Args>
-scoped_ref<> call_function_throws(py::borrowed_ref<> function, Args&&... args) {
+owned_ref<> call_function_throws(py::borrowed_ref<> function, Args&&... args) {
     auto pyargs = detail::build_pyargs_tuple(std::forward<Args>(args)...);
-    scoped_ref res(PyObject_CallObject(function.get(), pyargs.get()));
+    owned_ref res(PyObject_CallObject(function.get(), pyargs.get()));
     if (!res) {
         throw py::exception{};
     }
@@ -68,9 +68,9 @@ scoped_ref<> call_function_throws(py::borrowed_ref<> function, Args&&... args) {
     @return The result of the method call or nullptr if an error occurred.
  */
 template<typename... Args>
-scoped_ref<>
+owned_ref<>
 call_method(py::borrowed_ref<> ob, const std::string& method, Args&&... args) {
-    scoped_ref bound_method(PyObject_GetAttrString(ob.get(), method.data()));
+    owned_ref bound_method(PyObject_GetAttrString(ob.get(), method.data()));
     if (!bound_method) {
         return nullptr;
     }
@@ -88,9 +88,9 @@ call_method(py::borrowed_ref<> ob, const std::string& method, Args&&... args) {
             Python exception, a `py::exception` will be thrown.
  */
 template<typename... Args>
-scoped_ref<>
+owned_ref<>
 call_method_throws(py::borrowed_ref<> ob, const std::string& method, Args&&... args) {
-    scoped_ref bound_method(PyObject_GetAttrString(ob.get(), method.data()));
+    owned_ref bound_method(PyObject_GetAttrString(ob.get(), method.data()));
     if (!bound_method) {
         throw py::exception{};
     }

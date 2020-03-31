@@ -4,7 +4,7 @@
 
 namespace py::detail {
 /** A wrapper which prevents a destructor from being called. This is useful for
-    static objects that hold `py::scoped_ref` objects which may not be able
+    static objects that hold `py::owned_ref` objects which may not be able
     to be cleaned up do to the interpreter state.
  */
 template<typename T>

@@ -634,7 +634,7 @@ TEST(table, reserve) {
 
 /** Expect that the keys of `dict` are python objects of type `expected_key_type`.
  */
-void expect_key_types(py::scoped_ref<> dict, PyTypeObject* expected_key_type) {
+void expect_key_types(py::owned_ref<> dict, PyTypeObject* expected_key_type) {
     ASSERT_TRUE(dict);
     for (auto [key, value] : py::dict_range::checked(dict)) {
         EXPECT_EQ(Py_TYPE(key), expected_key_type);

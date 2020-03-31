@@ -31,14 +31,14 @@ class automethod : public with_python_interpreter {
 
 public:
     template<auto f, int flags = 0>
-    py::scoped_ref<> make_meth(const char* name, const char* doc = nullptr) {
+    py::owned_ref<> make_meth(const char* name, const char* doc = nullptr) {
         name = m_strings.emplace_front(name).data();
         if (doc) {
             doc = m_strings.emplace_front(doc).data();
         }
 
         auto& meth = m_methods.emplace_front(py::automethod<f, flags>(name, doc));
-        py::scoped_ref out{PyCFunction_New(&meth, nullptr)};
+        py::owned_ref out{PyCFunction_New(&meth, nullptr)};
         if (!out) {
             throw py::exception{};
         }
@@ -46,14 +46,14 @@ public:
     }
 
     template<auto f, int flags = 0>
-    py::scoped_ref<> make_f(const char* name, const char* doc = nullptr) {
+    py::owned_ref<> make_f(const char* name, const char* doc = nullptr) {
         name = m_strings.emplace_front(name).data();
         if (doc) {
             doc = m_strings.emplace_front(doc).data();
         }
 
         auto& meth = m_methods.emplace_front(py::autofunction<f, flags>(name, doc));
-        py::scoped_ref out{PyCFunction_New(&meth, nullptr)};
+        py::owned_ref out{PyCFunction_New(&meth, nullptr)};
         if (!out) {
             throw py::exception{};
         }
@@ -171,20 +171,20 @@ TEST_F(automethod, string_view_argument) {
         EXPECT_EQ(hash, expected_hash);
     };
 
-    py::scoped_ref bytes{PyBytes_FromString(input_data.data())};
+    py::owned_ref bytes{PyBytes_FromString(input_data.data())};
     ASSERT_TRUE(bytes);
     test(bytes);
 
-    py::scoped_ref byte_array{
+    py::owned_ref byte_array{
         PyByteArray_FromStringAndSize(input_data.data(), input_data.size())};
     ASSERT_TRUE(byte_array);
     test(byte_array);
 
-    py::scoped_ref immutible_view{PyMemoryView_FromObject(bytes.get())};
+    py::owned_ref immutible_view{PyMemoryView_FromObject(bytes.get())};
     ASSERT_TRUE(immutible_view);
     test(immutible_view);
 
-    py::scoped_ref mutible_view{PyMemoryView_FromObject(byte_array.get())};
+    py::owned_ref mutible_view{PyMemoryView_FromObject(byte_array.get())};
     ASSERT_TRUE(mutible_view);
     test(mutible_view);
 }
@@ -202,7 +202,7 @@ TEST_F(automethod, const_ref_string_view_argument) {
 
     // Use a byte array, which cannot be converted into a string_view through just the
     // fallback `from_object` handler; we must go through the buffer protocol handler.
-    py::scoped_ref byte_array{
+    py::owned_ref byte_array{
         PyByteArray_FromStringAndSize(input_data.data(), input_data.size())};
     ASSERT_TRUE(byte_array);
 
@@ -233,7 +233,7 @@ TEST_F(automethod, array_view) {
     ASSERT_TRUE(ndarray);
     test(ndarray);
 
-    py::scoped_ref view{PyMemoryView_FromObject(ndarray.get())};
+    py::owned_ref view{PyMemoryView_FromObject(ndarray.get())};
     ASSERT_TRUE(view);
     test(view);
 }
@@ -263,7 +263,7 @@ TEST_F(automethod, array_view_wrong_ndim) {
                                   "argument must be a 1 dimensional array, got ndim=2");
     PyErr_Clear();
 
-    py::scoped_ref view{PyMemoryView_FromObject(ndarray.get())};
+    py::owned_ref view{PyMemoryView_FromObject(ndarray.get())};
     ASSERT_TRUE(view);
 
     res = py::call_function(f, view);
@@ -285,7 +285,7 @@ TEST_F(automethod, array_view_wrong_dtype) {
         PyExc_TypeError, "expected array of dtype: int32, got array of type: float32");
     PyErr_Clear();
 
-    py::scoped_ref view{PyMemoryView_FromObject(ndarray.get())};
+    py::owned_ref view{PyMemoryView_FromObject(ndarray.get())};
     ASSERT_TRUE(view);
 
     res = py::call_function(f, view);
@@ -375,7 +375,7 @@ TEST_F(automethod, two_dimensional_array_view) {
     ASSERT_TRUE(ndarray);
     test(ndarray);
 
-    py::scoped_ref view{PyMemoryView_FromObject(ndarray.get())};
+    py::owned_ref view{PyMemoryView_FromObject(ndarray.get())};
     ASSERT_TRUE(view);
     test(view);
 }
@@ -392,7 +392,7 @@ TEST_F(automethod, two_dimensional_array_view_wrong_ndim) {
                                   "argument must be a 2 dimensional array, got ndim=1");
     PyErr_Clear();
 
-    py::scoped_ref view{PyMemoryView_FromObject(ndarray.get())};
+    py::owned_ref view{PyMemoryView_FromObject(ndarray.get())};
     ASSERT_TRUE(view);
 
     res = py::call_function(f, view);
@@ -439,7 +439,7 @@ TEST_F(automethod, mut_any_ndarray_view) {
 
         if constexpr (!std::is_same_v<T, py::datetime64ns>) {
             // cannot take memoryview over datetime dtype arrays
-            py::scoped_ref view{PyMemoryView_FromObject(ndarray.get())};
+            py::owned_ref view{PyMemoryView_FromObject(ndarray.get())};
             ASSERT_TRUE(view);
             res = py::call_function_throws(f, view);
             auto [type_name, size, hash] =
@@ -498,7 +498,7 @@ TEST_F(automethod, immut_any_ndarray_view) {
 
         if constexpr (!std::is_same_v<T, py::datetime64ns>) {
             // cannot take memoryview over datetime dtype arrays
-            py::scoped_ref view{PyMemoryView_FromObject(ndarray.get())};
+            py::owned_ref view{PyMemoryView_FromObject(ndarray.get())};
             ASSERT_TRUE(view);
             res = py::call_function_throws(f, view);
             auto [type_name, size, hash] =

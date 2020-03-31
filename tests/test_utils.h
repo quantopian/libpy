@@ -8,7 +8,7 @@
 #include "libpy/call_function.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/util.h"
 
 inline void gc_collect() {
@@ -24,7 +24,7 @@ inline void expect_pyerr_type_and_message(PyObject* ptype, std::string_view pmsg
     PyErr_Fetch(&type, &value, &traceback);
     PyErr_Restore(type, value, traceback);
 
-    py::scoped_ref py_msg(PyObject_Str(value));
+    py::owned_ref py_msg(PyObject_Str(value));
     ASSERT_TRUE(py_msg);
     std::string_view c_msg = py::util::pystring_to_string_view(py_msg);
 
@@ -42,19 +42,19 @@ inline std::string format_current_python_exception() {
         return "<SystemExit>";
     }
 
-    py::scoped_ref sys(PyImport_ImportModule("sys"));
+    py::owned_ref sys(PyImport_ImportModule("sys"));
     if (!sys) {
         throw py::exception();
     }
 
-    py::scoped_ref buf(PyObject_GetAttrString(sys.get(), "stderr"));
+    py::owned_ref buf(PyObject_GetAttrString(sys.get(), "stderr"));
     if (!buf) {
         throw py::exception();
     }
 
     PyErr_Restore(exc[0], exc[1], exc[2]);
     PyErr_PrintEx(false);
-    py::scoped_ref contents = py::call_method(buf, "getvalue");
+    py::owned_ref contents = py::call_method(buf, "getvalue");
     if (!contents) {
         return "<unknown>";
     }
@@ -64,7 +64,7 @@ inline std::string format_current_python_exception() {
 class with_python_interpreter : public testing::Test {
 public:
     virtual void SetUp() override {
-        py::scoped_ref sys(PyImport_ImportModule("sys"));
+        py::owned_ref sys(PyImport_ImportModule("sys"));
         if (!sys) {
             throw py::exception();
         }
@@ -74,11 +74,11 @@ public:
 #else
         io_module_name = "io";
 #endif
-        py::scoped_ref io_module(PyImport_ImportModule(io_module_name));
+        py::owned_ref io_module(PyImport_ImportModule(io_module_name));
         if (!io_module) {
             throw py::exception();
         }
-        py::scoped_ref buf = py::call_method(io_module, "StringIO");
+        py::owned_ref buf = py::call_method(io_module, "StringIO");
         if (!buf) {
             throw py::exception();
         }
@@ -95,13 +95,13 @@ public:
 };
 
 namespace detail {
-inline py::scoped_ref<> run_python(
+inline py::owned_ref<> run_python(
     const std::string_view& python_source,
     const std::string_view& file,
     std::size_t line,
     bool eval,
-    const std::unordered_map<std::string, py::scoped_ref<>>& python_namespace = {}) {
-    py::scoped_ref py_ns{PyDict_New()};
+    const std::unordered_map<std::string, py::owned_ref<>>& python_namespace = {}) {
+    py::owned_ref py_ns{PyDict_New()};
 
     for (const auto [k, v] : python_namespace) {
         if (PyDict_SetItemString(py_ns.get(), k.data(), v.get())) {
@@ -109,7 +109,7 @@ inline py::scoped_ref<> run_python(
         }
     }
 
-    py::scoped_ref main_module(PyImport_ImportModule("__main__"));
+    py::owned_ref main_module(PyImport_ImportModule("__main__"));
     if (!main_module) {
         return nullptr;
     }
@@ -124,12 +124,12 @@ inline py::scoped_ref<> run_python(
         return nullptr;
     }
 
-    py::scoped_ref io(PyImport_ImportModule("io"));
+    py::owned_ref io(PyImport_ImportModule("io"));
     if (!io) {
         return nullptr;
     }
 
-    py::scoped_ref buf = py::call_method(io, "StringIO");
+    py::owned_ref buf = py::call_method(io, "StringIO");
     if (!buf) {
         return nullptr;
     }
@@ -155,7 +155,7 @@ inline py::scoped_ref<> run_python(
         full_source << "    __libpy_output = \\\n";
     }
     full_source << python_source;
-    py::scoped_ref code_object(
+    py::owned_ref code_object(
         Py_CompileString(full_source.str().data(), file.data(), Py_file_input));
     if (!code_object) {
         return nullptr;
@@ -167,7 +167,7 @@ inline py::scoped_ref<> run_python(
 #define LIBPY_CODE_CAST(x) (x)
 #endif
 
-    py::scoped_ref result(
+    py::owned_ref result(
         PyEval_EvalCode(LIBPY_CODE_CAST(code_object.get()), py_ns.get(), py_ns.get()));
 
 #undef LIBPY_CODE_CAST
@@ -178,7 +178,7 @@ inline py::scoped_ref<> run_python(
     if (!eval) {
         return py_ns;
     }
-    return py::scoped_ref<>::xnew_reference(
+    return py::owned_ref<>::xnew_reference(
         PyDict_GetItemString(py_ns.get(), "__libpy_output"));
 }
 }  // namespace detail
@@ -187,7 +187,7 @@ inline py::scoped_ref<> run_python(
 
     @param python_source The Python source code to run.
     @param namespace (optional) The Python namespace to evaluate in, this should be
-           an `unordered_map<std::string, py::scoped_ref<>>`
+           an `unordered_map<std::string, py::owned_ref<>>`
     @return namespace The namespace after running the Python code.
 */
 #define RUN_PYTHON(python_source, ...)                                                   \
@@ -197,7 +197,7 @@ inline py::scoped_ref<> run_python(
 
     @param python_source The Python source code to evaluate.
     @param namespace (optional) The Python namespace to evaluate in, this should be
-           an `unordered_map<std::string, py::scoped_ref<>>`
+           an `unordered_map<std::string, py::owned_ref<>>`
     @return The result of evaluating the given Python expression.
 */
 #define EVAL_PYTHON(python_source, ...)                                                  \

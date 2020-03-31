@@ -3,7 +3,7 @@
 
 #include "zip.h"
 
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 
 namespace py::zipfile {
 /** A zip archive represents a collection of zip entries.
@@ -130,9 +130,9 @@ public:
         @return A C++ tuple of the name of the entry and a new scoped reference to the
                 results.
      */
-    std::pair<std::string, py::scoped_ref<>> read_as_pybytes(std::size_t ix) {
+    std::pair<std::string, py::owned_ref<>> read_as_pybytes(std::size_t ix) {
         stat_result st = stat(ix);
-        py::scoped_ref out(PyBytes_FromStringAndSize(nullptr, st.size));
+        py::owned_ref out(PyBytes_FromStringAndSize(nullptr, st.size));
         if (!out) {
             throw py::exception();
         }
@@ -165,12 +165,12 @@ public:
 
     This function is meant to be exported to Python with `py::automethod`.
  */
-std::unordered_map<std::string, py::scoped_ref<>> pymethod_read(PyObject*,
+std::unordered_map<std::string, py::owned_ref<>> pymethod_read(PyObject*,
                                                                 const std::string& path) {
     archive z(path.data());
     std::size_t entries = z.size();
 
-    std::unordered_map<std::string, py::scoped_ref<>> out;
+    std::unordered_map<std::string, py::owned_ref<>> out;
 
     for (std::size_t n = 0; n < entries; ++n) {
         out.emplace(z.read_as_pybytes(n));

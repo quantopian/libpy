@@ -482,7 +482,7 @@ public:
 
         // flatten the args + kwargs into a single tuple to pass to
         // `positional_args`
-        py::scoped_ref<> flat(PyTuple_New(arity));
+        py::owned_ref<> flat(PyTuple_New(arity));
         if (!flat) {
             throw py::exception{};
         }

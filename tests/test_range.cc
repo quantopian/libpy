@@ -14,7 +14,7 @@ using namespace std::literals;
 class range : public with_python_interpreter {};
 
 TEST_F(range, iteration) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         it_0 = []
         it_1 = [1, 2, 3]
         it_2 = (1, 2, 3)
@@ -62,7 +62,7 @@ TEST_F(range, not_iterable) {
 }
 
 TEST_F(range, exception_in_next) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         def gen():
             yield 1
             yield 2

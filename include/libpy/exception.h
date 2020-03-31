@@ -9,7 +9,7 @@
 #include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/meta.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/util.h"
 
 namespace py {
@@ -48,7 +48,7 @@ struct raise_format<bool> {
 template<>
 struct raise_format<PyObject*> {
     static std::ostream& f(std::ostream& out, PyObject* value) {
-        py::scoped_ref as_str(PyObject_Str(value));
+        py::owned_ref as_str(PyObject_Str(value));
         if (!as_str) {
             out << "<error calling str on id=" << static_cast<void*>(value) << '>';
         }
@@ -74,8 +74,8 @@ struct raise_format<py::borrowed_ref<T>> {
 };
 
 template<typename T>
-struct raise_format<py::scoped_ref<T>> {
-    static std::ostream& f(std::ostream& out, const py::scoped_ref<T>& value) {
+struct raise_format<py::owned_ref<T>> {
+    static std::ostream& f(std::ostream& out, const py::owned_ref<T>& value) {
         return raise_format<PyObject*>::f(out, static_cast<PyObject*>(value));
     }
 };

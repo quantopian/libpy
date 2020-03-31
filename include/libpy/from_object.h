@@ -21,7 +21,7 @@
 #include "libpy/detail/python.h"
 #include "libpy/dict_range.h"
 #include "libpy/exception.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/util.h"
 
 namespace py {
@@ -34,7 +34,7 @@ public:
 
     template<typename ConvertTo>
     static invalid_conversion make(py::borrowed_ref<> ob) {
-        py::scoped_ref repr(PyObject_Repr(ob.get()));
+        py::owned_ref repr(PyObject_Repr(ob.get()));
         if (!repr) {
             throw py::exception("failed to call repr on ob");
         }
@@ -203,12 +203,12 @@ struct from_object<py::borrowed_ref<T>> {
     }
 };
 
-/** Identity conversion for `scoped_ref`.
+/** Identity conversion for `owned_ref`.
  */
 template<typename T>
-struct from_object<py::scoped_ref<T>> {
-    static scoped_ref<T> f(py::borrowed_ref<> ob) {
-        return scoped_ref<T>::new_reference(ob);
+struct from_object<py::owned_ref<T>> {
+    static owned_ref<T> f(py::borrowed_ref<> ob) {
+        return owned_ref<T>::new_reference(ob);
     }
 };
 
@@ -427,12 +427,12 @@ struct from_object<std::unordered_set<T>> {
 
         std::unordered_set<T> out;
 
-        py::scoped_ref it(PyObject_GetIter(s.get()));
+        py::owned_ref it(PyObject_GetIter(s.get()));
         if (!it) {
             throw py::exception("failed to make iterator");
         }
 
-        while (py::scoped_ref<> item{PyIter_Next(it.get())}) {
+        while (py::owned_ref<> item{PyIter_Next(it.get())}) {
             out.emplace(py::from_object<T>(item));
         }
         if (PyErr_Occurred()) {

@@ -33,8 +33,8 @@ struct any_vtable_impl {
     void (*destruct)(void* addr);
     bool (*ne)(const void* lhs, const void* rhs);
     bool (*eq)(const void* lhs, const void* rhs);
-    py::scoped_ref<> (*to_object)(const void* addr);
-    py::scoped_ref<PyArray_Descr> (*new_dtype)();
+    py::owned_ref<> (*to_object)(const void* addr);
+    py::owned_ref<PyArray_Descr> (*new_dtype)();
     std::ostream& (*ostream_format)(std::ostream& stream, const void* addr);
     std::string (*type_name)();
 };
@@ -86,7 +86,7 @@ inline constexpr any_vtable_impl any_vtable_instance = {
     [](const void* lhs, const void* rhs) -> bool {
         return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
     },
-    []([[maybe_unused]] const void* addr) -> scoped_ref<> {
+    []([[maybe_unused]] const void* addr) -> owned_ref<> {
         if constexpr (py::has_to_object<T>) {
             return py::to_object(*static_cast<const T*>(addr));
         }
@@ -97,7 +97,7 @@ inline constexpr any_vtable_impl any_vtable_instance = {
                                 " into Python object");
         }
     },
-    []() -> scoped_ref<PyArray_Descr> {
+    []() -> owned_ref<PyArray_Descr> {
         if constexpr (py::has_new_dtype<T>) {
             return py::new_dtype<T>();
         }
@@ -145,8 +145,8 @@ inline constexpr any_vtable_impl any_vtable_instance<void> = {
     [](void*) { void_vtable(); },
     [](const void*, const void*) -> bool { void_vtable(); },
     [](const void*, const void*) -> bool { void_vtable(); },
-    [](const void*) -> scoped_ref<> { void_vtable(); },
-    []() -> scoped_ref<PyArray_Descr> { void_vtable(); },
+    [](const void*) -> owned_ref<> { void_vtable(); },
+    []() -> owned_ref<PyArray_Descr> { void_vtable(); },
     [](std::ostream&, const void*) -> std::ostream& { void_vtable(); },
     []() { return py::util::type_name<void>(); },
 };
@@ -255,11 +255,11 @@ public:
         return m_impl->eq(lhs, rhs);
     }
 
-    inline scoped_ref<> to_object(const void* addr) const {
+    inline owned_ref<> to_object(const void* addr) const {
         return m_impl->to_object(addr);
     }
 
-    inline scoped_ref<PyArray_Descr> new_dtype() const {
+    inline owned_ref<PyArray_Descr> new_dtype() const {
         return m_impl->new_dtype();
     }
 
@@ -574,14 +574,14 @@ namespace dispatch {
  */
 template<>
 struct to_object<py::any_ref> {
-    static py::scoped_ref<> f(const py::any_ref& ref) {
+    static py::owned_ref<> f(const py::any_ref& ref) {
         return ref.vtable().to_object(ref.addr());
     }
 };
 
 template<>
 struct to_object<py::any_cref> {
-    static py::scoped_ref<> f(const py::any_cref& ref) {
+    static py::owned_ref<> f(const py::any_cref& ref) {
         return ref.vtable().to_object(ref.addr());
     }
 };
@@ -675,7 +675,7 @@ dtype_to_vtable(py::borrowed_ref<PyArray_Descr> dtype) {
             throw exception(PyExc_TypeError, "unknown datetime unit: ", unit);
         }
     case NPY_OBJECT:
-        return any_vtable::make<scoped_ref<>>();
+        return any_vtable::make<owned_ref<>>();
     case NPY_STRING:
         return detail::make_string_vtable(dtype->elsize);
     }

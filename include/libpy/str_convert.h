@@ -1,7 +1,7 @@
 #pragma once
 
 #include "libpy/char_sequence.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 
 namespace py {
 
@@ -20,24 +20,24 @@ enum class str_type {
     will be must be valid utf-8.
  */
 template<char... cs>
-scoped_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_type type) {
+owned_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_type type) {
     const auto as_null_terminated_array = py::cs::to_array(s);
     const char* data = as_null_terminated_array.data();
     Py_ssize_t size = sizeof...(cs);
 
     switch (type) {
     case py::str_type::bytes: {
-        return scoped_ref<>{PyBytes_FromStringAndSize(data, size)};
+        return owned_ref<>{PyBytes_FromStringAndSize(data, size)};
     }
     case py::str_type::str: {
 #if PY_MAJOR_VERSION == 2
-        return scoped_ref<>{PyString_FromStringAndSize(data, size)};
+        return owned_ref<>{PyString_FromStringAndSize(data, size)};
 #else
-        return scoped_ref<>{PyUnicode_FromStringAndSize(data, size)};
+        return owned_ref<>{PyUnicode_FromStringAndSize(data, size)};
 #endif
     }
     case py::str_type::unicode: {
-        return scoped_ref<>{PyUnicode_FromStringAndSize(data, size)};
+        return owned_ref<>{PyUnicode_FromStringAndSize(data, size)};
     }
     }
     __builtin_unreachable();

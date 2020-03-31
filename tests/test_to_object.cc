@@ -53,13 +53,13 @@ std::array<double, 3> examples() {
 }
 
 template<>
-std::array<py::scoped_ref<>, 3> examples() {
+std::array<py::owned_ref<>, 3> examples() {
     Py_INCREF(Py_True);
     Py_INCREF(Py_False);
     Py_INCREF(Py_None);
-    return {py::scoped_ref<>(Py_True),
-            py::scoped_ref<>(Py_False),
-            py::scoped_ref<>(Py_None)};
+    return {py::owned_ref<>(Py_True),
+            py::owned_ref<>(Py_False),
+            py::owned_ref<>(Py_None)};
 }
 
 template<typename M>
@@ -72,7 +72,7 @@ void test_map_to_object_impl(M m) {
         m[key] = value;
     }
 
-    auto check_python_map = [&](py::scoped_ref<PyObject> ob) {
+    auto check_python_map = [&](py::owned_ref<PyObject> ob) {
         ASSERT_TRUE(ob) << "to_object should not return null";
         EXPECT_TRUE(PyDict_Check(ob.get()));
 
@@ -97,15 +97,15 @@ void test_map_to_object_impl(M m) {
 
     // Check to_object with value, const value, and rvalue reference.
 
-    py::scoped_ref<PyObject> result = py::to_object(m);
+    py::owned_ref<PyObject> result = py::to_object(m);
     check_python_map(result);
 
     const M& const_ref = m;
-    py::scoped_ref<PyObject> constref_result = py::to_object(const_ref);
+    py::owned_ref<PyObject> constref_result = py::to_object(const_ref);
     check_python_map(constref_result);
 
     M copy = m;  // Make a copy before moving b/c the lambda above uses ``m``.
-    py::scoped_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
+    py::owned_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
     check_python_map(rvalueref_result);
 }
 
@@ -113,7 +113,7 @@ TEST_F(to_object, map_to_object) {
     // NOTE: This test takes a long time to compile (about a .5s per entry in this
     // tuple). This is just enough coverage to test all three of our hash table types,
     // and a few important key/value types.
-    auto maps = std::make_tuple(py::dense_hash_map<std::string, py::scoped_ref<PyObject>>(
+    auto maps = std::make_tuple(py::dense_hash_map<std::string, py::owned_ref<PyObject>>(
                                     "missing_value"s),
                                 py::sparse_hash_map<std::int64_t, std::array<char, 3>>(),
                                 std::unordered_map<std::string, bool>());
@@ -124,7 +124,7 @@ TEST_F(to_object, map_to_object) {
 
 template<typename V>
 void test_sequence_to_object_impl(V v) {
-    auto check_python_list = [&](py::scoped_ref<PyObject> ob) {
+    auto check_python_list = [&](py::owned_ref<PyObject> ob) {
         ASSERT_TRUE(ob) << "to_object should not return null";
         EXPECT_EQ(PyList_Check(ob.get()), 1) << "ob should be a list";
 
@@ -148,15 +148,15 @@ void test_sequence_to_object_impl(V v) {
 
     // Check to_object with value, const value, and rvalue reference.
 
-    py::scoped_ref<PyObject> result = py::to_object(v);
+    py::owned_ref<PyObject> result = py::to_object(v);
     check_python_list(result);
 
     const V& const_ref = v;
-    py::scoped_ref<PyObject> constref_result = py::to_object(const_ref);
+    py::owned_ref<PyObject> constref_result = py::to_object(const_ref);
     check_python_list(constref_result);
 
     V copy = v;  // Make a copy before moving b/c the lambda above uses ``v``.
-    py::scoped_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
+    py::owned_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
     check_python_list(rvalueref_result);
 }
 
@@ -164,7 +164,7 @@ TEST_F(to_object, vector_to_object) {
     auto to_vec = [](const auto& arr) { return std::vector(arr.begin(), arr.end()); };
     auto vectors = std::make_tuple(to_vec(examples<std::string>()),
                                    to_vec(examples<double>()),
-                                   to_vec(examples<py::scoped_ref<>>()));
+                                   to_vec(examples<py::owned_ref<>>()));
     // Call test_sequence_to_object_impl on each entry in `vectors`.
     std::apply([&](auto... vec) { (test_sequence_to_object_impl(vec), ...); }, vectors);
 }
@@ -172,7 +172,7 @@ TEST_F(to_object, vector_to_object) {
 TEST_F(to_object, array_to_object) {
     auto arrays = std::make_tuple(examples<std::string>(),
                                   examples<double>(),
-                                  examples<py::scoped_ref<>>());
+                                  examples<py::owned_ref<>>());
     // Call test_sequence_to_object_impl on each entry in `arrays`.
     std::apply([&](auto... arr) { (test_sequence_to_object_impl(arr), ...); }, arrays);
 }
@@ -205,7 +205,7 @@ TEST_F(to_object, any_ref_of_object_refcnt) {
     Py_ssize_t baseline_refcnt = Py_REFCNT(ob);
     {
         Py_INCREF(ob);
-        py::scoped_ref sr(ob);
+        py::owned_ref sr(ob);
         ASSERT_EQ(Py_REFCNT(ob), baseline_refcnt + 1);
 
         py::any_ref ref(&sr, py::any_vtable::make<decltype(sr)>());
@@ -253,7 +253,7 @@ TEST_F(to_object, object_map_key) {
     ASSERT_TRUE(key);
     Py_ssize_t starting_ref_count = Py_REFCNT(key.get());
 
-    py::scoped_ref as_ob = py::to_object(key);
+    py::owned_ref as_ob = py::to_object(key);
     // should be the same pointer
     EXPECT_EQ(key.get(), as_ob.get());
 
@@ -261,10 +261,10 @@ TEST_F(to_object, object_map_key) {
     EXPECT_EQ(Py_REFCNT(key.get()), starting_ref_count + 1);
 }
 
-TEST_F(to_object, scoped_ref_nonstandard) {
-    py::scoped_ref<PyArray_Descr> t = py::new_dtype<std::uint32_t>();
+TEST_F(to_object, owned_ref_nonstandard) {
+    py::owned_ref<PyArray_Descr> t = py::new_dtype<std::uint32_t>();
 
-    py::scoped_ref ob = py::to_object(t);
+    py::owned_ref ob = py::to_object(t);
     ASSERT_TRUE(ob);
     EXPECT_EQ(static_cast<PyObject*>(ob), static_cast<PyObject*>(t));
 }

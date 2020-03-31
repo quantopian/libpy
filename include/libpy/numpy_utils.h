@@ -14,7 +14,7 @@
 #include "libpy/detail/numpy.h"
 #include "libpy/exception.h"
 #include "libpy/object_map_key.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/to_object.h"
 
 /** Helper macro for IMPORT_ARRAY_MODULE_SCOPE below. This is needed because
@@ -254,7 +254,7 @@ template<typename T>
 struct new_dtype<py::borrowed_ref<T>> : new_dtype_from_typecode<NPY_OBJECT> {};
 
 template<typename T>
-struct new_dtype<scoped_ref<T>> : new_dtype<PyObject*> {};
+struct new_dtype<owned_ref<T>> : new_dtype<PyObject*> {};
 
 template<>
 struct new_dtype<object_map_key> : new_dtype<PyObject*> {};
@@ -298,8 +298,8 @@ struct new_dtype<std::array<char, size>> {
     @return A new reference to a numpy dtype for the given type.
  */
 template<typename T>
-scoped_ref<PyArray_Descr> new_dtype() {
-    return scoped_ref<PyArray_Descr>(dispatch::new_dtype<T>::get());
+owned_ref<PyArray_Descr> new_dtype() {
+    return owned_ref<PyArray_Descr>(dispatch::new_dtype<T>::get());
 }
 
 namespace detail {
@@ -345,8 +345,8 @@ struct from_object<py_bool> {
 
 template<>
 struct to_object<py_bool> {
-    static py::scoped_ref<> f(py_bool v) {
-        return py::scoped_ref{PyBool_FromLong(v.value)};
+    static py::owned_ref<> f(py_bool v) {
+        return py::owned_ref{PyBool_FromLong(v.value)};
     }
 };
 
@@ -354,13 +354,13 @@ struct to_object<py_bool> {
  */
 template<typename unit>
 struct to_object<datetime64<unit>> {
-    static py::scoped_ref<> f(const datetime64<unit>& dt) {
+    static py::owned_ref<> f(const datetime64<unit>& dt) {
         auto descr = py::new_dtype<datetime64<unit>>();
         if (!descr) {
             return nullptr;
         }
         std::int64_t as_int = static_cast<std::int64_t>(dt);
-        return py::scoped_ref{PyArray_Scalar(&as_int, descr.get(), nullptr)};
+        return py::owned_ref{PyArray_Scalar(&as_int, descr.get(), nullptr)};
     }
 };
 
@@ -371,7 +371,7 @@ struct from_object<datetime64<D>> {
             throw invalid_conversion::make<datetime64<D>>(ob);
         }
 
-        py::scoped_ref array(
+        py::owned_ref array(
             reinterpret_cast<PyArrayObject*>(PyArray_FromScalar(ob.get(), nullptr)));
 
         auto dtype = py::new_dtype<datetime64<D>>();
@@ -445,7 +445,7 @@ public:
                 `std::tuple` of the python capsule object and the moved vector
                 it is refcounting for.
     */
-    static std::optional<std::tuple<scoped_ref<>, C&>> alloc(C&& container) {
+    static std::optional<std::tuple<owned_ref<>, C&>> alloc(C&& container) {
         capsule* cap;
         if (!(cap = reinterpret_cast<capsule*>(PyMem_Malloc(sizeof(capsule))))) {
             return {};
@@ -460,7 +460,7 @@ public:
             return {};
         }
 
-        return std::make_tuple(scoped_ref(pycapsule), std::ref(cap->container));
+        return std::make_tuple(owned_ref(pycapsule), std::ref(cap->container));
     }
 };
 }  // namespace detail
@@ -473,8 +473,8 @@ public:
     @return An `ndarray` from the values.
  */
 template<typename C, std::size_t ndim>
-scoped_ref<> move_to_numpy_array(C&& values,
-                                 py::scoped_ref<PyArray_Descr> descr,
+owned_ref<> move_to_numpy_array(C&& values,
+                                 py::owned_ref<PyArray_Descr> descr,
                                  const std::array<std::size_t, ndim>& shape,
                                  const std::array<std::int64_t, ndim>& strides) {
     auto maybe_capsule = detail::capsule<C>::alloc(std::move(values));
@@ -486,7 +486,7 @@ scoped_ref<> move_to_numpy_array(C&& values,
 
     auto& [pycapsule, container] = *maybe_capsule;
 
-    scoped_ref arr(PyArray_NewFromDescr(
+    owned_ref arr(PyArray_NewFromDescr(
         &PyArray_Type,
         descr.get(),
         ndim,
@@ -514,7 +514,7 @@ scoped_ref<> move_to_numpy_array(C&& values,
 }
 
 template<typename T>
-scoped_ref<> move_to_numpy_array(std::vector<T>&& values) {
+owned_ref<> move_to_numpy_array(std::vector<T>&& values) {
     auto descr = new_dtype<T>();
     if (!descr) {
         return nullptr;

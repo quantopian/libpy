@@ -612,7 +612,7 @@ public:
 };
 
 
-inline scoped_ref<> move_to_numpy_array(py::any_vector&& values) {
+inline owned_ref<> move_to_numpy_array(py::any_vector&& values) {
 
     auto descr = values.vtable().new_dtype();
     if (!descr) {

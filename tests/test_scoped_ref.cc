@@ -2,13 +2,13 @@
 
 #include "libpy/call_function.h"
 #include "libpy/detail/python.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "test_utils.h"
 
-namespace test_scoped_ref {
-class scoped_ref : public with_python_interpreter {};
+namespace test_owned_ref {
+class owned_ref : public with_python_interpreter {};
 
-TEST_F(scoped_ref, basic_lifetime) {
+TEST_F(owned_ref, basic_lifetime) {
     PyObject* raw = Py_None;
     auto starting_ref_count = Py_REFCNT(raw);
 
@@ -17,7 +17,7 @@ TEST_F(scoped_ref, basic_lifetime) {
 
         // wrapping an object in a scoped ref claims the reference, it should not incref
         // again
-        py::scoped_ref sr(raw);
+        py::owned_ref sr(raw);
 
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
     }
@@ -25,13 +25,13 @@ TEST_F(scoped_ref, basic_lifetime) {
     EXPECT_EQ(Py_REFCNT(raw), starting_ref_count);
 }
 
-TEST_F(scoped_ref, copy_construct) {
+TEST_F(owned_ref, copy_construct) {
     PyObject* raw = Py_None;
     auto starting_ref_count = Py_REFCNT(raw);
 
     {
         Py_INCREF(raw);
-        py::scoped_ref sr(raw);
+        py::owned_ref sr(raw);
 
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
 
@@ -39,7 +39,7 @@ TEST_F(scoped_ref, copy_construct) {
 
         {
             // copy construct
-            py::scoped_ref<> copy(sr);
+            py::owned_ref<> copy(sr);
 
             // copy should take new ownership of the underlying object
             EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 2);
@@ -54,14 +54,14 @@ TEST_F(scoped_ref, copy_construct) {
     EXPECT_EQ(Py_REFCNT(raw), starting_ref_count);
 }
 
-TEST_F(scoped_ref, self_assign) {
-    py::scoped_ref ob = nullptr;
+TEST_F(owned_ref, self_assign) {
+    py::owned_ref ob = nullptr;
     // we need to hold onto the ref when the namespace goes out of scope so that
     // the callback will still fire
-    py::scoped_ref ref = nullptr;
-    py::scoped_ref destructions = nullptr;
+    py::owned_ref ref = nullptr;
+    py::owned_ref destructions = nullptr;
     {
-        py::scoped_ref ns = RUN_PYTHON(R"(
+        py::owned_ref ns = RUN_PYTHON(R"(
             import weakref
 
             class EmptyObject(object):
@@ -89,13 +89,13 @@ TEST_F(scoped_ref, self_assign) {
         ASSERT_TRUE(PyTuple_CheckExact(res.get()));
         ASSERT_EQ(PyTuple_GET_SIZE(res.get()), 3);
 
-        ob = py::scoped_ref(PyTuple_GET_ITEM(res.get(), 0));
+        ob = py::owned_ref(PyTuple_GET_ITEM(res.get(), 0));
         Py_INCREF(ob);
 
-        ref = py::scoped_ref(PyTuple_GET_ITEM(res.get(), 1));
+        ref = py::owned_ref(PyTuple_GET_ITEM(res.get(), 1));
         Py_INCREF(ref);
 
-        destructions = py::scoped_ref(PyTuple_GET_ITEM(res.get(), 2));
+        destructions = py::owned_ref(PyTuple_GET_ITEM(res.get(), 2));
         Py_INCREF(destructions);
         ASSERT_TRUE(PyList_CheckExact(destructions.get()));
     }
@@ -116,17 +116,17 @@ TEST_F(scoped_ref, self_assign) {
     EXPECT_EQ(PyList_GET_SIZE(destructions.get()), 1);
 }
 
-TEST_F(scoped_ref, assign_same_underlying_pointer) {
+TEST_F(owned_ref, assign_same_underlying_pointer) {
     PyObject* raw = Py_None;
     auto start_ref_count = Py_REFCNT(raw);
 
     {
         Py_INCREF(raw);
-        py::scoped_ref a(raw);
+        py::owned_ref a(raw);
         EXPECT_EQ(Py_REFCNT(raw), start_ref_count + 1);
 
         Py_INCREF(raw);
-        py::scoped_ref b(raw);
+        py::owned_ref b(raw);
         EXPECT_EQ(Py_REFCNT(raw), start_ref_count + 2);
 
         a = b;
@@ -137,18 +137,18 @@ TEST_F(scoped_ref, assign_same_underlying_pointer) {
     EXPECT_EQ(Py_REFCNT(raw), start_ref_count);
 }
 
-TEST_F(scoped_ref, move_construct) {
+TEST_F(owned_ref, move_construct) {
     PyObject* raw = Py_None;
     auto starting_ref_count = Py_REFCNT(raw);
 
     {
         Py_INCREF(raw);
-        py::scoped_ref sr(raw);
+        py::owned_ref sr(raw);
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
 
         {
             // move construct
-            py::scoped_ref moved(std::move(sr));
+            py::owned_ref moved(std::move(sr));
 
             EXPECT_EQ(moved.get(), raw);
 
@@ -165,7 +165,7 @@ TEST_F(scoped_ref, move_construct) {
     EXPECT_EQ(Py_REFCNT(raw), starting_ref_count);
 }
 
-TEST_F(scoped_ref, move_assign) {
+TEST_F(owned_ref, move_assign) {
     PyObject* raw_rhs = Py_None;
     auto rhs_starting_ref_count = Py_REFCNT(raw_rhs);
 
@@ -174,12 +174,12 @@ TEST_F(scoped_ref, move_assign) {
 
     {
         Py_INCREF(raw_rhs);
-        py::scoped_ref rhs(raw_rhs);
+        py::owned_ref rhs(raw_rhs);
         EXPECT_EQ(Py_REFCNT(raw_rhs), rhs_starting_ref_count + 1);
 
         {
             Py_INCREF(raw_lhs);
-            py::scoped_ref lhs(raw_lhs);
+            py::owned_ref lhs(raw_lhs);
             EXPECT_EQ(Py_REFCNT(raw_lhs), lhs_starting_ref_count + 1);
 
             lhs = std::move(rhs);
@@ -205,7 +205,7 @@ TEST_F(scoped_ref, move_assign) {
     EXPECT_EQ(Py_REFCNT(raw_lhs), lhs_starting_ref_count);
 }
 
-TEST_F(scoped_ref, escape) {
+TEST_F(owned_ref, escape) {
     PyObject* raw = Py_None;
     auto starting_ref_count = Py_REFCNT(raw);
 
@@ -213,7 +213,7 @@ TEST_F(scoped_ref, escape) {
 
     {
         Py_INCREF(raw);
-        py::scoped_ref sr(raw);
+        py::owned_ref sr(raw);
         EXPECT_EQ(Py_REFCNT(raw), starting_ref_count + 1);
 
         escape_into = std::move(sr).escape();
@@ -231,14 +231,14 @@ TEST_F(scoped_ref, escape) {
     Py_DECREF(raw);
 }
 
-TEST_F(scoped_ref, operator_bool) {
+TEST_F(owned_ref, operator_bool) {
     PyObject* raw = Py_None;
 
     Py_INCREF(raw);
-    py::scoped_ref truthy(raw);
+    py::owned_ref truthy(raw);
     EXPECT_TRUE(truthy);
 
-    py::scoped_ref falsy(nullptr);
+    py::owned_ref falsy(nullptr);
     EXPECT_FALSE(falsy);
 }
-}  // namespace test_scoped_ref
+}  // namespace test_owned_ref
