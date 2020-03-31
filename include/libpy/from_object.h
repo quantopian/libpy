@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -237,6 +238,46 @@ struct from_object<std::string> {
     }
 };
 
+namespace detail {
+template<typename T, bool cond>
+constexpr bool defer_check = cond;
+}  // namespace detail
+
+/** Get an std::filesystem::path from an object implementing __fspath__
+
+    @param ob Object implementing __fspath__.
+    @return A std::filesystem::path
+*/
+template<>
+struct from_object<std::filesystem::path> {
+    // make this a template to defer the static_assert check until the function is
+    // used.
+    template<typename T = void>
+    static std::filesystem::path f([[maybe_unused]] py::borrowed_ref<> ob) {
+#if PY_VERSION_HEX < 0x03060000
+        static_assert(detail::defer_check<T, (PY_VERSION_HEX >= 0x03060000)>,
+                      "cannot use fs_path in Python older than 3.6");
+        throw std::runtime_error("cannot use fs_path in Python older than 3.6");
+#else
+        py::scoped_ref path_obj{PyOS_FSPath(ob.get())};
+
+        if (!path_obj) {
+            throw py::exception{};
+        }
+        // depending on the implementation of __fspath__ we can get str or bytes
+        std::filesystem::path path;
+        if (PyBytes_Check(path_obj)) {
+            path = py::from_object<std::string>(path_obj);
+        }
+        else {
+            path = py::util::pystring_to_string_view(path_obj);
+        }
+
+        return path;
+#endif
+    }
+};
+
 template<>
 struct from_object<bool> {
     static bool f(py::borrowed_ref<> value) {
@@ -293,9 +334,8 @@ public:
         // check if narrowing the wide value to the given type would overflow
         if (wide > std::numeric_limits<T>::max() ||
             wide < std::numeric_limits<T>::min()) {
-            py::raise(PyExc_OverflowError)
-                << "converting " << value << " to type " << py::util::type_name<T>()
-                << " overflows";
+            py::raise(PyExc_OverflowError) << "converting " << value << " to type "
+                                           << py::util::type_name<T>() << " overflows";
             throw invalid_conversion::make<T>(value);
         }
         return wide;
