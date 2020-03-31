@@ -680,9 +680,9 @@ private:
 
     template<std::size_t... ix>
     void move_into_dict(std::index_sequence<ix...>,
-                        const py::scoped_ref<>& out,
+                        const py::owned_ref<>& out,
                         py::str_type key_type) {
-        std::array<std::tuple<py::scoped_ref<PyObject>, py::scoped_ref<>>,
+        std::array<std::tuple<py::owned_ref<PyObject>, py::owned_ref<>>,
                    sizeof...(columns)>
             obs = {this->move_to_objects<ix>(key_type)...};
 
@@ -945,8 +945,8 @@ public:
 
         @return A Python dict of numpy arrays.
      */
-    py::scoped_ref<> to_python_dict(py::str_type key_type = py::str_type::bytes) && {
-        py::scoped_ref out(PyDict_New());
+    py::owned_ref<> to_python_dict(py::str_type key_type = py::str_type::bytes) && {
+        py::owned_ref out(PyDict_New());
         if (!out) {
             return nullptr;
         }
@@ -1167,14 +1167,14 @@ public:
                 Py_TYPE(t)->tp_name);
         }
 
-        py::scoped_ref copy(PyDict_Copy(t));
+        py::owned_ref copy(PyDict_Copy(t));
         if (!copy) {
             throw py::exception();
         }
 
         type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
-            py::scoped_ref keys(PyDict_Keys(copy.get()));
+            py::owned_ref keys(PyDict_Keys(copy.get()));
             if (!keys) {
                 throw py::exception();
             }
@@ -1217,14 +1217,14 @@ public:
                 Py_TYPE(t)->tp_name);
         }
 
-        py::scoped_ref copy(PyDict_Copy(t));
+        py::owned_ref copy(PyDict_Copy(t));
         if (!copy) {
             throw py::exception();
         }
 
         type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
         if (PyDict_Size(copy.get())) {
-            py::scoped_ref keys(PyDict_Keys(copy.get()));
+            py::owned_ref keys(PyDict_Keys(copy.get()));
             if (!keys) {
                 throw py::exception();
             }

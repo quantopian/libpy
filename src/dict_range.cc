@@ -2,7 +2,7 @@
 
 namespace py {
 dict_range::dict_range(py::borrowed_ref<> map)
-    : m_map(py::scoped_ref<>::new_reference(map)) {}
+    : m_map(py::owned_ref<>::new_reference(map)) {}
 
 dict_range::iterator::iterator(py::borrowed_ref<> map) : m_map(map), m_pos(0) {
     ++(*this);

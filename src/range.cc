@@ -14,7 +14,7 @@ range::iterator::value_type* range::iterator::operator->() {
 }
 
 range::iterator& range::iterator::operator++() {
-    m_value = py::scoped_ref(PyIter_Next(m_iterator.get()));
+    m_value = py::owned_ref(PyIter_Next(m_iterator.get()));
     if (!m_value) {
         if (PyErr_Occurred()) {
             throw py::exception{};

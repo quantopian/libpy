@@ -84,9 +84,9 @@ public:
 private:
     std::vector<PyType_Slot> m_slots;
     std::unique_ptr<detail::autoclass_storage> m_storage;
-    py::scoped_ref<PyTypeObject> m_type;
+    py::owned_ref<PyTypeObject> m_type;
     PyType_Spec m_spec;
-    py::scoped_ref<PyTypeObject> m_py_basetype;
+    py::owned_ref<PyTypeObject> m_py_basetype;
 
     /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we implement
         at least `Py_tp_traverse`, and will use `PyObject_GC_New` and `PyObject_GC_Del`.
@@ -243,12 +243,12 @@ public:
 
         @return The already created type, or `nullptr` if the type wasn't yet created.
      */
-    static py::scoped_ref<PyTypeObject> lookup_type() {
+    static py::owned_ref<PyTypeObject> lookup_type() {
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
         if (type_search != detail::autoclass_type_cache.get().end()) {
             PyTypeObject* type = type_search->second->type;
             Py_INCREF(type);
-            return py::scoped_ref(type);
+            return py::owned_ref(type);
         }
         return nullptr;
     }
@@ -262,7 +262,7 @@ private:
                 Python wrapped version of `T`, or nullptr on failure.
     */
     template<typename... Args>
-    static std::tuple<py::scoped_ref<PyTypeObject>, py::scoped_ref<>>
+    static std::tuple<py::owned_ref<PyTypeObject>, py::owned_ref<>>
     construct_with_type(Args&&... args) {
         auto cls = lookup_type();
         if (!cls) {
@@ -280,7 +280,7 @@ private:
             out = constructor_new_impl<false>(cls.get(), std::forward<Args>(args)...);
         }
 
-        return {std::move(cls), py::scoped_ref(out)};
+        return {std::move(cls), py::owned_ref(out)};
     }
 
 public:
@@ -291,7 +291,7 @@ public:
         @return A new reference to a Python wrapped version of `T`, or nullptr on failure.
      */
     template<typename... Args>
-    static py::scoped_ref<> construct(Args&&... args) {
+    static py::owned_ref<> construct(Args&&... args) {
         auto [cls, ob] = construct_with_type(std::forward<Args>(args)...);
         return ob;
     }
@@ -344,7 +344,7 @@ public:
                   0,
                   flags(extra_flags, base_type),
                   nullptr}),
-          m_py_basetype(py::scoped_ref<PyTypeObject>::xnew_reference(base_type)) {
+          m_py_basetype(py::owned_ref<PyTypeObject>::xnew_reference(base_type)) {
         if (base_type) {
             // Check to make sure that the static base type is not obviously
             // wrong. This check does not ensure that the static base type is
@@ -1091,11 +1091,11 @@ private:
         using end_type = decltype(std::declval<T>().end());
 
         struct iter {
-            scoped_ref<> iterable;
+            owned_ref<> iterable;
             begin_type it;
             end_type end;
 
-            iter(const scoped_ref<>& iterable, begin_type it, end_type end)
+            iter(const owned_ref<>& iterable, begin_type it, end_type end)
                 : iterable(iterable), it(it), end(end) {}
 
             int traverse(visitproc visit, void* arg) {
@@ -1108,7 +1108,7 @@ private:
             try {
                 iter& unboxed = autoclass<iter>::unbox(self);
                 if (unboxed.it != unboxed.end) {
-                    py::scoped_ref out = py::to_object(*unboxed.it);
+                    py::owned_ref out = py::to_object(*unboxed.it);
                     ++unboxed.it;
                     return std::move(out).escape();
                 }
@@ -1133,7 +1133,7 @@ private:
 
         return [](PyObject* self) -> PyObject* {
             try {
-                py::scoped_ref<PyTypeObject> cls = autoclass<iter>::lookup_type();
+                py::owned_ref<PyTypeObject> cls = autoclass<iter>::lookup_type();
                 if (!cls) {
                     py::raise(PyExc_RuntimeError)
                         << "no iterator type found for " << util::type_name<T>();
@@ -1141,7 +1141,7 @@ private:
                 }
 
                 Py_INCREF(self);
-                py::scoped_ref self_ref(self);
+                py::owned_ref self_ref(self);
                 return autoclass<iter>::template constructor_new_impl<true>(
                     cls.get(), self_ref, unbox(self).begin(), unbox(self).end());
             }
@@ -1306,7 +1306,7 @@ public:
         @note If an exception is thrown, the state of the `autoclass` object is
               unspecified.
      */
-    scoped_ref<PyTypeObject> type() {
+    owned_ref<PyTypeObject> type() {
         if (m_type) {
             return m_type;
         }
@@ -1375,7 +1375,7 @@ public:
         finalize_slots();
         m_spec.slots = m_slots.data();
 
-        py::scoped_ref type(reinterpret_cast<PyTypeObject*>(PyType_FromSpec(&m_spec)));
+        py::owned_ref type(reinterpret_cast<PyTypeObject*>(PyType_FromSpec(&m_spec)));
         if (!type) {
             throw py::exception{};
         }
@@ -1392,7 +1392,7 @@ public:
         // `PyCFunctionObject` has a pointer to the input `PyMethodDef` which is why
         // we need to store the methoddef on the type cache storage itself.
         storage->callback_method = automethod<cache_cleanup>("cache_cleanup");
-        py::scoped_ref callback_func(
+        py::owned_ref callback_func(
             PyCFunction_NewEx(&storage->callback_method, nullptr, nullptr));
         if (!callback_func) {
             throw py::exception{};
@@ -1400,7 +1400,7 @@ public:
         // Create a weakref that calls `callback_func` (A Python function) when `type`
         // dies. This will take a reference to `callback_func`, and after we leave this
         // scope, it will be the sole owner of that function.
-        storage->cleanup_wr = py::scoped_ref(
+        storage->cleanup_wr = py::owned_ref(
             PyWeakref_NewRef(static_cast<PyObject*>(type), callback_func.get()));
         if (!storage->cleanup_wr) {
             throw py::exception{};
@@ -1427,7 +1427,7 @@ public:
     class to_object {
         template<typename U>
         static PyObject* f(U&& value) {
-            py::scoped_ref<PyTypeObject> cls = lookup_type();
+            py::owned_ref<PyTypeObject> cls = lookup_type();
             if (!cls) {
                 py::raise(PyExc_RuntimeError) << "autoclass type wasn't initialized yet";
                 return nullptr;
@@ -1456,7 +1456,7 @@ public:
     you can write the following:
 
     \code
-    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
+    py::owned_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
     \endcode
 
     The resulting type will have a `__name__` of "PythonName", and a
@@ -1469,7 +1469,7 @@ public:
     accepts an int and a double:
 
     \code
-    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+    py::owned_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
                                          .new_<int, double>()
                                          .type();
     \endcode
@@ -1485,7 +1485,7 @@ public:
     as a Python method named `bar`:
 
     \code
-    py::scoped_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
+    py::owned_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName")
                                          .new_<int, double>()
                                          .def<&my_type::foo>("bar")
                                          .type();
@@ -1611,7 +1611,7 @@ void initialize_interface_type(typename object::base* ptr) {
     `py::autoclass_interface`:
 
     \code
-    py::scoped_ref interface_pytype =
+    py::owned_ref interface_pytype =
         py::autoclass_interface<I>("Interface").type();
     \endcode
 
@@ -1625,7 +1625,7 @@ void initialize_interface_type(typename object::base* ptr) {
     interface. Adding methods is the same as `py::automethod`:
 
     \code
-    py::scoped_ref interface_pytype =
+    py::owned_ref interface_pytype =
         py::autoclass_interface<I>("Interface")
         .def<&interface::f>("f")
         .type();
@@ -1638,12 +1638,12 @@ void initialize_interface_type(typename object::base* ptr) {
     `py::autoclass_interface_instance`. For example:
 
     \code
-    py::scoped_ref concrete_a_pytype =
+    py::owned_ref concrete_a_pytype =
         py::autoclass_interface_instance<concrete_a, interface>("ConcreteA")
         .new_()
         .type();
 
-    py::scoped_ref concrete_b_pytype =
+    py::owned_ref concrete_b_pytype =
         py::autoclass_interface_instance<concrete_b, interface>("ConcreteB")
         .new_<std::string_view>()
         .def<&concrete_b::non_interface_method>("non_interface_method")
@@ -1760,7 +1760,7 @@ struct autoclass_interface_instance final
     static_assert(std::is_base_of_v<I, T>, "interface type is not a base of T");
 
 private:
-    static py::scoped_ref<PyTypeObject> resolve_pybase() {
+    static py::owned_ref<PyTypeObject> resolve_pybase() {
         auto res = py::autoclass_interface<I>::lookup_type();
         if (!res) {
             throw std::runtime_error{

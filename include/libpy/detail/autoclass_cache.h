@@ -11,7 +11,7 @@
 #include "libpy/detail/api.h"
 #include "libpy/detail/no_destruct_wrapper.h"
 #include "libpy/detail/python.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 
 namespace py::detail {
 using unbox_fn = void* (*)(py::borrowed_ref<>);
@@ -44,10 +44,10 @@ struct autoclass_storage {
 
     // A Python weakref that will delete this object from `autoclass_type_cache` when the
     // type dies.
-    py::scoped_ref<> cleanup_wr;
+    py::owned_ref<> cleanup_wr;
 
     // The Python base class for this type.
-    py::scoped_ref<PyTypeObject> m_pybase;
+    py::owned_ref<PyTypeObject> m_pybase;
 
     autoclass_storage() = default;
 

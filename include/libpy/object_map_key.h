@@ -4,13 +4,13 @@
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/to_object.h"
 
 namespace py {
 
 LIBPY_BEGIN_EXPORT
-/** A wrapper that allows a `py::scoped_ref` to be used as a key in a mapping structure.
+/** A wrapper that allows a `py::owned_ref` to be used as a key in a mapping structure.
 
     `object_map_key` overloads `operator==` to dispatch to the underlying Python object's
     `__eq__`.
@@ -21,13 +21,13 @@ LIBPY_BEGIN_EXPORT
 */
 class object_map_key {
 private:
-    py::scoped_ref<> m_ob;
+    py::owned_ref<> m_ob;
 
 public:
     inline object_map_key(std::nullptr_t) : m_ob(nullptr) {}
     inline object_map_key(py::borrowed_ref<> ob)
-        : m_ob(py::scoped_ref<>::xnew_reference(ob)) {}
-    inline object_map_key(py::scoped_ref<> ob) : m_ob(std::move(ob)) {}
+        : m_ob(py::owned_ref<>::xnew_reference(ob)) {}
+    inline object_map_key(py::owned_ref<> ob) : m_ob(std::move(ob)) {}
 
     object_map_key() = default;
     object_map_key(const object_map_key&) = default;
@@ -44,7 +44,7 @@ public:
         return static_cast<bool>(m_ob);
     }
 
-    inline operator const py::scoped_ref<>&() const noexcept {
+    inline operator const py::owned_ref<>&() const noexcept {
         return m_ob;
     }
 
@@ -71,8 +71,8 @@ struct from_object<object_map_key> {
 
 template<>
 struct to_object<object_map_key> {
-    static py::scoped_ref<> f(const object_map_key& ob) {
-        return py::scoped_ref<>::new_reference(ob.get());
+    static py::owned_ref<> f(const object_map_key& ob) {
+        return py::owned_ref<>::new_reference(ob.get());
     }
 };
 }  // namespace dispatch

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 
 namespace py {
-inline py::scoped_ref<> none{py::scoped_ref<>::new_reference(Py_None)};
-inline py::scoped_ref<> ellipsis{py::scoped_ref<>::new_reference(Py_Ellipsis)};
-inline py::scoped_ref<> not_implemented{
-    py::scoped_ref<>::new_reference(Py_NotImplemented)};
+inline py::owned_ref<> none{py::owned_ref<>::new_reference(Py_None)};
+inline py::owned_ref<> ellipsis{py::owned_ref<>::new_reference(Py_Ellipsis)};
+inline py::owned_ref<> not_implemented{
+    py::owned_ref<>::new_reference(Py_NotImplemented)};
 }  // namespace py

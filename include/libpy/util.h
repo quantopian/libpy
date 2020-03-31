@@ -7,7 +7,7 @@
 
 #include "libpy/borrowed_ref.h"
 #include "libpy/detail/python.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 
 /** Miscellaneous utilities.
  */

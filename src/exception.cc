@@ -67,7 +67,7 @@ std::string exception::msg_from_current_pyexc() {
     PyErr_Fetch(&type, &value, &tb);
     PyErr_NormalizeException(&type, &value, &tb);
 
-    py::scoped_ref as_str(PyObject_Str(value));
+    py::owned_ref as_str(PyObject_Str(value));
     std::string out;
     if (!as_str) {
         out = "<failed to convert Python message to C++ message>";

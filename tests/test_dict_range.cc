@@ -14,7 +14,7 @@ using namespace std::literals;
 class dict_range : public with_python_interpreter {};
 
 TEST_F(dict_range, iteration) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         dict_0 = {}
         dict_1 = {b'a': 1}
         dict_2 = {b'a': 1, b'b': 2, b'c': 3}
@@ -64,7 +64,7 @@ TEST_F(dict_range, iteration) {
 }
 
 TEST_F(dict_range, not_a_dict) {
-    py::scoped_ref not_a_dict(PyList_New(0));
+    py::owned_ref not_a_dict(PyList_New(0));
     ASSERT_TRUE(not_a_dict);
 
     EXPECT_THROW(py::dict_range::checked(not_a_dict), py::exception);

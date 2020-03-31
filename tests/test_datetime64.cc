@@ -9,7 +9,7 @@
 #include "libpy/datetime64.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "test_utils.h"
 
 namespace test_datetime64 {
@@ -97,11 +97,11 @@ template<>
 constexpr auto numpy_unit_str<py::chrono::D> = "D"_arr;
 
 TYPED_TEST_P(datetime64_all_units, stream_format) {
-    auto numpy_mod = py::scoped_ref(PyImport_ImportModule("numpy"));
+    auto numpy_mod = py::owned_ref(PyImport_ImportModule("numpy"));
     if (!numpy_mod) {
         throw py::exception{};
     }
-    auto numpy_datetime64 = py::scoped_ref(
+    auto numpy_datetime64 = py::owned_ref(
         PyObject_GetAttrString(numpy_mod.get(), "datetime64"));
     if (!numpy_datetime64) {
         throw py::exception{};
@@ -123,7 +123,7 @@ TYPED_TEST_P(datetime64_all_units, stream_format) {
         if (!res) {
             throw py::exception{};
         }
-        auto repr = py::scoped_ref(PyObject_Str(res.get()));
+        auto repr = py::owned_ref(PyObject_Str(res.get()));
         if (!repr) {
             throw py::exception{};
         }

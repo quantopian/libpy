@@ -7,7 +7,7 @@
 #include "libpy/exception.h"
 #include "libpy/meta.h"
 #include "libpy/object_map_key.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/to_object.h"
 #include "test_utils.h"
 
@@ -127,7 +127,7 @@ template<typename F>
 void test_fails(const std::string& method, F f) {
     using namespace std::literals;
 
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class C(object):
             def __)"s + method + R"(__(self, other):
                 raise ValueError('ayy lmao')
@@ -188,7 +188,7 @@ TEST_F(object_map_key, hash) {
 }
 
 TEST_F(object_map_key, hash_fails) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class C(object):
             def __hash__(self, other):
                 raise ValueError()
@@ -219,7 +219,7 @@ void test_use_in_map(M map) {
 
     int b_value = 20;
     // use a scoped ref to test implicit conversions
-    py::scoped_ref b_key = py::to_object(b_value);
+    py::owned_ref b_key = py::to_object(b_value);
     ASSERT_TRUE(b_key);
 
     map[b_key] = b_value;
@@ -228,7 +228,7 @@ void test_use_in_map(M map) {
     EXPECT_EQ(map[a_key], a_value);
 
     int c_value = 30;
-    py::scoped_ref c_key = py::to_object(c_value);
+    py::owned_ref c_key = py::to_object(c_value);
     ASSERT_TRUE(c_key);
 
     map.insert({c_key, c_value});
@@ -246,11 +246,11 @@ TEST_F(object_map_key, use_in_map) {
 }
 
 TEST_F(object_map_key, convert) {
-    py::scoped_ref<> ob = py::to_object(1);
+    py::owned_ref<> ob = py::to_object(1);
     ASSERT_TRUE(ob);
 
     py::object_map_key m = ob;
     EXPECT_EQ(m.get(), ob.get());
-    EXPECT_EQ(static_cast<py::scoped_ref<>>(m).get(), ob.get());
+    EXPECT_EQ(static_cast<py::owned_ref<>>(m).get(), ob.get());
 }
 }  // namespace test_object_hash_key

@@ -13,8 +13,9 @@
 
 #include "libpy/char_sequence.h"
 #include "libpy/detail/python.h"
+
 #include "libpy/exception.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/singletons.h"
 #include "libpy/str_convert.h"
 
@@ -24,7 +25,7 @@ namespace dispatch {
 
     To add a new dispatch, add an explicit template specialization for the type
     to convert with a static member function `f` which accepts the dispatched
-    type and returns a `py::scoped_ref<>`.
+    type and returns a `py::owned_ref<>`.
  */
 template<typename T>
 struct to_object;
@@ -60,15 +61,15 @@ constexpr bool has_to_object = detail::has_to_object<T>::value;
     @see py::dispatch::to_object
  */
 template<typename T>
-py::scoped_ref<> to_object(T&& ob) {
+py::owned_ref<> to_object(T&& ob) {
     using underlying_type = std::remove_cv_t<std::remove_reference_t<T>>;
     return dispatch::to_object<underlying_type>::f(std::forward<T>(ob));
 }
 
 namespace dispatch {
 template<typename C>
-py::scoped_ref<> sequence_to_list(const C& v) {
-    py::scoped_ref out(PyList_New(v.size()));
+py::owned_ref<> sequence_to_list(const C& v) {
+    py::owned_ref out(PyList_New(v.size()));
     if (!out) {
         return nullptr;
     }
@@ -88,71 +89,71 @@ py::scoped_ref<> sequence_to_list(const C& v) {
 
 template<std::size_t n>
 struct to_object<std::array<char, n>> {
-    static py::scoped_ref<> f(const std::array<char, n>& cs) {
-        return py::scoped_ref{PyBytes_FromStringAndSize(cs.data(), n)};
+    static py::owned_ref<> f(const std::array<char, n>& cs) {
+        return py::owned_ref{PyBytes_FromStringAndSize(cs.data(), n)};
     }
 };
 
 template<>
 struct to_object<char> {
-    static py::scoped_ref<> f(char c) {
-        return py::scoped_ref{PyBytes_FromStringAndSize(&c, 1)};
+    static py::owned_ref<> f(char c) {
+        return py::owned_ref{PyBytes_FromStringAndSize(&c, 1)};
     }
 };
 
 template<typename T, std::size_t n>
 struct to_object<std::array<T, n>> {
-    static py::scoped_ref<> f(const std::array<T, n>& v) {
+    static py::owned_ref<> f(const std::array<T, n>& v) {
         return sequence_to_list(v);
     }
 };
 
-/** Identity conversion for `scoped_ref`.
+/** Identity conversion for `owned_ref`.
  */
 template<typename T>
-struct to_object<py::scoped_ref<T>> {
-    static py::scoped_ref<> f(const py::scoped_ref<T>& ob) {
-        return py::scoped_ref<>::xnew_reference(reinterpret_cast<PyObject*>(ob.get()));
+struct to_object<py::owned_ref<T>> {
+    static py::owned_ref<> f(const py::owned_ref<T>& ob) {
+        return py::owned_ref<>::xnew_reference(reinterpret_cast<PyObject*>(ob.get()));
     }
 };
 
 template<typename T>
 struct to_object<py::borrowed_ref<T>> {
-    static py::scoped_ref<> f(py::borrowed_ref<T> ob) {
-        return py::scoped_ref<>::xnew_reference(reinterpret_cast<PyObject*>(ob.get()));
+    static py::owned_ref<> f(py::borrowed_ref<T> ob) {
+        return py::owned_ref<>::xnew_reference(reinterpret_cast<PyObject*>(ob.get()));
     }
 };
 
 template<>
 struct to_object<std::string> {
-    static py::scoped_ref<> f(const std::string& cs) {
-        return py::scoped_ref{PyBytes_FromStringAndSize(cs.data(), cs.size())};
+    static py::owned_ref<> f(const std::string& cs) {
+        return py::owned_ref{PyBytes_FromStringAndSize(cs.data(), cs.size())};
     }
 };
 
 template<>
 struct to_object<std::string_view> {
-    static py::scoped_ref<> f(const std::string_view& cs) {
-        return py::scoped_ref{PyBytes_FromStringAndSize(cs.data(), cs.size())};
+    static py::owned_ref<> f(const std::string_view& cs) {
+        return py::owned_ref{PyBytes_FromStringAndSize(cs.data(), cs.size())};
     }
 };
 
 template<>
 struct to_object<std::filesystem::path> {
-    static py::scoped_ref<> f(const std::filesystem::path& path) {
-        py::scoped_ref path_str{
+    static py::owned_ref<> f(const std::filesystem::path& path) {
+        py::owned_ref path_str{
             PyUnicode_FromStringAndSize(path.c_str(), path.native().length())};
 #if PY_VERSION_HEX >= 0x03040000
-        py::scoped_ref pathlib(PyImport_ImportModule("pathlib"));
+        py::owned_ref pathlib(PyImport_ImportModule("pathlib"));
         if (!pathlib) {
             throw py::exception();
         }
-        py::scoped_ref pathclass(PyObject_GetAttrString(pathlib.get(), "Path"));
+        py::owned_ref pathclass(PyObject_GetAttrString(pathlib.get(), "Path"));
         if (!pathclass) {
             throw py::exception();
         }
 
-        py::scoped_ref path_obj{
+        py::owned_ref path_obj{
             PyObject_CallFunctionObjArgs(pathclass.get(), path_str.get(), NULL)};
         if (!path_obj) {
             throw py::exception();
@@ -166,29 +167,29 @@ struct to_object<std::filesystem::path> {
 
 template<std::size_t n>
 struct to_object<char[n]> {
-    static py::scoped_ref<> f(const char* cs) {
-        return py::scoped_ref{PyBytes_FromStringAndSize(cs, n - 1)};
+    static py::owned_ref<> f(const char* cs) {
+        return py::owned_ref{PyBytes_FromStringAndSize(cs, n - 1)};
     }
 };
 
 template<>
 struct to_object<bool> {
-    static py::scoped_ref<> f(bool value) {
-        return py::scoped_ref{PyBool_FromLong(value)};
+    static py::owned_ref<> f(bool value) {
+        return py::owned_ref{PyBool_FromLong(value)};
     }
 };
 
 namespace detail {
 template<typename T>
 struct int_to_object {
-    static py::scoped_ref<> f(T value) {
+    static py::owned_ref<> f(T value) {
 
         // convert the object to the widest type for the given signedness
         if constexpr (std::is_signed_v<T>) {
-            return py::scoped_ref{PyLong_FromLongLong(value)};
+            return py::owned_ref{PyLong_FromLongLong(value)};
         }
         else {
-            return py::scoped_ref{PyLong_FromUnsignedLongLong(value)};
+            return py::owned_ref{PyLong_FromUnsignedLongLong(value)};
         }
     }
 };
@@ -227,22 +228,22 @@ struct to_object<unsigned char> : public detail::int_to_object<unsigned char> {}
 
 template<>
 struct to_object<float> {
-    static py::scoped_ref<> f(float value) {
-        return py::scoped_ref{PyFloat_FromDouble(value)};
+    static py::owned_ref<> f(float value) {
+        return py::owned_ref{PyFloat_FromDouble(value)};
     }
 };
 
 template<>
 struct to_object<double> {
-    static py::scoped_ref<> f(double value) {
-        return py::scoped_ref{PyFloat_FromDouble(value)};
+    static py::owned_ref<> f(double value) {
+        return py::owned_ref{PyFloat_FromDouble(value)};
     }
 };
 
 template<typename M>
 struct map_to_object {
-    static py::scoped_ref<> f(const M& m) {
-        py::scoped_ref out(PyDict_New());
+    static py::owned_ref<> f(const M& m) {
+        py::owned_ref out(PyDict_New());
 
         if (!out) {
             return nullptr;
@@ -273,15 +274,15 @@ struct to_object<std::unordered_map<K, V, Hash, KeyEqual>>
 
 template<typename T>
 struct to_object<std::vector<T>> {
-    static py::scoped_ref<> f(const std::vector<T>& v) {
+    static py::owned_ref<> f(const std::vector<T>& v) {
         return sequence_to_list(v);
     }
 };
 
 template<typename S>
 struct set_to_object {
-    static py::scoped_ref<> f(const S& s) {
-        py::scoped_ref out(PySet_New(nullptr));
+    static py::owned_ref<> f(const S& s) {
+        py::owned_ref out(PySet_New(nullptr));
 
         if (!out) {
             return nullptr;
@@ -326,8 +327,8 @@ private:
     }
 
 public:
-    static py::scoped_ref<> f(const std::tuple<Ts...>& tup) {
-        py::scoped_ref out(PyTuple_New(sizeof...(Ts)));
+    static py::owned_ref<> f(const std::tuple<Ts...>& tup) {
+        py::owned_ref out(PyTuple_New(sizeof...(Ts)));
 
         if (!out) {
             return nullptr;
@@ -343,7 +344,7 @@ public:
 
 template<typename T>
 struct to_object<std::optional<T>> {
-    static py::scoped_ref<> f(const std::optional<T>& maybe_value) {
+    static py::owned_ref<> f(const std::optional<T>& maybe_value) {
         if (!maybe_value) {
             return py::none;
         }

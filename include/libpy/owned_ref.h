@@ -9,7 +9,7 @@ namespace py {
 /** An RAII wrapper for ensuring an object is cleaned up in a given scope.
  */
 template<typename T = PyObject>
-class scoped_ref final {
+class owned_ref final {
 private:
     T* m_ref;
 
@@ -20,26 +20,26 @@ public:
 
     /** Default construct a scoped ref to a `nullptr`.
      */
-    constexpr scoped_ref() : m_ref(nullptr) {}
+    constexpr owned_ref() : m_ref(nullptr) {}
 
-    constexpr scoped_ref(std::nullptr_t) : m_ref(nullptr) {}
+    constexpr owned_ref(std::nullptr_t) : m_ref(nullptr) {}
 
     /** Manage a new reference. `ref` should not be used outside of the
-        `scoped_ref`.
+        `owned_ref`.
 
         @param ref The reference to manage
      */
-    constexpr explicit scoped_ref(T* ref) : m_ref(ref) {}
+    constexpr explicit owned_ref(T* ref) : m_ref(ref) {}
 
-    constexpr scoped_ref(const scoped_ref& cpfrom) : m_ref(cpfrom.m_ref) {
+    constexpr owned_ref(const owned_ref& cpfrom) : m_ref(cpfrom.m_ref) {
         Py_XINCREF(m_ref);
     }
 
-    constexpr scoped_ref(scoped_ref&& mvfrom) noexcept : m_ref(mvfrom.m_ref) {
+    constexpr owned_ref(owned_ref&& mvfrom) noexcept : m_ref(mvfrom.m_ref) {
         mvfrom.m_ref = nullptr;
     }
 
-    constexpr scoped_ref& operator=(const scoped_ref& cpfrom) {
+    constexpr owned_ref& operator=(const owned_ref& cpfrom) {
         // we need to incref before we decref to support self assignment
         Py_XINCREF(cpfrom.m_ref);
         Py_XDECREF(m_ref);
@@ -47,7 +47,7 @@ public:
         return *this;
     }
 
-    constexpr scoped_ref& operator=(scoped_ref&& mvfrom) noexcept {
+    constexpr owned_ref& operator=(owned_ref&& mvfrom) noexcept {
         std::swap(m_ref, mvfrom.m_ref);
         return *this;
     }
@@ -56,9 +56,9 @@ public:
 
         @param ref The Python object to create a new managed reference to.
      */
-    constexpr static scoped_ref new_reference(py::borrowed_ref<T> ref) {
+    constexpr static owned_ref new_reference(py::borrowed_ref<T> ref) {
         Py_INCREF(ref.get());
-        return scoped_ref{ref.get()};
+        return owned_ref{ref.get()};
     }
 
     /** Create a scoped ref that is a new reference to `ref` if `ref` is non-null.
@@ -66,18 +66,18 @@ public:
         @param ref The Python object to create a new managed reference to. If `ref`
                is `nullptr`, then the resulting object just holds `nullptr` also.
      */
-    constexpr static scoped_ref xnew_reference(py::borrowed_ref<T> ref) {
+    constexpr static owned_ref xnew_reference(py::borrowed_ref<T> ref) {
         Py_XINCREF(ref.get());
-        return scoped_ref{ref.get()};
+        return owned_ref{ref.get()};
     }
 
     /** Decref the managed pointer if it is not `nullptr`.
      */
-    ~scoped_ref() {
+    ~owned_ref() {
         Py_XDECREF(m_ref);
     }
 
-    /** Return the underlying pointer and invalidate the `scoped_ref`.
+    /** Return the underlying pointer and invalidate the `owned_ref`.
 
         This allows the reference to "escape" the current scope.
 
@@ -92,7 +92,7 @@ public:
 
     /** Get the underlying managed pointer.
 
-        @return The pointer managed by this `scoped_ref`.
+        @return The pointer managed by this `owned_ref`.
         @see escape
      */
     constexpr T* get() const {
@@ -130,8 +130,8 @@ public:
         return m_ref != other.get();
     }
 };
-static_assert(std::is_standard_layout<scoped_ref<>>::value,
-              "scoped_ref<> should be standard layout");
-static_assert(sizeof(scoped_ref<>) == sizeof(PyObject*),
+static_assert(std::is_standard_layout<owned_ref<>>::value,
+              "owned_ref<> should be standard layout");
+static_assert(sizeof(owned_ref<>) == sizeof(PyObject*),
               "alias type should be the same size as aliased type");
 }  // namespace py

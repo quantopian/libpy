@@ -13,7 +13,7 @@ LIBPY_BEGIN_EXPORT
  */
 class dict_range {
 private:
-    py::scoped_ref<> m_map;
+    py::owned_ref<> m_map;
 
     class iterator {
     public:

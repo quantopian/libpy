@@ -1,12 +1,12 @@
 #pragma once
 
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 #include "libpy/to_object.h"
 
 namespace py {
 template<typename... Args>
-py::scoped_ref<> build_tuple(const Args&... args) {
-    py::scoped_ref out(PyTuple_New(sizeof...(args)));
+py::owned_ref<> build_tuple(const Args&... args) {
+    py::owned_ref out(PyTuple_New(sizeof...(args)));
     if (!out) {
         return nullptr;
     }

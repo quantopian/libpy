@@ -11,7 +11,7 @@ TEST(none, is_none) {
 TEST(none, refcnt) {
     Py_ssize_t start = Py_REFCNT(Py_None);
     {
-        py::scoped_ref<> none = py::none;
+        py::owned_ref<> none = py::none;
         EXPECT_EQ(Py_REFCNT(Py_None), start + 1);
     }
     EXPECT_EQ(Py_REFCNT(Py_None), start);
@@ -25,7 +25,7 @@ TEST(ellipsis, is_ellipsis) {
 TEST(ellipsis, refcnt) {
     Py_ssize_t start = Py_REFCNT(Py_Ellipsis);
     {
-        py::scoped_ref<> ellipsis = py::ellipsis;
+        py::owned_ref<> ellipsis = py::ellipsis;
         EXPECT_EQ(Py_REFCNT(Py_Ellipsis), start + 1);
     }
     EXPECT_EQ(Py_REFCNT(Py_Ellipsis), start);
@@ -39,7 +39,7 @@ TEST(not_implemented, is_not_implemented) {
 TEST(not_implemented, refcnt) {
     Py_ssize_t start = Py_REFCNT(Py_NotImplemented);
     {
-        py::scoped_ref<> not_implemented = py::not_implemented;
+        py::owned_ref<> not_implemented = py::not_implemented;
         EXPECT_EQ(Py_REFCNT(Py_NotImplemented), start + 1);
     }
     EXPECT_EQ(Py_REFCNT(Py_NotImplemented), start);

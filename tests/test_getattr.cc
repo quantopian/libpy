@@ -11,7 +11,7 @@ namespace test_getattr {
 class getattr : public with_python_interpreter {};
 
 TEST_F(getattr, simple) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             b = 1
 
@@ -22,7 +22,7 @@ TEST_F(getattr, simple) {
     py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
-    py::scoped_ref<> actual = py::getattr(A, "b");
+    py::owned_ref<> actual = py::getattr(A, "b");
     ASSERT_TRUE(actual);
 
     py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
@@ -33,7 +33,7 @@ TEST_F(getattr, simple) {
 }
 
 TEST_F(getattr, attribute_error) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             pass
     )");
@@ -42,7 +42,7 @@ TEST_F(getattr, attribute_error) {
     py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
-    py::scoped_ref<> actual = py::getattr(A, "b");
+    py::owned_ref<> actual = py::getattr(A, "b");
     ASSERT_FALSE(actual);
     expect_pyerr_type_and_message(PyExc_AttributeError,
                                   "type object 'A' has no attribute 'b'");
@@ -50,7 +50,7 @@ TEST_F(getattr, attribute_error) {
 }
 
 TEST_F(getattr, nested) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             class B(object):
                 class C(object):
@@ -63,7 +63,7 @@ TEST_F(getattr, nested) {
     py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
-    py::scoped_ref<> actual = py::nested_getattr(A, "B", "C", "d");
+    py::owned_ref<> actual = py::nested_getattr(A, "B", "C", "d");
     ASSERT_TRUE(actual);
 
     py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
@@ -74,7 +74,7 @@ TEST_F(getattr, nested) {
 }
 
 TEST_F(getattr, nested_failure) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             class B(object):
                 class C(object):
@@ -86,7 +86,7 @@ TEST_F(getattr, nested_failure) {
     ASSERT_TRUE(A);
 
     // attempt to access a few fields past the end of the real attribute chain.
-    py::scoped_ref<> actual = py::nested_getattr(A, "B", "C", "D", "E");
+    py::owned_ref<> actual = py::nested_getattr(A, "B", "C", "D", "E");
     ASSERT_FALSE(actual);
     expect_pyerr_type_and_message(PyExc_AttributeError,
                                   "type object 'C' has no attribute 'D'");
@@ -96,7 +96,7 @@ TEST_F(getattr, nested_failure) {
 class getattr_throws : public with_python_interpreter {};
 
 TEST_F(getattr_throws, simple) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             b = 1
 
@@ -107,7 +107,7 @@ TEST_F(getattr_throws, simple) {
     py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
-    py::scoped_ref<> actual = py::getattr_throws(A, "b");
+    py::owned_ref<> actual = py::getattr_throws(A, "b");
     ASSERT_TRUE(actual);
 
     py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
@@ -118,7 +118,7 @@ TEST_F(getattr_throws, simple) {
 }
 
 TEST_F(getattr_throws, attribute_error) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             pass
     )");
@@ -134,7 +134,7 @@ TEST_F(getattr_throws, attribute_error) {
 }
 
 TEST_F(getattr_throws, nested) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             class B(object):
                 class C(object):
@@ -147,7 +147,7 @@ TEST_F(getattr_throws, nested) {
     py::borrowed_ref A = PyDict_GetItemString(ns.get(), "A");
     ASSERT_TRUE(A);
 
-    py::scoped_ref<> actual = py::nested_getattr_throws(A, "B", "C", "d");
+    py::owned_ref<> actual = py::nested_getattr_throws(A, "B", "C", "d");
     ASSERT_TRUE(actual);
 
     py::borrowed_ref expected = PyDict_GetItemString(ns.get(), "expected");
@@ -158,7 +158,7 @@ TEST_F(getattr_throws, nested) {
 }
 
 TEST_F(getattr_throws, nested_failure) {
-    py::scoped_ref ns = RUN_PYTHON(R"(
+    py::owned_ref ns = RUN_PYTHON(R"(
         class A(object):
             class B(object):
                 class C(object):

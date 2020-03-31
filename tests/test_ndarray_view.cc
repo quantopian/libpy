@@ -418,7 +418,7 @@ INSTANTIATE_TYPED_TEST_SUITE_P(typed_,
 class array_view_extra : public with_python_interpreter {};
 
 TEST_F(array_view_extra, from_buffer_protocol) {
-    py::scoped_ref<> ns = RUN_PYTHON(R"(
+    py::owned_ref<> ns = RUN_PYTHON(R"(
         import numpy as np
         array = np.array([1.5, 2.5, 3.5], dtype='f8')
         view = memoryview(array)
@@ -551,7 +551,7 @@ TEST_F(any_ref_array_view, negative_strides) {
 
 TEST_F(any_ref_array_view, test_vtable) {
     auto test = [](auto data) {
-        py::scoped_ref ndarray = py::move_to_numpy_array(std::vector{data});
+        py::owned_ref ndarray = py::move_to_numpy_array(std::vector{data});
         ASSERT_TRUE(ndarray);
         auto view = py::from_object<py::array_view<py::any_cref>>(ndarray);
         EXPECT_EQ(view.vtable(), py::any_vtable::make<decltype(data)>());
