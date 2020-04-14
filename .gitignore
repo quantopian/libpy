@@ -12,6 +12,7 @@ bench/run
 html/*
 docs/doxygen-build/*
 docs/build/*
+docs/.built-doxygen
 
 # scratch file for testing linking
 scratch.cc
