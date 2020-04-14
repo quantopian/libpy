@@ -1,0 +1,5 @@
+========
+Appendix
+========
+
+.. doxygennamespace:: py
