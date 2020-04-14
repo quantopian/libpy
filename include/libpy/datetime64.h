@@ -293,8 +293,8 @@ inline constexpr int leap_years_before(int year) {
     month and day.
 
     @param year
-    @month The month, 1-indexed (1 = January)
-    @day The day, 1-indexed (1 = The first of the month).
+    @param month The month, 1-indexed (1 = January)
+    @param day The day, 1-indexed (1 = The first of the month).
     @return The time since the epoch as a `std::chrono::duration`.
  */
 inline constexpr auto time_since_epoch(int year, int month, int day) {
