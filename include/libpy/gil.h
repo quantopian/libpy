@@ -3,18 +3,6 @@
 #include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 
-#if PY_MAJOR_VERSION == 2
-#include <exception>
-#define DISABLE_PY2(feature, signature, body)                                            \
-    template<typename T = void>                                                          \
-    [[noreturn]] signature {                                                             \
-        static_assert(!std::is_same_v<T, T>, "cannot use " #feature " in Python 2");     \
-        std::terminate();                                                                \
-    }
-#else
-#define DISABLE_PY2(feature, signature, body) signature body
-#endif
-
 namespace py {
 LIBPY_BEGIN_EXPORT
 /** A wrapper around the threadstate.
@@ -50,72 +38,98 @@ public:
         @note `ensure_released` is a low-level utility. Please see
               `release_block` for a safer alternative.
      */
-    DISABLE_PY2(ensure_released, static inline void ensure_released(), {
+    static inline void ensure_released() {
         if (held()) {
             release();
         }
-    })
+    }
 
     /** Acquire the GIL if we do not already hold it.
 
         @note `ensure_acquired` is a low-level utility. Please see `hold_block`
               for a safer alternative.
      */
-    DISABLE_PY2(ensure_acquired, static inline void ensure_acquired(), {
+    static inline void ensure_acquired() {
         if (!held()) {
             acquire();
         }
-    })
+    }
 
-    DISABLE_PY2(held, static inline bool held(), { return PyGILState_Check(); })
+    /** Check if the gil is currently held.
+     */
+    static inline bool held() {
+        return PyGILState_Check();
+    }
 
     /** RAII resource for ensuring that the gil is released in a given block.
 
-        For example: `py::gil::release_block released;`
+        For example:
+
+        \code
+        // the gil may or may not be released here
+        {
+            py::gil::release_block released;
+            // the gil is now definitely released
+        }
+        // the gil may or may not be released here
+        \endcode
      */
     struct release_block final {
     private:
         bool m_acquire;
 
     public:
-        DISABLE_PY2(
-            inline release_block, release_block(),
-            : m_acquire(gil::held()) { gil::ensure_released(); })
+        inline release_block() : m_acquire(gil::held()) {
+            gil::ensure_released();
+        }
 
-        DISABLE_PY2(dismiss, inline void dismiss(), {
-            m_acquire = false;
-            gil::ensure_acquired();
-        })
-
-        inline ~release_block() {
+        /** Reset this gil back to the state it was in when this object was created.
+         */
+        inline void dismiss() {
             if (m_acquire) {
                 gil::acquire();
+                m_acquire = false;
             }
+        }
+
+        inline ~release_block() {
+            dismiss();
         }
     };
 
     /** RAII resource for ensuring that the gil is held in a given block.
 
-        For example: `py::gil::hold_block held;`
+        For example:
+
+        \code
+        // the gil may or may not be held here
+        {
+            py::gil::hold_block held;
+            // the gil is now definitely held
+        }
+        // the gil may or may not be held here
+        \endcode
      */
     struct hold_block final {
     private:
         bool m_release;
 
     public:
-        DISABLE_PY2(
-            hold_block, inline hold_block(),
-            : m_release(!gil::held()) { gil::ensure_acquired(); })
+        inline hold_block() : m_release(!gil::held()) {
+            gil::ensure_acquired();
+        }
 
-        DISABLE_PY2(dismiss, inline void dismiss(), {
-            m_release = false;
-            gil::ensure_released();
-        })
-
-        inline ~hold_block() {
+        /** Reset this gil back to the state it was in when this object was created.
+         */
+        inline void dismiss() {
             if (m_release) {
                 gil::release();
+                m_release = false;
             }
+        }
+
+        inline ~hold_block() {
+            dismiss();
         }
     };
 };

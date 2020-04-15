@@ -308,6 +308,8 @@ public:
         operator delete[](addr, std::align_val_t{align()});
     }
 
+    /** Check if this vtable refers to the same type as another vtable.
+     */
     constexpr inline bool operator==(const any_vtable& other) const {
         // The m_impl can be the same based on optimization/linking; however, it is not
         // guaranteed to be the same if the type is the same. If `m_impl` is the same, we
@@ -316,6 +318,8 @@ public:
         return m_impl == other.m_impl || m_impl->type_info == other.m_impl->type_info;
     }
 
+    /** Check if this vtable does not refer to the same type as another vtable.
+     */
     constexpr inline bool operator!=(const any_vtable& other) const {
         return !(*this == other);
     }
@@ -427,10 +431,14 @@ public:
         return *static_cast<const T*>(m_addr);
     }
 
+    /** Get the address of the referred-to object.
+     */
     inline void* addr() {
         return m_addr;
     }
 
+    /** Get the address of the referred-to object.
+     */
     inline const void* addr() const {
         return m_addr;
     }
@@ -447,7 +455,7 @@ inline std::ostream& operator<<(std::ostream& stream, const any_ref& value) {
  */
 template<typename T>
 any_ref make_any_ref(T& ob) {
-    return {&ob, any_vtable::make<T>()};
+    return {std::addressof(ob), any_vtable::make<T>()};
 }
 
 /** A constant dynamic reference to a value whose type isn't known until runtime.
@@ -536,6 +544,8 @@ public:
         return *static_cast<const T*>(m_addr);
     }
 
+    /** Get the address of the referred-to object.
+     */
     inline const void* addr() const {
         return m_addr;
     }
@@ -552,7 +562,7 @@ inline std::ostream& operator<<(std::ostream& stream, const any_cref& value) {
  */
 template<typename T>
 any_cref make_any_cref(T& ob) {
-    return {&ob, any_vtable::make<T>()};
+    return {std::addressof(ob), any_vtable::make<T>()};
 }
 
 // Deferred definition because this deeds to see the definition of `any_cref` to call

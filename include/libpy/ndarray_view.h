@@ -303,10 +303,10 @@ public:
     }
 };
 
-/** A struct to wrap an array of type T whose shape is not known until runtime.
+/** Partial template specialization for arrays with `ndim() == 1`. These arrays arrays
+    are also ranges and support `operator[]`.
 
     @tparam T The type of the elements in the array.
-    @tparam ndim The rank of the array.
  */
 template<typename T>
 class ndarray_view<T, 1, false> : public ndarray_view<T, 1, true> {
@@ -565,6 +565,10 @@ public:
     }
 };
 
+/** Helper alias for creating 1d array views.
+
+    @tparam T The type of the elements being viewed.
+ */
 template<typename T>
 using array_view = ndarray_view<T, 1>;
 
@@ -1110,7 +1114,7 @@ public:
         @param any_vector The `any_vector` to view.
      */
     any_ref_ndarray_view(py::any_vector& any_vector)
-        : generic_ndarray_impl(any_vector.data(),
+        : generic_ndarray_impl(any_vector.buffer(),
                                {any_vector.size()},
                                {static_cast<std::int64_t>(any_vector.vtable().size())},
                                any_vector.vtable()) {}
@@ -1121,7 +1125,7 @@ public:
      */
     template<typename U = T, typename = std::enable_if_t<std::is_same_v<U, any_cref>>>
     any_ref_ndarray_view(const py::any_vector& any_vector)
-        : generic_ndarray_impl(any_vector.data(),
+        : generic_ndarray_impl(any_vector.buffer(),
                                {any_vector.size()},
                                {static_cast<std::int64_t>(any_vector.vtable().size())},
                                any_vector.vtable()) {}
@@ -1236,6 +1240,11 @@ public:
 };
 }  // namespace detail
 
+/** Explicit specialization for 1d array const views with type-erased values.
+
+    Operations on this type of view will return `py::any_cref` objects instead of
+    references to some statically known type.
+ */
 template<>
 class ndarray_view<any_cref, 1, false>
     : public detail::any_ref_ndarray_view<1, any_cref, false> {
@@ -1277,6 +1286,11 @@ public:
     }
 };
 
+/** Explicit specialization for 1d array views with type-erased values.
+
+    Operations on this type of view will return `py::any_ref` objects instead of
+    references to some statically known type.
+ */
 template<>
 class ndarray_view<any_ref, 1, false>
     : public detail::any_ref_ndarray_view<1, any_ref, false> {
@@ -1315,6 +1329,11 @@ public:
     }
 };
 
+/** Explicit specialization for nd array const views with type-erased values.
+
+    Operations on this type of view will return `py::any_cref` objects instead of
+    references to some statically known type.
+ */
 template<std::size_t ndim, bool higher_dimensional>
 class ndarray_view<any_cref, ndim, higher_dimensional>
     : public detail::any_ref_ndarray_view<ndim, any_cref, higher_dimensional> {
@@ -1338,6 +1357,11 @@ public:
     }
 };
 
+/** Explicit specialization for nd array views with type-erased values.
+
+    Operations on this type of view will return `py::any_ref` objects instead of
+    references to some statically known type.
+ */
 template<std::size_t ndim, bool higher_dimensional>
 class ndarray_view<any_ref, ndim, higher_dimensional>
     : public detail::any_ref_ndarray_view<ndim, any_ref, higher_dimensional> {

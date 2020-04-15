@@ -11,11 +11,31 @@ template<char... cs>
 using char_sequence = std::integer_sequence<char, cs...>;
 
 inline namespace literals {
+/** User defined literal for creating a `py::cs::char_sequence` value.
+
+    \code
+    using a = py::cs::char_sequence<'a', 'b', 'c', 'd'>;
+    using b = decltype("abcd"_cs);
+
+    static_assert(std::is_same_v<a, b>);
+    \endcode
+*/
 template<typename Char, Char... cs>
 constexpr char_sequence<cs...> operator""_cs() {
     return {};
 }
 
+/** User defined literal for creating a `std::array` of characters.
+
+    \code
+    constexpr std::array a = {'a', 'b', 'c', 'd'};
+    constexpr std::array b = "abcd"_arr;
+
+    static_assert(a == b);
+    \endcode
+
+    @note This does not add a nul terminator to the array.
+ */
 template<typename Char, Char... cs>
 constexpr std::array<char, sizeof...(cs)> operator""_arr() {
     return {cs...};

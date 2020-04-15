@@ -5,7 +5,7 @@
 
 /** Utilities for metaprogramming.
  */
-namespace py ::meta {
+namespace py::meta {
 /** Debugging helper to get the compiler to dump a type as an error message.
 
     @tparam T The type to print.
@@ -86,15 +86,15 @@ template<typename T>
 using remove_cvref = std::remove_cv_t<std::remove_reference_t<T>>;
 
 /** Boolean variable template for checking if type appears in the fields of a
- * std::tuple.
- *
- *  @tparam Search The type to be searched for.
- *  @tparam Elements The types of parameters appearing in the tuple.
- *
- *  ### Examples
- *
- *  - `element_of<int, std::tuple<float, int>>` evaluates to true.
- *  - `element_of<int, std::tuple<float, float>>` evaluates to false.
+    std::tuple.
+
+    Examples:
+
+    - `element_of<int, std::tuple<float, int>>` evaluates to true.
+    - `element_of<int, std::tuple<float, float>>` evaluates to false.
+
+    @tparam Search The type to be searched for.
+    @tparam Elements The types of parameters appearing in the tuple.
  */
 template<typename Search, typename Elements>
 constexpr bool element_of = false;
@@ -127,17 +127,16 @@ struct search_impl<ix, Needle, std::tuple<Head, Tail...>> {
 }  // namespace detail
 
 /** Variable template for getting the index at which a type appears in the fields of a
- * std::tuple.
+    std::tuple.
 
- @tparam Needle The type to be searched for.
- @tparam Haystack `std::tuple` of types in which to search.
+    Examples
 
- ### Examples
+    - `search_tuple<int, std::tuple<float, double, int>` evaluates to 2.
+    - `search_tuple<int, std::tuple<float, int, double>` evaluates to 1.
+    - `search_tuple<int, std::tuple<float, double>` will fail to compile.
 
- - `search_tuple<int, std::tuple<float, double, int>` evaluates to 2.
- - `search_tuple<int, std::tuple<float, int, double>` evaluates to 1.
- - `search_tuple<int, std::tuple<float, double>` will fail to compile.
-
+    @tparam Needle The type to be searched for.
+    @tparam Haystack `std::tuple` of types in which to search.
 */
 template<typename Needle, typename Haystack>
 constexpr std::size_t search_tuple = detail::search_impl<0, Needle, Haystack>::value;
@@ -188,15 +187,15 @@ struct set_diff_impl<std::tuple<As...>, B> {
 
 /** Take the set difference of the types in A and B.
 
-    @tparam A The left hand side of the difference.
-    @tparam B The right hand side of the difference.
-
-    ### Examples
+    Examples:
 
     - `set_diff<std::tuple<int, float, double>, std::tuple<int>>` evaluates to
       `std::tuple<float, double>`.
     - `set_diff<std::tuple<int, long, float, double>, std::tuple<long, int>>` evaluates to
       `std::tuple<float, double>`.
+
+      @tparam A The left hand side of the difference.
+      @tparam B The right hand side of the difference.
  */
 template<typename A, typename B>
 using set_diff = typename detail::set_diff_impl<A, B>::type;
@@ -221,9 +220,9 @@ namespace op {
 #define DEFINE_BINOP(op, name)                                                           \
     struct name {                                                                        \
         template<typename LHS, typename RHS>                                             \
-        constexpr auto operator()(LHS&& lhs, RHS&& rhs) noexcept(noexcept(lhs op rhs)) \
+        constexpr auto operator()(LHS&& lhs, RHS&& rhs) noexcept(noexcept(lhs op rhs))   \
             -> decltype(lhs op rhs) {                                                    \
-            return (lhs op rhs);                                        \
+            return (lhs op rhs);                                                         \
         }                                                                                \
     };
 

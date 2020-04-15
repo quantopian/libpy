@@ -15,6 +15,9 @@ help:
 %: .built-doxygen Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.built-doxygen: $(wildcard ../src/*.cc) $(shell find ../include/libpy/ -type f -name '*.h')
+Doxyfile:
+	touch $@
+
+.built-doxygen: Doxyfile $(shell find ../include/libpy/ -type f -name '*.h')
 	doxygen
 	@touch $@

@@ -234,7 +234,7 @@ public:
 /** Create an iterator that lazily applies `f` to every element of `iterable`.
 
     \code
-    for (auto v : imap(f, it)) {
+    for (auto v : py::imap(f, it)) {
     // ...
     }
     \endcode
