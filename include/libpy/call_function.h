@@ -6,6 +6,7 @@
 #include <tuple>
 
 #include "libpy/borrowed_ref.h"
+#include "libpy/build_tuple.h"
 #include "libpy/detail/python.h"
 #include "libpy/exception.h"
 #include "libpy/numpy_utils.h"
@@ -13,21 +14,6 @@
 #include "libpy/to_object.h"
 
 namespace py {
-namespace detail {
-template<typename... Args>
-owned_ref<> build_pyargs_tuple(Args&&... args) {
-    py::owned_ref out(PyTuple_New(sizeof...(args)));
-    if (!out) {
-        return nullptr;
-    }
-
-    Py_ssize_t ix = 0;
-    (...,
-     PyTuple_SET_ITEM(out.get(), ix++, py::to_object(std::forward<Args>(args)).escape()));
-    return out;
-}
-}  // namespace detail
-
 /** Call a python function on C++ data.
 
     @param function The function to call
@@ -37,7 +23,7 @@ owned_ref<> build_pyargs_tuple(Args&&... args) {
  */
 template<typename... Args>
 owned_ref<> call_function(py::borrowed_ref<> function, Args&&... args) {
-    auto pyargs = detail::build_pyargs_tuple(std::forward<Args>(args)...);
+    auto pyargs = py::build_tuple(std::forward<Args>(args)...);
     return owned_ref(PyObject_CallObject(function.get(), pyargs.get()));
 }
 
@@ -51,7 +37,7 @@ owned_ref<> call_function(py::borrowed_ref<> function, Args&&... args) {
  */
 template<typename... Args>
 owned_ref<> call_function_throws(py::borrowed_ref<> function, Args&&... args) {
-    auto pyargs = detail::build_pyargs_tuple(std::forward<Args>(args)...);
+    auto pyargs = py::build_tuple(std::forward<Args>(args)...);
     owned_ref res(PyObject_CallObject(function.get(), pyargs.get()));
     if (!res) {
         throw py::exception{};

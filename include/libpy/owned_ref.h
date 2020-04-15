@@ -6,8 +6,16 @@
 #include "libpy/detail/python.h"
 
 namespace py {
-/** An RAII wrapper for ensuring an object is cleaned up in a given scope.
+/** A type that explicitly indicates that a Python object is an owned
+    reference. This type should be used to hold Python objects in containers or local
+    variables.
+
+    `py::borrowed_ref<>` should be used instead of `PyObject*` wherever possible to avoid
+    reference counting issues.
+
+    @note An `owned_ref` may hold a value of `nullptr`.
  */
+
 template<typename T = PyObject>
 class owned_ref final {
 private:
@@ -18,14 +26,23 @@ public:
      */
     using element_type = T;
 
-    /** Default construct a scoped ref to a `nullptr`.
+    /** Default construct an owned ref to a `nullptr`.
      */
     constexpr owned_ref() : m_ref(nullptr) {}
 
     constexpr owned_ref(std::nullptr_t) : m_ref(nullptr) {}
 
-    /** Manage a new reference. `ref` should not be used outside of the
-        `owned_ref`.
+    /** Claim ownership of a new reference. `ref` should not be used outside of the
+        `owned_ref`. This constructor should be used when calling CPython C API functions
+        which return new references. For example:
+
+        \code
+        // PyDict_New() returns a new owned reference or nullptr on failure.
+        py::scoped_ref ob{PyDict_New()};
+        if (!ob) {
+            throw py::exception{};
+        }
+        \endcode
 
         @param ref The reference to manage
      */
@@ -118,16 +135,26 @@ public:
         return m_ref;
     }
 
+    /** Returns True if the underlying pointer is non-null.
+     */
     explicit operator bool() const {
         return m_ref;
     }
 
-    bool operator==(py::borrowed_ref<> other) const {
-        return m_ref == other.get();
+    /** Object identity comparison.
+
+        @return `get() == other.get()`.
+     */
+    bool operator==(py::borrowed_ref<T> other) const {
+        return get() == other.get();
     }
 
-    bool operator!=(py::borrowed_ref<> other) const {
-        return m_ref != other.get();
+    /** Object identity comparison.
+
+        @return `get() != other.get()`.
+     */
+    bool operator!=(py::borrowed_ref<T> other) const {
+        return get() != other.get();
     }
 };
 static_assert(std::is_standard_layout<owned_ref<>>::value,

@@ -21,10 +21,15 @@ private:
     }
 
     template<typename T>
-    void typecheck(const T&) const {
+    void typecheck() const {
         if (any_vtable::make<T>() != m_vtable) {
             throw std::bad_any_cast{};
         }
+    }
+
+    template<typename T>
+    void typecheck(const T&) const {
+        typecheck<T>();
     }
 
     inline void typecheck(const any_ref& other) const {
@@ -295,9 +300,19 @@ private:
 public:
     any_vector() = delete;
 
+    /** Create an empty vector with the given vtable.
+
+        @param vtable The vtable for the vector.
+     */
     inline any_vector(const any_vtable& vtable)
         : m_vtable(vtable), m_storage(nullptr), m_size(0), m_capacity(0) {}
 
+    /** Initialize the vector with `count` default constructed elements from the given
+        vtable.
+
+        @param vtable The vtable for the vector.
+        @param count The number of elements to default construct.
+     */
     inline any_vector(const any_vtable& vtable, std::size_t count)
         : m_vtable(vtable),
           m_storage(vtable.default_construct_alloc(count)),
@@ -384,6 +399,12 @@ private:
     }
 
 public:
+    /** Initialize an any vector with `count` copies of `value`.
+
+        @param vtable The vtable for the vector.
+        @param count The number of elements to fill.
+        @param value The value to copy from to fill the vector.
+     */
     template<typename T>
     inline any_vector(const any_vtable& vtable, std::size_t count, const T& value)
         : m_vtable(vtable),
@@ -471,6 +492,11 @@ public:
         return *this;
     }
 
+    /** Swap the contents of this vector with another. This can change the `vtable`
+        of the two vectors.
+
+        @param other The vector to swap contents with.
+     */
     inline void swap(any_vector& other) noexcept {
         std::swap(m_vtable, other.m_vtable);
         std::swap(m_storage, other.m_storage);
@@ -498,6 +524,10 @@ public:
         return {m_storage, static_cast<std::int64_t>(m_vtable.size()), m_vtable};
     }
 
+    inline const_iterator cbegin() const {
+        return begin();
+    }
+
     inline iterator end() {
         return {m_storage + pos_to_index(size()),
                 static_cast<std::int64_t>(m_vtable.size()),
@@ -510,10 +540,18 @@ public:
                 m_vtable};
     }
 
+    inline const_iterator cend() const {
+        return end();
+    }
+
+    /** Get the number of elements in this vector.
+     */
     inline std::size_t size() const {
         return m_size;
     }
 
+    /** Get the number of elements this vector can store before requiring a resize.
+     */
     inline std::size_t capacity() const {
         return m_capacity;
     }
@@ -522,6 +560,12 @@ public:
         return {&m_storage[pos_to_index(pos)], m_vtable};
     }
 
+    /** Runtime bounds checked accessor for the array.
+
+        @param pos The index into the array to access.
+        @return An any reference to the element.
+        @throws std::out_of_range when `pos` is out of bounds for the array.
+     */
     inline reference at(std::ptrdiff_t pos) {
         if (pos < 0 || static_cast<size_t>(pos) >= size()) {
             throw std::out_of_range("pos out of bounds");
@@ -534,6 +578,12 @@ public:
         return {&m_storage[pos_to_index(pos)], m_vtable};
     }
 
+    /** Runtime bounds checked accessor for the array.
+
+        @param pos The index into the array to access.
+        @return A const any reference to the element.
+        @throws std::out_of_range when `pos` is out of bounds for the array.
+     */
     inline const_reference at(std::ptrdiff_t pos) const {
         if (pos < 0 || static_cast<size_t>(pos) >= size()) {
             throw std::out_of_range("pos out of bounds");
@@ -542,22 +592,44 @@ public:
         return (*this)[pos];
     }
 
+    /** Get an any reference to the first element of this vector.
+
+        @pre `size() > 0`
+     */
     inline reference front() {
         return (*this)[0];
     }
 
+    /** Get a const any reference to the first element of this vector.
+
+        @pre `size() > 0`
+     */
     inline const_reference front() const {
         return (*this)[0];
     }
 
+    /** Get an any reference to the last element of this vector.
+
+        @pre `size() > 0`
+     */
     inline reference back() {
         return (*this)[size() - 1];
     }
 
+    /** Get a const any reference to the last element of this vector.
+
+        @pre `size() > 0`
+     */
     inline const_reference back() const {
         return (*this)[size() - 1];
     }
 
+    /** Clear all of the elements in the vector. This destroys all of the contained
+        objects.
+
+        @post `size() == 0`
+        @post Invalidates all iterators.
+     */
     inline void clear() {
         if (!m_vtable.is_trivially_destructible()) {
             std::size_t itemsize = m_vtable.size();
@@ -570,6 +642,12 @@ public:
         m_size = 0;
     }
 
+    /** Add an element to this vector.
+
+        @param value The value to copy into the vector.
+        @post Invalidates iterators if `size() == capacity()` on entry.
+        @note This function has a strong exception guarantee.
+     */
     template<typename T>
     void push_back(const T& value) {
         push_back_impl(value, [this](void* new_, const void* old) {
@@ -577,6 +655,12 @@ public:
         });
     }
 
+    /** Add an element to this vector.
+
+        @param value The value to move into the vector.
+        @post Invalidates iterators if `size() == capacity()` on entry.
+        @note This function has a strong exception guarantee.
+     */
     template<typename T>
     void push_back(T&& value) {
         using raw = py::meta::remove_cvref<T>;
@@ -592,19 +676,86 @@ public:
         }
     }
 
+    /** Remove and destroy the last element from the vector.
+
+        @pre `size() > 0`.
+     */
     inline void pop_back() {
         m_vtable.destruct(m_storage + pos_to_index(size() - 1));
         --m_size;
     }
 
-    inline std::byte* data() noexcept {
+    /** Get the underlying buffer for this vector.
+
+        @see py::array_view::array_view(const py::any_vector&)
+
+        This pointer cannot be cast to a `T[]` or a `T*` and used as an array. Pointer
+        arithmetic may be done on this buffer to access individual elements as a `T*`.
+
+        Correct:
+
+        \code
+        // first element
+        T& ref = *reinterpret_cast<T*>(vec.buffer());
+
+        // nth element
+        T& ref = *reinterpret_cast<T*>(vec.buffer()[sizeof(T) * n]);
+        \endcode
+
+        Do all indexing on the `std::byte*` because `buffer()` returns a pointer to
+        the first element of a `std::byte[]`.
+
+        Incorrect:
+
+        \code
+        T& ref = reinterpret_cast<T*>(vec.buffer())[n];
+        \endcode
+
+        `operator[]` can only be used with a `T*` when the pointer points to a
+        member of a `T[]`. `buffer()` returns the array of bytes that
+        _provides storage_ for the elements, but no `T[]` exists.
+     */
+    inline std::byte* buffer() noexcept {
         return m_storage;
     }
 
-    inline const std::byte* data() const noexcept {
+    /** Get the underlying buffer for this vector.
+
+        @see py::array_view::array_view(const py::any_vector&)
+
+        This pointer cannot be cast to a `T[]` or a `T*` and used as an array. Pointer
+        arithmetic may be done on this buffer to access individual elements as a
+        `T*`.
+
+        Correct:
+
+        \code
+        // first element
+        const T& ref = *reinterpret_cast<const T*>(vec.buffer());
+
+        // nth element
+        const T& ref = *reinterpret_cast<const T*>(vec.buffer()[sizeof(T) * n]);
+        \endcode
+
+        Do all indexing on the `std::byte*` because `buffer()` returns a pointer to
+        the first element of a `std::byte[]`.
+
+        Incorrect:
+
+        \code
+        T& ref = reinterpret_cast<T*>(vec.buffer())[n];
+        \endcode
+
+        `operator[]` can only be used with a `T*` when the pointer points to a
+        member of a `T[]`. `buffer()` returns the array of bytes that
+        _provides storage_ for the elements, but no `T[]` exists.
+     */
+    inline const std::byte* buffer() const noexcept {
         return m_storage;
     }
 
+    /** Get the vtable for this vector.
+     */
     inline const any_vtable& vtable() const {
         return m_vtable;
     }

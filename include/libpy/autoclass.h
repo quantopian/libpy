@@ -6,7 +6,7 @@
 #include <typeindex>
 #include <vector>
 
-#include "libpy/automethod.h"
+#include "libpy/autofunction.h"
 #include "libpy/build_tuple.h"
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
@@ -37,11 +37,13 @@ constexpr void nop_clear_base(T*) {}
 }  // namespace detail
 
 // forward declare for use in autoclass_impl for iterator stuff
+#if !DOXYGEN_BUILD
 template<typename T,
          typename base = PyObject,
          auto initialize_base = zero_non_pyobject_base<base>,
          auto clear_base = detail::nop_clear_base<base>>
 struct autoclass;
+#endif
 
 namespace detail {
 template<typename concrete,
@@ -1439,13 +1441,6 @@ public:
 
 /** A factory for generating a Python class that wraps instances of a C++ type.
 
-    @tparam T The C++ type to be wrapped.
-    @tparam base The static base type of the Python instances created.
-    @tparam initialize_base A function used to initialize the Python base object.
-    @tparam clear_base A function used to clear the Python base object fields.
-
-    ### Usage
-
     To create a new Python type for an object that wraps a C++ type, `my_type`,
     you can write the following:
 
@@ -1485,7 +1480,7 @@ public:
                                          .type();
     \endcode
 
-    ### Subclassing Existing Python Types
+    Subclassing Existing Python Types
 
     Python instances are composed of two parts:
 
@@ -1529,6 +1524,11 @@ public:
     cleanup is performed. Subclassing existing Python types is an advanced
     autoclass feature and is not guaranteed to be safe in all configurations.
     Please use this feature with care.
+
+    @tparam T The C++ type to be wrapped.
+    @tparam base The static base type of the Python instances created.
+    @tparam initialize_base A function used to initialize the Python base object.
+    @tparam clear_base A function used to clear the Python base object fields.
  */
 template<typename T, typename base, auto initialize_base, auto clear_base>
 struct autoclass final

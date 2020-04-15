@@ -4,6 +4,14 @@
 #include "libpy/to_object.h"
 
 namespace py {
+/** Build a Python tuple from a variadic amount of arguments.
+
+    All parameters are adapted using `py::to_object`.
+
+    @param args The arguments to adapt into Python objects and pack into a tuple.
+    @return A new Python tuple or `nullptr` with a Python exception set.
+    @see py::to_object
+ */
 template<typename... Args>
 py::owned_ref<> build_tuple(const Args&... args) {
     py::owned_ref out(PyTuple_New(sizeof...(args)));
