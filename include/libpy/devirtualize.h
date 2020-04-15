@@ -10,8 +10,10 @@ namespace py {
 /** Interface to provide runtime type-checked statically typed access to a
     collection of type-erased `ndarray_views`.
 
-    @tparam ndim The number of dimensions for the underlying `py::ndarray_view` objects.
-    @tparam Ts A sequence of tuples of types that convey the possible combinations of
+    @tparam ndim The number of dimensions for the underlying `py::ndarray_view`
+   objects.
+    @tparam Ts A sequence of tuples of types that convey the possible
+   combinations of
             arrays.
  */
 template<std::size_t ndim, typename... Ts>
@@ -122,12 +124,15 @@ private:
 public:
     /** Call `f` on each set of arrays but pass the arrays with their static type.
 
-        `f` is not guaranteed to be called on the arrays in the order they were passed
-        to the constructor. If you would like to know the original array index of the
+        `f` is not guaranteed to be called on the arrays in the order they were
+       passed
+        to the constructor. If you would like to know the original array index of
+       the
         arguments, use `for_each_with_ix`.
 
         @param f A function object which can be called with with a signature of:
-               `f(const py::ndarray_view<Sig, ndim>&...)` for each candidate signature
+               `f(const py::ndarray_view<Sig, ndim>&...)` for each candidate
+       signature
                in `Ts`.
      */
     template<typename F>
@@ -143,16 +148,17 @@ private:
     template<typename F, typename E>
     void for_each_with_ix_helper(F&& f, const std::vector<E>& entries) const {
         for (const auto& [views, ix] : entries) {
-          std::apply([&, &ix = ix](const auto &... args) { f(ix, args...); },
-                     views);
+            std::apply([&, &ix = ix](const auto&... args) { f(ix, args...); }, views);
         }
     }
 
 public:
     /** Call `f` on each set of arrays but pass the arrays with their static type.
 
-        `f` is not guaranteed to be called on the arrays in the order they were passed
-        to the constructor. The `ix` argument provided will represent the index of the
+        `f` is not guaranteed to be called on the arrays in the order they were
+       passed
+        to the constructor. The `ix` argument provided will represent the index of
+       the
         array views from the original constructor call.
 
         @param f A function object which can be called with with a signature of:
@@ -171,7 +177,8 @@ public:
 
 /** nwise devirtualize for 1-dimensional array views.
 
-    @tparam Ts A sequence of tuples of types that convey the possible combinations of
+    @tparam Ts A sequence of tuples of types that convey the possible
+   combinations of
             arrays.
  */
 template<typename... Ts>

@@ -47,8 +47,10 @@ public:
 };
 }  // namespace detail
 
-/** Compile time boolean to detect if `to_object` works for a given type. This exists to
-    make it easier to use `if constexpr` to test this condition instead of using more
+/** Compile time boolean to detect if `to_object` works for a given type. This
+   exists to
+    make it easier to use `if constexpr` to test this condition instead of using
+   more
     complicated SFINAE.
  */
 template<typename T>

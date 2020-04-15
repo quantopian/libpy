@@ -155,8 +155,8 @@ private:
         std::byte* addr = buf + pos_to_index(ix);
         using raw = py::meta::remove_cvref<T>;
         if constexpr (std::is_same_v<raw, any_ref> || std::is_same_v<raw, any_cref>) {
-                construct(addr, value.addr());
-            }
+            construct(addr, value.addr());
+        }
         else {
             construct(addr, std::addressof(value));
         }
@@ -269,7 +269,8 @@ private:
 
         m_vtable.free(old_data);
 
-        // if we make it here, we have successfully initialized `new_data` and unwound
+        // if we make it here, we have successfully initialized `new_data` and
+        // unwound
         // `old_data`, now we can swap our new state over to the new array
         m_storage = new_data;
         m_capacity = count;
@@ -302,8 +303,7 @@ public:
         : m_vtable(vtable),
           m_storage(vtable.default_construct_alloc(count)),
           m_size(count),
-          m_capacity(count) {
-    }
+          m_capacity(count) {}
 
 private:
     template<typename T>
@@ -610,7 +610,6 @@ public:
         return m_vtable;
     }
 };
-
 
 inline owned_ref<> move_to_numpy_array(py::any_vector&& values) {
 

@@ -226,7 +226,8 @@ static_assert(sizeof(datetime64ns) == sizeof(std::int64_t),
               "alias type should be the same size as aliased type");
 
 namespace chrono {
-/* The number of days in each month. The array at index 0 holds the counts for non-leap
+/* The number of days in each month. The array at index 0 holds the counts for
+   non-leap
    years. The array at index 1 holds the counts for leap years.
 */
 static constexpr std::array<std::array<std::int8_t, 12>, 2> days_in_month = {
@@ -299,7 +300,8 @@ inline constexpr int leap_years_before(int year) {
  */
 inline constexpr auto time_since_epoch(int year, int month, int day) {
     using days = std::chrono::duration<std::int64_t, std::ratio<86400>>;
-    // The number of seconds in 365 days. This doesn't account for leap years, we will
+    // The number of seconds in 365 days. This doesn't account for leap years, we
+    // will
     // manually add those days.
     using years = std::chrono::duration<std::int64_t, std::ratio<31536000>>;
 
@@ -314,7 +316,8 @@ inline constexpr auto time_since_epoch(int year, int month, int day) {
 
 namespace detail {
 using namespace py::cs::literals;
-// Constant time access to zero padded numbers suitable for use in the months, days,
+// Constant time access to zero padded numbers suitable for use in the months,
+// days,
 // hours, minutes, and seconds field of a datetime.
 static constexpr std::array<std::array<char, 2>, 60> datetime_strings =
     {"00"_arr, "01"_arr, "02"_arr, "03"_arr, "04"_arr, "05"_arr, "06"_arr, "07"_arr,
@@ -328,7 +331,8 @@ static constexpr std::array<std::array<char, 2>, 60> datetime_strings =
 
 constexpr auto nat_string = "NaT"_arr;
 
-/** Convert a count of days from 1970 to a year and the number of days into the year
+/** Convert a count of days from 1970 to a year and the number of days into the
+   year
 
     @param days_from_epoch The number of days since 1970-01-01.
     @return The year number and the number of days into that year.
@@ -372,7 +376,8 @@ days_to_year_and_days(std::int64_t days_from_epoch) {
     return {year + 2000, days};
 }
 
-/** Convert a year and number of days into the year into the month number and day number,
+/** Convert a year and number of days into the year into the month number and
+   day number,
     both 1-indexed.
 
     @param year The gregorian year.
@@ -423,8 +428,7 @@ write(char* data, char* end, std::ptrdiff_t& ix, char c, std::int64_t count) {
     return {};
 }
 
-inline no_discard_errc
-write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v) {
+inline no_discard_errc write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v) {
 #if defined(_LIBCPP_VERSION)
     // XXX: workaround for a bug in libc++ which adds unnecessary leading 0s to
     // 64 bit integers with 9, 10, or 11 digits.
@@ -498,7 +502,8 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
         return detail::formatting::write(first, last, ix, args...);
     };
 
-    auto zero_pad = [&](int expected_digits, std::int64_t value) -> detail::no_discard_errc {
+    auto zero_pad = [&](int expected_digits,
+                        std::int64_t value) -> detail::no_discard_errc {
         std::int64_t digits = std::floor(std::log10(value));
         digits += 1;
         if (expected_digits > digits) {
@@ -596,8 +601,7 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
             return finalize(ec);
         }
         std::int64_t expected_digits = std::log10(unit::period::den);
-        if (auto ec = zero_pad(expected_digits, fractional_seconds);
-            ec != std::errc{}) {
+        if (auto ec = zero_pad(expected_digits, fractional_seconds); ec != std::errc{}) {
             return finalize(ec);
         }
         if (auto ec = write(fractional_seconds); ec != std::errc{}) {

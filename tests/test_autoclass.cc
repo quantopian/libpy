@@ -25,7 +25,8 @@ class autoclass : public with_python_interpreter {
     }
 
     void TearDown() override {
-        // Types basically always participate in a cycle because the method descriptors.
+        // Types basically always participate in a cycle because the method
+        // descriptors.
         gc_collect();
         EXPECT_EQ(py::detail::autoclass_type_cache.get().size(), m_cache_start_size);
 
@@ -60,12 +61,12 @@ TEST_F(autoclass, smoke) {
     };
 
     py::owned_ref cls = py::autoclass<C>()
-                             .new_<int, float>()
-                             .def<&C::a>("a")
-                             .def<&C::b>("b")
-                             .def<&C::sum>("sum")
-                             .def<&C::sum_plus>("sum_plus")
-                             .type();
+                            .new_<int, float>()
+                            .def<&C::a>("a")
+                            .def<&C::b>("b")
+                            .def<&C::sum>("sum")
+                            .def<&C::sum_plus>("sum_plus")
+                            .type();
     ASSERT_TRUE(cls);
 
     py::owned_ref inst = py::call_function(static_cast<PyObject*>(cls), 1, 2.5);
@@ -132,7 +133,8 @@ TEST_F(autoclass, construct) {
         C(int a, float b) : a(a), b(b) {}
     };
 
-    // don't use `new_` to expose `__new__` to Python, `autoclass::construct` doesn't need
+    // don't use `new_` to expose `__new__` to Python, `autoclass::construct`
+    // doesn't need
     // that
     py::owned_ref cls = py::autoclass<C>("C").type();
     ASSERT_TRUE(cls);
@@ -153,7 +155,8 @@ TEST_F(autoclass, construct) {
     EXPECT_EQ(unboxed.b, 2.5);
 }
 
-// lifted to global-scope because you cannot declare a local class with static member
+// lifted to global-scope because you cannot declare a local class with static
+// member
 // variables.
 class throwing_new_destructor_counter {
 public:
@@ -195,8 +198,8 @@ TEST_F(autoclass, constructor_args_new_throws) {
 
 TEST_F(autoclass, free_func_new_throws) {
     py::owned_ref cls = py::autoclass<throwing_new_destructor_counter>()
-                             .new_<throwing_new_destructor_counter::free_func_new>()
-                             .type();
+                            .new_<throwing_new_destructor_counter::free_func_new>()
+                            .type();
     ASSERT_TRUE(cls);
 
     throwing_new_destructor_counter::destructor_called = 0;
@@ -270,20 +273,20 @@ TEST_F(autoclass, doc) {
                 return value op other;                                                   \
             }                                                                            \
         };                                                                               \
-        py::owned_ref cls = py::autoclass<C>().new_<int>().activate<C, int>().type();   \
+        py::owned_ref cls = py::autoclass<C>().new_<int>().activate<C, int>().type();    \
         ASSERT_TRUE(cls);                                                                \
                                                                                          \
-        py::owned_ref lhs = py::call_function(static_cast<PyObject*>(cls), 10);         \
+        py::owned_ref lhs = py::call_function(static_cast<PyObject*>(cls), 10);          \
         ASSERT_TRUE(lhs);                                                                \
         ASSERT_EQ(Py_TYPE(lhs.get()), cls.get());                                        \
         C& unboxed_lhs = py::autoclass<C>::unbox(lhs);                                   \
                                                                                          \
         {                                                                                \
-            py::owned_ref rhs = py::call_function(static_cast<PyObject*>(cls), 7);      \
+            py::owned_ref rhs = py::call_function(static_cast<PyObject*>(cls), 7);       \
             ASSERT_TRUE(rhs);                                                            \
             ASSERT_EQ(Py_TYPE(rhs.get()), cls.get());                                    \
             C& unboxed_rhs = py::autoclass<C>::unbox(rhs);                               \
-            py::owned_ref boxed_result(pyfunc(lhs.get(), rhs.get()));                   \
+            py::owned_ref boxed_result(pyfunc(lhs.get(), rhs.get()));                    \
             ASSERT_TRUE(boxed_result);                                                   \
                                                                                          \
             EXPECT_EQ(py::from_object<int>(boxed_result), unboxed_lhs op unboxed_rhs);   \
@@ -291,9 +294,9 @@ TEST_F(autoclass, doc) {
                                                                                          \
         {                                                                                \
             int unboxed_rhs = 7;                                                         \
-            py::owned_ref boxed_rhs = py::to_object(unboxed_rhs);                       \
+            py::owned_ref boxed_rhs = py::to_object(unboxed_rhs);                        \
             ASSERT_TRUE(boxed_rhs);                                                      \
-            py::owned_ref boxed_result(pyfunc(lhs.get(), boxed_rhs.get()));             \
+            py::owned_ref boxed_result(pyfunc(lhs.get(), boxed_rhs.get()));              \
             ASSERT_TRUE(boxed_result);                                                   \
                                                                                          \
             EXPECT_EQ(py::from_object<int>(boxed_result), unboxed_lhs op unboxed_rhs);   \
@@ -301,9 +304,9 @@ TEST_F(autoclass, doc) {
                                                                                          \
         {                                                                                \
             int unboxed_rhs = -1;                                                        \
-            py::owned_ref boxed_rhs = py::to_object(unboxed_rhs);                       \
+            py::owned_ref boxed_rhs = py::to_object(unboxed_rhs);                        \
             ASSERT_TRUE(boxed_rhs);                                                      \
-            py::owned_ref boxed_result(pyfunc(lhs.get(), boxed_rhs.get()));             \
+            py::owned_ref boxed_result(pyfunc(lhs.get(), boxed_rhs.get()));              \
             EXPECT_FALSE(boxed_result);                                                  \
             expect_pyerr_type_and_message(PyExc_RuntimeError,                            \
                                           "a C++ exception was raised: C++ message");    \
@@ -358,15 +361,15 @@ TEST_AUTOCLASS_BINARY_OPERATOR(!=, ne, comparisons, [](PyObject* lhs, PyObject* 
                 return op value;                                                         \
             }                                                                            \
         };                                                                               \
-        py::owned_ref cls = py::autoclass<C>().new_<int>().unary().type();              \
+        py::owned_ref cls = py::autoclass<C>().new_<int>().unary().type();               \
         ASSERT_TRUE(cls);                                                                \
                                                                                          \
         {                                                                                \
-            py::owned_ref inst = py::call_function(static_cast<PyObject*>(cls), 10);    \
+            py::owned_ref inst = py::call_function(static_cast<PyObject*>(cls), 10);     \
             ASSERT_TRUE(inst);                                                           \
             ASSERT_EQ(Py_TYPE(inst.get()), cls.get());                                   \
                                                                                          \
-            py::owned_ref result(pyfunc(inst.get()));                                   \
+            py::owned_ref result(pyfunc(inst.get()));                                    \
             ASSERT_TRUE(result);                                                         \
             int unboxed_result = py::from_object<int>(result.get());                     \
                                                                                          \
@@ -374,11 +377,11 @@ TEST_AUTOCLASS_BINARY_OPERATOR(!=, ne, comparisons, [](PyObject* lhs, PyObject* 
         }                                                                                \
                                                                                          \
         {                                                                                \
-            py::owned_ref inst = py::call_function(static_cast<PyObject*>(cls), -1);    \
+            py::owned_ref inst = py::call_function(static_cast<PyObject*>(cls), -1);     \
             ASSERT_TRUE(inst);                                                           \
             ASSERT_EQ(Py_TYPE(inst.get()), cls.get());                                   \
                                                                                          \
-            py::owned_ref result(pyfunc(inst.get()));                                   \
+            py::owned_ref result(pyfunc(inst.get()));                                    \
             EXPECT_FALSE(result);                                                        \
             expect_pyerr_type_and_message(PyExc_RuntimeError,                            \
                                           "a C++ exception was raised: C++ message");    \
@@ -581,7 +584,8 @@ struct hash<test_autoclass::negative_one_hash> {
 }  // namespace std
 
 namespace test_autoclass {
-// Python uses -1 as an error sentinel in `tp_hash`, so we need to correct a non-failure
+// Python uses -1 as an error sentinel in `tp_hash`, so we need to correct a
+// non-failure
 // -1 from our type's hash function to a valid value.
 TEST_F(autoclass, hash_returns_negative_one) {
     py::owned_ref cls = py::autoclass<negative_one_hash>().new_<>().hash().type();
@@ -614,8 +618,7 @@ std::string string_repr_free_func(const std::string& val) {
 };
 
 TEST_F(autoclass, repr_free_func) {
-    py::owned_ref cls =
-        py::autoclass<std::string>().repr<string_repr_free_func>().type();
+    py::owned_ref cls = py::autoclass<std::string>().repr<string_repr_free_func>().type();
     ASSERT_TRUE(cls);
 
     py::owned_ref inst = py::autoclass<std::string>::construct("ayy lmao");
@@ -862,9 +865,9 @@ TEST_F(autoclass, mapping_setitem) {
         using value_type = typename M::mapped_type;
 
         py::owned_ref cls = py::autoclass<M>()
-                                 .template new_<>()
-                                 .template mapping<key_type, value_type>()
-                                 .type();
+                                .template new_<>()
+                                .template mapping<key_type, value_type>()
+                                .type();
         ASSERT_TRUE(cls);
 
         py::owned_ref inst = py::call_function(static_cast<PyObject*>(cls));

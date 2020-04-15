@@ -16,7 +16,8 @@ namespace py {
 namespace dispatch {
 /** Handlers for formatting C++ data types into Python exception messages.
 
-    To add a new formatter, add a new explicit template specialization for the type and
+    To add a new formatter, add a new explicit template specialization for the
+   type and
     implement `static std::ostream& f(std::ostream& out, T value)` which
     should append the new data to the output message.
  */
@@ -211,7 +212,8 @@ inline detail::raise_buffer<> raise(py::borrowed_ref<> exc) {
     return detail::raise_buffer<>(exc);
 }
 
-/** Raise a python exception from a C++ exception. If a python exception is already raised
+/** Raise a python exception from a C++ exception. If a python exception is
+   already raised
     then merge their messages.
 
     @param e The C++ exception the Python exception is being raised from.

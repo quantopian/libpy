@@ -19,18 +19,23 @@
 
 /* Macro for ensuring that the Numpy Array API is initialized in a non-extension
    translation unit. It works by declaring an anonymous namespace containing a
-   default-constructed instance of an object whose constructor initializes the numpy
-   api. This ensures that the numpy api is initialized within the translation unit
+   default-constructed instance of an object whose constructor initializes the
+   numpy
+   api. This ensures that the numpy api is initialized within the translation
+   unit
 
-   This macro should be invoked at the top-level scope of any **non-extension** .cc file
+   This macro should be invoked at the top-level scope of any **non-extension**
+   .cc file
    that uses the numpy array API (i.e. any of the functions listed in
    https://docs.scipy.org/doc/numpy/reference/c-api.array.html).
 
-   Extension files (i.e., files that correspond to importable Python modules) should call
+   Extension files (i.e., files that correspond to importable Python modules)
+   should call
    import_array() as documented in
    https://docs.scipy.org/doc/numpy/reference/c-api.array.html#c.import_array.
 
-   If you're seeing mysterious segfault calling numpy functions from a libpy .cc file, you
+   If you're seeing mysterious segfault calling numpy functions from a libpy .cc
+   file, you
    probably need to add this to a .cc file.
 */
 #ifdef NO_IMPORT_ARRAY
@@ -54,7 +59,8 @@
 
 namespace py {
 
-/** A strong typedef of npy_bool to not be ambiguous with `unsigned char` but may
+/** A strong typedef of npy_bool to not be ambiguous with `unsigned char` but
+   may
     still be used in a vector without the dreaded `std::vector<bool>`.
 */
 struct py_bool {
@@ -302,8 +308,10 @@ public:
 };
 }  // namespace detail
 
-/** Compile time boolean to detect if `new_dtype` works for a given type. This exists to
-    make it easier to use `if constexpr` to test this condition instead of using more
+/** Compile time boolean to detect if `new_dtype` works for a given type. This
+   exists to
+    make it easier to use `if constexpr` to test this condition instead of using
+   more
     complicated SFINAE.
  */
 template<typename T>
@@ -383,7 +391,8 @@ struct from_object<datetime64<D>> {
 }  // namespace dispatch
 
 namespace detail {
-/** A capsule to add Python reference counting to a contiguous container. This is
+/** A capsule to add Python reference counting to a contiguous container. This
+   is
     used to allow Python to manage the lifetimes of vectors fed to
     `move_to_numpy_array`.
 
@@ -453,7 +462,8 @@ public:
 /** Convert a container into a numpy `ndarray`. This steals the underlying
     buffer from the values array.
 
-    @param values The container to convert. On success this buffer gets moved from
+    @param values The container to convert. On success this buffer gets moved
+   from
            and will be invalidated.
     @return An `ndarray` from the values.
  */

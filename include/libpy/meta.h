@@ -5,16 +5,19 @@
 
 /** Utilities for metaprogramming.
  */
-namespace py ::meta {
+namespace py::meta {
 /** Debugging helper to get the compiler to dump a type as an error message.
 
     @tparam T The type to print.
 
     ### Usage
 
-    When debugging template meta-functions it is sometimes helpful to see the resulting
-    type of an expression. To get the compiler to emit a message, instantiate `print_t`
-    with the type of interest and access any member inside the type, for example `::a`.
+    When debugging template meta-functions it is sometimes helpful to see the
+   resulting
+    type of an expression. To get the compiler to emit a message, instantiate
+   `print_t`
+    with the type of interest and access any member inside the type, for example
+   `::a`.
 
     \code
     using T = std::remove_cv_t<std::remove_reference_t<const int&>>;
@@ -28,26 +31,32 @@ namespace py ::meta {
              ^
     \endcode
 
-    In the message we see: `py::meta::print_t<int>`, where `int` is the result of
+    In the message we see: `py::meta::print_t<int>`, where `int` is the result
+   of
     `std::remove_cv_t<std::remove_reference_t<const int&>>`.
 
     ### Notes
 
-    It doesn't matter what member is requested, `::a` is chosen because it is short and
+    It doesn't matter what member is requested, `::a` is chosen because it is
+   short and
     easy to type, any other name will work.
  */
 template<typename>
 struct print_t;
 
-/** Debugging helper to get the compiler to dump a compile-time value as an error message.
+/** Debugging helper to get the compiler to dump a compile-time value as an
+   error message.
 
     @tparam v The value to print.
 
     ### Usage
 
-    When debugging template meta-functions it is sometimes helpful to see the resulting
-    value of an expression. To get the compiler to emit a message, instantiate `print_v`
-    with the value of interest and access any member inside the type, for example `::a`.
+    When debugging template meta-functions it is sometimes helpful to see the
+   resulting
+    value of an expression. To get the compiler to emit a message, instantiate
+   `print_v`
+    with the value of interest and access any member inside the type, for
+   example `::a`.
 
     \code
     template<auto v>
@@ -69,12 +78,14 @@ struct print_t;
      print_v<v>::a;
     \endcode
 
-    In the message we see: `py::meta::print_v<46368>`, where `46368` is the value of
+    In the message we see: `py::meta::print_v<46368>`, where `46368` is the
+   value of
     `fib<24>`.
 
     ### Notes
 
-    It doesn't matter what member is requested, `::a` is chosen because it is short and
+    It doesn't matter what member is requested, `::a` is chosen because it is
+   short and
     easy to type, any other name will work.
  */
 template<const auto&>
@@ -103,7 +114,8 @@ constexpr bool element_of = false;
 template<typename Search>
 constexpr bool element_of<Search, std::tuple<>> = false;
 
-// Recursive Case: Search is an element of tuple<Head, Rest...> if it's equal to Head
+// Recursive Case: Search is an element of tuple<Head, Rest...> if it's equal to
+// Head
 // or if it's an element of tuple<Rest...>.
 template<typename Search, typename Head, typename... Rest>
 constexpr bool element_of<Search, std::tuple<Head, Rest...>> =
@@ -126,7 +138,8 @@ struct search_impl<ix, Needle, std::tuple<Head, Tail...>> {
 };
 }  // namespace detail
 
-/** Variable template for getting the index at which a type appears in the fields of a
+/** Variable template for getting the index at which a type appears in the
+ fields of a
  * std::tuple.
 
  @tparam Needle The type to be searched for.
@@ -195,7 +208,8 @@ struct set_diff_impl<std::tuple<As...>, B> {
 
     - `set_diff<std::tuple<int, float, double>, std::tuple<int>>` evaluates to
       `std::tuple<float, double>`.
-    - `set_diff<std::tuple<int, long, float, double>, std::tuple<long, int>>` evaluates to
+    - `set_diff<std::tuple<int, long, float, double>, std::tuple<long, int>>`
+   evaluates to
       `std::tuple<float, double>`.
  */
 template<typename A, typename B>
@@ -203,11 +217,13 @@ using set_diff = typename detail::set_diff_impl<A, B>::type;
 
 /** A collection of function objects that implement simple operators.
 
-    These are useful for metaprogramming contexts where you want generic operators as
+    These are useful for metaprogramming contexts where you want generic
+   operators as
     function objects for higher order templates and functions.
  */
 namespace op {
-/** Define a new operator function type named `name` that implements the `op` binary
+/** Define a new operator function type named `name` that implements the `op`
+   binary
     operator.
 
     # Example
@@ -216,14 +232,15 @@ namespace op {
     DEFINE_BINOP(+, add)
     \endcode
 
-    Creates a struct named `add` that implements `operator()` to forward to `lhs + rhs`.
+    Creates a struct named `add` that implements `operator()` to forward to `lhs
+   + rhs`.
  */
 #define DEFINE_BINOP(op, name)                                                           \
     struct name {                                                                        \
         template<typename LHS, typename RHS>                                             \
-        constexpr auto operator()(LHS&& lhs, RHS&& rhs) noexcept(noexcept(lhs op rhs)) \
+        constexpr auto operator()(LHS&& lhs, RHS&& rhs) noexcept(noexcept(lhs op rhs))   \
             -> decltype(lhs op rhs) {                                                    \
-            return (lhs op rhs);                                        \
+            return (lhs op rhs);                                                         \
         }                                                                                \
     };
 
@@ -263,7 +280,8 @@ DEFINE_UNOP(~, inv)
 }  // namespace op
 
 namespace detail {
-/** Recursive base case for flattening a tuple that forms a deep right tree. For example:
+/** Recursive base case for flattening a tuple that forms a deep right tree. For
+   example:
 
     (0, (1, (2, (3, (4, 5))))) -> (0, 1, 2, 3, 4, 5)
 
@@ -293,7 +311,8 @@ constexpr auto flatten_right_tree(const std::tuple<L, R>& t) noexcept {
 
     @param a The first tuple.
     @param b The second tuple.
-    @return A `std::tuple` of length 2 tuples containing the pairwise combinations from
+    @return A `std::tuple` of length 2 tuples containing the pairwise
+   combinations from
             `a` and `b`.
  */
 template<typename A, typename B>
@@ -313,7 +332,8 @@ constexpr auto tuple_prod(const A& a, const B& b) noexcept {
 
     @param head The first tuple.
     @param tail The rest of the tuples.
-    @return A `std::tuple` of length `sizeof...(tail) + 1` tuples containing the n-wise
+    @return A `std::tuple` of length `sizeof...(tail) + 1` tuples containing the
+   n-wise
             combinations from each input tuple.
  */
 template<typename Head, typename... Tail>

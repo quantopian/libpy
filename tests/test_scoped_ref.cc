@@ -15,7 +15,8 @@ TEST_F(owned_ref, basic_lifetime) {
     {
         Py_INCREF(raw);
 
-        // wrapping an object in a scoped ref claims the reference, it should not incref
+        // wrapping an object in a scoped ref claims the reference, it should not
+        // incref
         // again
         py::owned_ref sr(raw);
 

@@ -54,7 +54,8 @@ TEST_F(object_map_key, lt) {
 
     EXPECT_LT(a, nullptr);
 
-    // NOTE: don't test EXPECT_GE` here because we are testing `operator<` explicitly
+    // NOTE: don't test EXPECT_GE` here because we are testing `operator<`
+    // explicitly
     EXPECT_FALSE(py::object_map_key{nullptr} < a);
     EXPECT_FALSE(py::object_map_key{nullptr} < nullptr);
 }
@@ -78,7 +79,8 @@ TEST_F(object_map_key, le) {
 
     EXPECT_LE(a, nullptr);
 
-    // NOTE: don't test EXPECT_GE` here because we are testing `operator<` explicitly
+    // NOTE: don't test EXPECT_GE` here because we are testing `operator<`
+    // explicitly
     EXPECT_FALSE(py::object_map_key{nullptr} <= a);
     EXPECT_LE(py::object_map_key{nullptr}, nullptr);
 }
@@ -100,7 +102,8 @@ TEST_F(object_map_key, ge) {
     EXPECT_NE(a.get(), c.get());
     EXPECT_GE(b, c);
 
-    // NOTE: don't test EXPECT_LT` here because we are testing `operator>=` explicitly
+    // NOTE: don't test EXPECT_LT` here because we are testing `operator>=`
+    // explicitly
     EXPECT_FALSE(a >= nullptr);
     EXPECT_GE(py::object_map_key{nullptr}, a);
     EXPECT_GE(py::object_map_key{nullptr}, nullptr);
@@ -117,7 +120,8 @@ TEST_F(object_map_key, gt) {
     EXPECT_NE(a.get(), b.get());
     EXPECT_GT(b, a);
 
-    // NOTE: don't test EXPECT_LE` here because we are testing `operator>` explicitly
+    // NOTE: don't test EXPECT_LE` here because we are testing `operator>`
+    // explicitly
     EXPECT_FALSE(a > nullptr);
     EXPECT_FALSE(py::object_map_key{nullptr} < nullptr);
     EXPECT_GT(py::object_map_key{nullptr}, a);

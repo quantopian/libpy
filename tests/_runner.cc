@@ -24,7 +24,8 @@ PyObject* run_tests(PyObject*, PyObject* py_argv) {
     int argc = argv.size();
     argv.push_back(nullptr);
     testing::InitGoogleTest(&argc, argv.data());
-    // print a newline to start output fresh from the partial line that pytest starts
+    // print a newline to start output fresh from the partial line that pytest
+    // starts
     // us with
     std::cout << '\n';
     int out = RUN_ALL_TESTS();

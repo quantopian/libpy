@@ -16,7 +16,8 @@ enum class str_type {
     @param s Char sequence whose type encodes a compile-time string.
     @param type Enum representing the type into which to convert `s`.
 
-    If the requested output py::str_type::str or py::str_type::unicode, the input string
+    If the requested output py::str_type::str or py::str_type::unicode, the
+   input string
     will be must be valid utf-8.
  */
 template<char... cs>

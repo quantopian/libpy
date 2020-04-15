@@ -54,10 +54,12 @@ public:
     static constexpr bool value = std::is_same_v<decltype(test<T>(0)), std::true_type>;
 };
 
-/** The actual structure that holds all the function pointers. This should be accessed
+/** The actual structure that holds all the function pointers. This should be
+   accessed
     through an `py::any_vtable`.
 
-    NOTE: Do not explicitly specialize this unless you really know what you are doing.
+    NOTE: Do not explicitly specialize this unless you really know what you are
+   doing.
  */
 template<typename T>
 inline constexpr any_vtable_impl any_vtable_instance = {
@@ -113,10 +115,11 @@ inline constexpr any_vtable_impl any_vtable_instance = {
             return stream << *static_cast<const T*>(addr);
         }
         else {
-            throw py::exception(
-                PyExc_TypeError,
-                "cannot use operator<<(std::ostream&, const T&) for values of type ",
-                py::util::type_name<T>());
+            throw py::exception(PyExc_TypeError,
+                                "cannot use "
+                                "operator<<(std::ostream&, const "
+                                "T&) for values of type ",
+                                py::util::type_name<T>());
         }
     },
     []() { return py::util::type_name<T>(); },
@@ -152,10 +155,12 @@ inline constexpr any_vtable_impl any_vtable_instance<void> = {
 };
 }  // namespace detail
 
-/** A collection of operations and metadata about a type to implement type-erased
+/** A collection of operations and metadata about a type to implement
+   type-erased
     containers.
 
-    The constructor is private, use `py::any_vtable::make<T>()` to look up the vtable for
+    The constructor is private, use `py::any_vtable::make<T>()` to look up the
+   vtable for
     a given type.
  */
 class any_vtable {
@@ -309,8 +314,10 @@ public:
     }
 
     constexpr inline bool operator==(const any_vtable& other) const {
-        // The m_impl can be the same based on optimization/linking; however, it is not
-        // guaranteed to be the same if the type is the same. If `m_impl` is the same, we
+        // The m_impl can be the same based on optimization/linking; however, it is
+        // not
+        // guaranteed to be the same if the type is the same. If `m_impl` is the
+        // same, we
         // know it must point to the same type, but if not, fall back to the slower
         // `type_info::operator=`.
         return m_impl == other.m_impl || m_impl->type_info == other.m_impl->type_info;
@@ -450,7 +457,8 @@ any_ref make_any_ref(T& ob) {
     return {&ob, any_vtable::make<T>()};
 }
 
-/** A constant dynamic reference to a value whose type isn't known until runtime.
+/** A constant dynamic reference to a value whose type isn't known until
+   runtime.
 
     This object is like `std::any`, except it is *non-owning*. The object is
     like a constant reference, and thus may not be assigned to.
@@ -555,7 +563,8 @@ any_cref make_any_cref(T& ob) {
     return {&ob, any_vtable::make<T>()};
 }
 
-// Deferred definition because this deeds to see the definition of `any_cref` to call
+// Deferred definition because this deeds to see the definition of `any_cref` to
+// call
 // methods. This breaks the cycle between these objects.
 inline void any_ref::typecheck(const any_cref& other) const {
     if (m_vtable != other.vtable()) {
@@ -587,7 +596,6 @@ struct to_object<py::any_cref> {
 };
 }  // namespace dispatch
 
-
 namespace detail {
 template<std::size_t max_size, typename T>
 struct make_string_vtable_impl;
@@ -601,7 +609,7 @@ struct make_string_vtable_impl<max_size, std::index_sequence<head, tail...>> {
         default:
             return make_string_vtable_impl<max_size, std::index_sequence<tail...>>::f(
                 size);
-    }
+        }
     }
 };
 
@@ -626,8 +634,7 @@ inline any_vtable make_string_vtable(int size) {
     @param dtype The runtime numpy dtype.
     @return The any_vtable that corresponds to the given dtype.
  */
-inline any_vtable
-dtype_to_vtable(py::borrowed_ref<PyArray_Descr> dtype) {
+inline any_vtable dtype_to_vtable(py::borrowed_ref<PyArray_Descr> dtype) {
     switch (dtype->type_num) {
     case NPY_BOOL:
         return any_vtable::make<py_bool>();

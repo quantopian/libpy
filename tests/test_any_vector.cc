@@ -146,9 +146,9 @@ TEST(any_vector, copy_construct_elements) {
             return data != other.data;
         }
     };
-    static_assert(
-        !py::any_vtable::make<S>().is_trivially_copy_constructible(),
-        "S shouldn't be trivially copy constructible to check the fallback cases");
+    static_assert(!py::any_vtable::make<S>().is_trivially_copy_constructible(),
+                  "S shouldn't be trivially copy constructible to check the "
+                  "fallback cases");
 
     for (std::size_t count = 0; count < 256; count += 8) {
         test(py::any_vtable::make<int>(), count, 0);
@@ -200,7 +200,8 @@ TEST(any_vector, copy_constructor_not_trivially_copyable) {
     std::unordered_set<int> copy_constructions;
     py::any_vector vec1(vtable);
 
-    // NOTE: These don't trigger copy construction because they should hit the rvalue
+    // NOTE: These don't trigger copy construction because they should hit the
+    // rvalue
     // reference dispatch on push_back.
     vec1.push_back(S{copy_constructions, 0});
     vec1.push_back(S{copy_constructions, 1});
@@ -299,7 +300,8 @@ TEST(any_vector, copy_assign_not_trivially_copyable) {
     std::unordered_set<int> destroyed;
     py::any_vector rhs(rhs_vtable);
 
-    // NOTE: These don't trigger copy construction because they should hit the rvalue
+    // NOTE: These don't trigger copy construction because they should hit the
+    // rvalue
     // reference dispatch on push_back.
     rhs.push_back(rhs_element{copy_constructions, 0});
     rhs.push_back(rhs_element{copy_constructions, 1});
@@ -315,7 +317,8 @@ TEST(any_vector, copy_assign_not_trivially_copyable) {
 
     ASSERT_EQ(destroyed.size(), 0ul);
 
-    // Assigning rhs to lhs should use rhs_elements's copy constructor, and should set the
+    // Assigning rhs to lhs should use rhs_elements's copy constructor, and should
+    // set the
     // vtable of ``lhs`` to the vtable for ``rhs_element``.
     lhs = rhs;
 
@@ -387,7 +390,8 @@ void push_back_test_body() {
     EXPECT_EQ(vec[3], S{3});
     EXPECT_EQ(vec.back(), S{3});
 
-    // test that push back doesn't invalidate references too early nor copy from the
+    // test that push back doesn't invalidate references too early nor copy from
+    // the
     // moved-from state of the reference.
     // We need the size to be at the capacity to test this case.
     ASSERT_EQ(vec.size(), vec.capacity());
@@ -521,7 +525,8 @@ struct non_noexcept_move_push_back_type : public push_back_base {
     non_noexcept_move_push_back_type&
     operator=(const non_noexcept_move_push_back_type&) = default;
 
-    non_noexcept_move_push_back_type& operator=(non_noexcept_move_push_back_type&& mvfrom) {
+    non_noexcept_move_push_back_type&
+    operator=(non_noexcept_move_push_back_type&& mvfrom) {
         data = mvfrom.data;
         mvfrom.data = -1;
         return *this;
@@ -541,7 +546,8 @@ struct alignas(128) over_aligned_push_back_type : public push_back_base {
 };
 
 TEST(any_vector, over_aligned_push_back) {
-    constexpr std::size_t align = alignof(over_aligned_push_back_type);;
+    constexpr std::size_t align = alignof(over_aligned_push_back_type);
+    ;
     ASSERT_GT(align, sizeof(int)) << "where are you compiling this?";
     ASSERT_GT(align, alignof(std::max_align_t));
 

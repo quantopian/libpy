@@ -289,7 +289,6 @@ TEST_F(from_object, path) {
 #endif
 }
 
-
 TEST_F(from_object, autoclass_const_ref) {
     struct S {
         int val;

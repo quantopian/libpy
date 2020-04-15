@@ -10,14 +10,18 @@
 namespace py {
 
 LIBPY_BEGIN_EXPORT
-/** A wrapper that allows a `py::owned_ref` to be used as a key in a mapping structure.
+/** A wrapper that allows a `py::owned_ref` to be used as a key in a mapping
+   structure.
 
-    `object_map_key` overloads `operator==` to dispatch to the underlying Python object's
+    `object_map_key` overloads `operator==` to dispatch to the underlying Python
+   object's
     `__eq__`.
-    `object_map_key` is specialized for `std::hash` to dispatch to the underlying Python
+    `object_map_key` is specialized for `std::hash` to dispatch to the
+   underlying Python
     object's `__hash__`.
 
-    If either operation would throw a Python exception, a C++ `py::exception` is raised.
+    If either operation would throw a Python exception, a C++ `py::exception` is
+   raised.
 */
 class object_map_key {
 private:

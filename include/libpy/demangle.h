@@ -44,7 +44,8 @@ std::string demangle_string(const char* cs);
 std::string demangle_string(const std::string& cs);
 LIBPY_END_EXPORT
 
-/** Get the name for a given type. If the demangled name cannot be given, returns the
+/** Get the name for a given type. If the demangled name cannot be given,
+   returns the
     mangled name.
 
     @tparam The type to get the name of.

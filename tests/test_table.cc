@@ -608,7 +608,8 @@ TEST(table, insert) {
         EXPECT_EQ(table[ix + 8], intermediate[ix]);
     }
     for (std::size_t ix = 0; ix < 8; ++ix) {
-        // the last 8 elements are a repeat of the first 8 elements of `intermediate`
+        // the last 8 elements are a repeat of the first 8 elements of
+        // `intermediate`
         EXPECT_EQ(table[ix + 64 + 8], intermediate[ix]);
     }
 }
@@ -632,7 +633,8 @@ TEST(table, reserve) {
     EXPECT_EQ(table.capacity(), 10ul);
 }
 
-/** Expect that the keys of `dict` are python objects of type `expected_key_type`.
+/** Expect that the keys of `dict` are python objects of type
+ * `expected_key_type`.
  */
 void expect_key_types(py::owned_ref<> dict, PyTypeObject* expected_key_type) {
     ASSERT_TRUE(dict);
@@ -647,8 +649,7 @@ TEST(table, to_python_dict_types) {
     { expect_key_types(T{}.to_python_dict(py::str_type::bytes), &PyBytes_Type); }
     {
         T table;
-        expect_key_types(T{}.to_python_dict(py::str_type::str),
-                         &PyUnicode_Type);
+        expect_key_types(T{}.to_python_dict(py::str_type::str), &PyUnicode_Type);
     }
     {
         T table;

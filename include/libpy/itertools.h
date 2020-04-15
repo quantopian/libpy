@@ -88,10 +88,12 @@ public:
 };
 }  // namespace detail
 
-/** Create an iterator that zips its inputs together. This is designed for pair-wise
+/** Create an iterator that zips its inputs together. This is designed for
+   pair-wise
     iteration over other iterables.
 
-    This requires all the iterables to be the same length, otherwise an exception is
+    This requires all the iterables to be the same length, otherwise an
+   exception is
     thrown.
  */
 template<typename... Ts>
