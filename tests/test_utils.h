@@ -69,11 +69,7 @@ public:
             throw py::exception();
         }
         const char* io_module_name;
-#if PY_MAJOR_VERSION == 2
-        io_module_name = "cStringIO";
-#else
         io_module_name = "io";
-#endif
         py::owned_ref io_module(PyImport_ImportModule(io_module_name));
         if (!io_module) {
             throw py::exception();
@@ -161,11 +157,7 @@ inline py::owned_ref<> run_python(
         return nullptr;
     }
 
-#if PY_MAJOR_VERSION == 2
-#define LIBPY_CODE_CAST(x) reinterpret_cast<PyCodeObject*>(x)
-#else
 #define LIBPY_CODE_CAST(x) (x)
-#endif
 
     py::owned_ref result(
         PyEval_EvalCode(LIBPY_CODE_CAST(code_object.get()), py_ns.get(), py_ns.get()));

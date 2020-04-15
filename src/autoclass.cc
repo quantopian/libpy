@@ -8,7 +8,6 @@
 #include <structmember.h>
 
 #include "libpy/detail/autoclass_cache.h"
-#include "libpy/detail/autoclass_py2.h"
 
 namespace py::detail {
 no_destruct_wrapper<

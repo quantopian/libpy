@@ -16,14 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, macos-10.15]
-        python-version: [2.7, 3.5, 3.6, 3.8]
+        python-version: [3.5, 3.6, 3.8]
         compiler: [gcc, clang]
         exclude:
           - os: macos-10.15
             compiler: gcc
         include:
-          - python-version: 2.7
-            numpy: 1.11.3
           - python-version: 3.5
             numpy: 1.11.3
           - python-version: 3.6

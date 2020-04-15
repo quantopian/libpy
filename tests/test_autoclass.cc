@@ -440,11 +440,7 @@ TEST_F(autoclass, float_conversion) {
 }
 
 namespace {
-#if PY_MAJOR_VERSION == 2
-const char* const bool_method_name = "__nonzero__";
-#else
 const char* const bool_method_name = "__bool__";
-#endif
 }  // namespace
 
 TEST_F(autoclass, bool_conversion) {

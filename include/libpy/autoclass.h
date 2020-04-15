@@ -11,7 +11,6 @@
 #include "libpy/demangle.h"
 #include "libpy/detail/autoclass_cache.h"
 #include "libpy/detail/autoclass_object.h"
-#include "libpy/detail/autoclass_py2.h"
 #include "libpy/detail/python.h"
 #include "libpy/meta.h"
 #include "libpy/scope_guard.h"
@@ -32,6 +31,9 @@ constexpr void zero_non_pyobject_base(T* b) {
 }
 
 namespace detail {
+
+
+
 template<typename T>
 constexpr void nop_clear_base(T*) {}
 }  // namespace detail
@@ -320,7 +322,7 @@ private:
         @return The `tp_flags` to use for this autoclass generated type.
      */
     static unsigned int flags(int extra_flags, py::borrowed_ref<PyTypeObject> base_type) {
-        unsigned int out = detail::autoclass_base_flags;
+        unsigned int out = Py_TPFLAGS_DEFAULT;
         out |= extra_flags;
         if (base_type && base_type->tp_flags & Py_TPFLAGS_HAVE_GC) {
             out |= Py_TPFLAGS_HAVE_GC;
@@ -1237,11 +1239,8 @@ private:
                 std::stringstream s;
                 s << unbox(self);
                 std::string data = s.str();
-#if PY_MAJOR_VERSION == 2
-                return PyString_FromStringAndSize(data.data(), data.size());
-#else
+
                 return PyUnicode_FromStringAndSize(data.data(), data.size());
-#endif
             }
             catch (const std::exception& e) {
                 return raise_from_cxx_exception(e);
@@ -1265,11 +1264,8 @@ private:
             try {
                 auto res = std::invoke(impl, unbox(self));
                 std::string data(std::begin(res), std::end(res));
-#if PY_MAJOR_VERSION == 2
-                return PyString_FromStringAndSize(data.data(), data.size());
-#else
+
                 return PyUnicode_FromStringAndSize(data.data(), data.size());
-#endif
             }
             catch (const std::exception& e) {
                 return raise_from_cxx_exception(e);
