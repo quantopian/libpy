@@ -82,7 +82,6 @@ namespace std {
 template<>
 struct hash<py::object_map_key> {
     auto operator()(const py::object_map_key& ob) const {
-        // this returns a different type in Python 2 and Python 3
         using out_type = decltype(PyObject_Hash(ob.get()));
 
         if (!ob.get()) {
