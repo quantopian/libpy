@@ -68,9 +68,7 @@ public:
         if (!sys) {
             throw py::exception();
         }
-        const char* io_module_name;
-        io_module_name = "io";
-        py::owned_ref io_module(PyImport_ImportModule(io_module_name));
+        py::owned_ref io_module(PyImport_ImportModule("io"));
         if (!io_module) {
             throw py::exception();
         }
@@ -157,12 +155,7 @@ inline py::owned_ref<> run_python(
         return nullptr;
     }
 
-#define LIBPY_CODE_CAST(x) (x)
-
-    py::owned_ref result(
-        PyEval_EvalCode(LIBPY_CODE_CAST(code_object.get()), py_ns.get(), py_ns.get()));
-
-#undef LIBPY_CODE_CAST
+    py::owned_ref result(PyEval_EvalCode(code_object.get(), py_ns.get(), py_ns.get()));
 
     if (!result) {
         return nullptr;

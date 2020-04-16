@@ -442,13 +442,9 @@ TEST_F(autoclass, float_conversion) {
     test_type_conversion<double, true>("__float__");
 }
 
-namespace {
-const char* const bool_method_name = "__bool__";
-}  // namespace
-
 TEST_F(autoclass, bool_conversion) {
-    test_type_conversion<bool, false>(bool_method_name);
-    test_type_conversion<bool, true>(bool_method_name);
+    test_type_conversion<bool, false>("__bool__");
+    test_type_conversion<bool, true>("__bool__");
 }
 
 TEST_F(autoclass, from_object) {
