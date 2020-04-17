@@ -8,7 +8,6 @@ namespace py {
 enum class str_type {
     bytes,
     str,
-    unicode,
 };
 
 /** Convert a compile-time string into a Python string-like value.
@@ -16,9 +15,8 @@ enum class str_type {
     @param s Char sequence whose type encodes a compile-time string.
     @param type Enum representing the type into which to convert `s`.
 
-    If the requested output py::str_type::str or py::str_type::unicode, the
-   input string
-    will be must be valid utf-8.
+    If the requested output py::str_type::str the input string must
+    be valid utf-8.
  */
 template<char... cs>
 owned_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_type type) {
@@ -31,9 +29,6 @@ owned_ref<> to_stringlike(py::cs::char_sequence<cs...> s, py::str_type type) {
         return owned_ref<>{PyBytes_FromStringAndSize(data, size)};
     }
     case py::str_type::str: {
-        return owned_ref<>{PyUnicode_FromStringAndSize(data, size)};
-    }
-    case py::str_type::unicode: {
         return owned_ref<>{PyUnicode_FromStringAndSize(data, size)};
     }
     }

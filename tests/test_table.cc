@@ -651,10 +651,6 @@ TEST(table, to_python_dict_types) {
         T table;
         expect_key_types(T{}.to_python_dict(py::str_type::str), &PyUnicode_Type);
     }
-    {
-        T table;
-        expect_key_types(T{}.to_python_dict(py::str_type::unicode), &PyUnicode_Type);
-    }
 }
 
 TEST(table_view, relabel) {
