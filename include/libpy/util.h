@@ -114,8 +114,7 @@ std::int64_t searchsorted_r(const C& container, const T& needle) {
     return std::upper_bound(begin, container.end(), needle) - begin;
 }
 
-/** Call `f` with value, start and stop (exclusive) indices for each contiguous
-   region in
+/** Call `f` with value, start and stop (exclusive) indices for each contiguous region in
     `it` of equal value.
  */
 template<typename I, typename F>

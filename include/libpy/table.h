@@ -8,29 +8,21 @@
  - `py::row`
  - `py::row_view`
 
- All four of these types are variadic templates designed to be templated on
- sentinel
- values created with `py::C`. Each sentinel encodes a (name, type) pair that
- describes a
- column (in the case of table/table_view) or a field (in the case of
- row/row_view). For
+ All four of these types are variadic templates designed to be templated on sentinel
+ values created with `py::C`. Each sentinel encodes a (name, type) pair that describes a
+ column (in the case of table/table_view) or a field (in the case of row/row_view). For
  details on how this encoding works, see the docs for `py::detail::column` in
  table_details.h.
 
  ### `table` and `table_view`
 
- `table` and `table_view` are data structures that model column-oriented tables,
- in which
- each column has a name and an associated type. Columns (represented as arrays)
- can be
+ `table` and `table_view` are data structures that model column-oriented tables, in which
+ each column has a name and an associated type. Columns (represented as arrays) can be
  looked up by name using `table.get("column_name"_cs)`.
 
- The main difference between `table` and `table_view` is that `table` owns its
- own memory
- and can be resized, whereas `table_view` is a view into memory owned by another
- object
- (often a collection of numpy arrays created in Python code), and cannot be
- resized.
+ The main difference between `table` and `table_view` is that `table` owns its own memory
+ and can be resized, whereas `table_view` is a view into memory owned by another object
+ (often a collection of numpy arrays created in Python code), and cannot be resized.
 
  `table` is generally used for constructing new tables in C++.
  `table_view` is generally used for receiving tables from Python.
@@ -40,10 +32,8 @@
  `row` and `row_view` are data structures that represent "rows" of `table` and
  `table_view`.
 
- The main difference between `row` and `row_view` is that a `row` stores its own
- values
- (often copies of values from a table) whereas a `row_view` holds **pointers**
- to values
+ The main difference between `row` and `row_view` is that a `row` stores its own values
+ (often copies of values from a table) whereas a `row_view` holds **pointers** to values
  owned by another object (often a `table_view`) Assignment through a `row_view`
  transitively assigns through these pointers to the underlying storage.
 
@@ -78,8 +68,7 @@ namespace py {
     @tparam Value The scalar dtype of the column.
     @param Key A `std::integer_sequence` of chars containing the column name.
                `py::cs::operator""_cs` can make this structure as a UDL.
-    @return A sentinel value suitable for passing as a template parameter to
-   `table` or
+    @return A sentinel value suitable for passing as a template parameter to `table` or
             `table_view`.
  */
 template<typename Value, typename Key>
@@ -97,15 +86,13 @@ using column_name = typename detail::unwrap_column<ColumnSingleton>::key;
 template<auto ColumnSingleton>
 using column_type = typename detail::unwrap_column<ColumnSingleton>::value;
 
-/** Helper for converting a parameter pack of column singletons into a tuple
- * whose field
+/** Helper for converting a parameter pack of column singletons into a tuple whose field
  *  types encode the names of the input columns.
  */
 template<auto... ColumnSingletons>
 using column_names = std::tuple<column_name<ColumnSingletons>...>;
 
-/** Helper for converting a parameter pack of column singletons into a tuple
-   whose field
+/** Helper for converting a parameter pack of column singletons into a tuple whose field
     types correspond to the types of the input columns.
  */
 template<auto... ColumnSingletons>
@@ -223,8 +210,7 @@ public:
 
     /** Retrieve a value by name.
 
-        @param ColumnName `std::integer_sequence` of chars containing the column
-       name.
+        @param ColumnName `std::integer_sequence` of chars containing the column name.
         @return A reference to the value.
      */
     template<typename ColumnName>
@@ -234,8 +220,7 @@ public:
 
     /** Retrieve a value by name.
 
-        @param ColumnName `std::integer_sequence` of chars containing the column
-       name.
+        @param ColumnName `std::integer_sequence` of chars containing the column name.
         @return A reference to the view over the column.
      */
     template<typename ColumnName>
@@ -385,8 +370,7 @@ public:
 
     /** Retrieve a column by name.
 
-        @param ColumnName `std::integer_sequence` of chars containing the column
-       name.
+        @param ColumnName `std::integer_sequence` of chars containing the column name.
         @return A reference to the view over the column.
      */
     template<typename ColumnName>
@@ -424,8 +408,7 @@ public:
 
     /** Relabel columns in a row view.
 
-        @param Pairs of `{old_name, new_name}` to replace in the table. Columns
-       not
+        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
                specified will be unchanged.
         @return The relabeled row viewing the same memory.
      */
@@ -667,12 +650,10 @@ private:
 
     /** Retrieve a column by name.
 
-        Returns an ndarray_view so that the column length cannot be changed, but
-       the
+        Returns an ndarray_view so that the column length cannot be changed, but the
         values may be mutated.
 
-        @param ColumnName `std::integer_sequence` of chars containing the column
-       name.
+        @param ColumnName `std::integer_sequence` of chars containing the column name.
         @return A reference to the vector owning the column.
      */
     template<typename ColumnName>
@@ -715,8 +696,7 @@ private:
 public:
     table() = default;
 
-    /** Create an owning copy of a compatible table view. The tables will be
-       aligned by
+    /** Create an owning copy of a compatible table view. The tables will be aligned by
         column name.
 
         @param cpfrom The view to copy from.
@@ -742,14 +722,12 @@ public:
         return static_cast<std::ptrdiff_t>(size());
     }
 
-    /** The number of rows this table can store before resizing and invalidating
-       iterators
+    /** The number of rows this table can store before resizing and invalidating iterators
         and references.
      */
     std::size_t capacity() const {
         static_assert(sizeof...(columns) > 0, "a table with no columns has no capacity");
-        // This assumes that all of our vectors will grow the same way. At least
-        // with
+        // This assumes that all of our vectors will grow the same way. At least with
         // libstdc++ this is true.
         return std::get<0>(m_columns).capacity();
     }
@@ -815,8 +793,7 @@ public:
 
     /** Retrieve a column by name.
 
-        @param ColumnName `std::integer_sequence` of chars containing the column
-       name.
+        @param ColumnName `std::integer_sequence` of chars containing the column name.
         @return A reference to the column.
      */
     template<typename ColumnName>
@@ -827,12 +804,10 @@ public:
 
     /** Retrieve a column by name.
 
-        Returns an ndarray_view so that the column length cannot be changed, but
-       the
+        Returns an ndarray_view so that the column length cannot be changed, but the
         values may be mutated.
 
-        @param ColumnName `std::integer_sequence` of chars containing the column
-       name.
+        @param ColumnName `std::integer_sequence` of chars containing the column name.
         @return A reference to the view over the column.
      */
     template<typename ColumnName>
@@ -868,8 +843,7 @@ private:
     }
 
 public:
-    /** Reserve space for up to `new_cap` rows. If `new_cap` is less than the
-       current
+    /** Reserve space for up to `new_cap` rows. If `new_cap` is less than the current
         `size()` of the table, nothing happens.
 
         `reserve()` does not change the size of the table.
@@ -900,12 +874,10 @@ public:
     }
 
 private:
-    /** Optimization for the case where we know the iterator is over a like-shaped
-       table
+    /** Optimization for the case where we know the iterator is over a like-shaped table
         or table view.
 
-        In this case, we call `insert` on each of the constituent vectors
-       individually
+        In this case, we call `insert` on each of the constituent vectors individually
         instead of `insert`ing one row at a time.
      */
     template<std::size_t... ix>
@@ -923,10 +895,8 @@ private:
         return begin() + insert_ix;
     }
 
-    /** Like-shaped table iterators, but non-const versions. Just cast them to
-       const and
-        forward to insert. This is needed because we have a template in this
-       overload
+    /** Like-shaped table iterators, but non-const versions. Just cast them to const and
+        forward to insert. This is needed because we have a template in this overload
         set, otherwise the implicit conversion would kick in.
      */
     template<std::size_t... ix>
@@ -940,14 +910,11 @@ private:
                       static_cast<const_iterator>(last));
     }
 
-    /** If we don't know what kind of iterator this is, just accumulate the result
-       into
+    /** If we don't know what kind of iterator this is, just accumulate the result into
         an intermediate table and then use the optimized insert.
 
-        Calling `insert()` for scalars in a loop is horrific because it will keep
-       shifting
-        the elements to the right of it each time. Insert with iterators just
-       shifts by
+        Calling `insert()` for scalars in a loop is horrific because it will keep shifting
+        the elements to the right of it each time. Insert with iterators just shifts by
         the size of the newly inserted slice once and then copies everything over.
 
         More work can be done to optimize this case.
@@ -965,8 +932,7 @@ private:
 public:
     /** Inserts elements from range `[first, last)` before `pos`.
 
-        @param pos The iterator to the position before which elements will be
-       inserted.
+        @param pos The iterator to the position before which elements will be inserted.
         @param begin The beginning of the range to insert.
         @param end The end of the range to insert.
      */
@@ -1020,8 +986,7 @@ protected:
     template<auto...>
     friend class table_view;
 
-    /** Create a table view from constituent column views. This does not check the
-       length
+    /** Create a table view from constituent column views. This does not check the length
         of the columns so it should only be used internally.
 
         @param cs The columns of the table.
@@ -1095,8 +1060,7 @@ public:
 
     /** Retrieve a column by name.
 
-        @param ColumnName `std::integer_sequence` of chars containing the column
-       name.
+        @param ColumnName `std::integer_sequence` of chars containing the column name.
         @return A reference to the view over the column.
      */
     template<typename ColumnName>
@@ -1146,8 +1110,7 @@ public:
 
     /** Relabel columns in a table.
 
-        @param Pairs of `{old_name, new_name}` to replace in the table. Columns
-       not
+        @param Pairs of `{old_name, new_name}` to replace in the table. Columns not
                specified will be unchanged.
         @return The relabeled table viewing the same memory.
      */
@@ -1198,10 +1161,10 @@ private:
 public:
     static type f(PyObject* t) {
         if (!PyDict_Check(t)) {
-            throw py::exception(PyExc_TypeError,
-                                "from_object<table_view<...>> input "
-                                "must be a Python dictionary, got: ",
-                                Py_TYPE(t)->tp_name);
+            throw py::exception(
+                PyExc_TypeError,
+                "from_object<table_view<...>> input must be a Python dictionary, got: ",
+                Py_TYPE(t)->tp_name);
         }
 
         py::owned_ref copy(PyDict_Copy(t));
@@ -1248,10 +1211,10 @@ private:
 public:
     static type f(PyObject* t) {
         if (!PyDict_Check(t)) {
-            throw py::exception(PyExc_TypeError,
-                                "from_object<table_view<...>> input "
-                                "must be a Python dictionary, got: ",
-                                Py_TYPE(t)->tp_name);
+            throw py::exception(
+                PyExc_TypeError,
+                "from_object<table_view<...>> input must be a Python dictionary, got: ",
+                Py_TYPE(t)->tp_name);
         }
 
         py::owned_ref copy(PyDict_Copy(t));

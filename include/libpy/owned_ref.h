@@ -63,8 +63,7 @@ public:
 
     /** Create a scoped ref that is a new reference to `ref` if `ref` is non-null.
 
-        @param ref The Python object to create a new managed reference to. If
-       `ref`
+        @param ref The Python object to create a new managed reference to. If `ref`
                is `nullptr`, then the resulting object just holds `nullptr` also.
      */
     constexpr static owned_ref xnew_reference(py::borrowed_ref<T> ref) {

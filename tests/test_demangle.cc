@@ -32,9 +32,9 @@ TEST(demangle, type_name) {
     {
         class test_type_name_type {};
         auto name = py::util::type_name<test_type_name_type>();
-        EXPECT_EQ(name,
-                  "test_demangle::demangle_type_name_Test::TestBody()::test_"
-                  "type_name_type");
+        EXPECT_EQ(
+            name,
+            "test_demangle::demangle_type_name_Test::TestBody()::test_type_name_type");
     }
 
     {

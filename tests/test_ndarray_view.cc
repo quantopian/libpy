@@ -33,7 +33,7 @@ public:
         return a == other.a and b == other.b;
     }
 };
-}  // namespace test_array_view
+}
 
 namespace std {
 template<>
@@ -363,28 +363,28 @@ TYPED_TEST_P(array_view, for_each_unordered_2d_non_contig) {
 }
 
 REGISTER_TYPED_TEST_SUITE_P(array_view,
-                            from_std_array,
-                            from_std_vector,
-                            iterator,
-                            reverse_iterator,
-                            fill,
-                            _2d_indexing,
-                            front_back,
-                            virtual_array,
-                            negative_strides,
-                            slice_npos_end,
-                            slice_start_end,
-                            slice_end_greater_than_size_positive_step,
-                            slice_start_equal_end,
-                            slice_positive_step,
-                            slice_negative_step,
-                            slice_0_step,
-                            construction_from_const_view,
-                            for_each_unordered_1d_contig,
-                            for_each_unordered_1d_non_contig,
-                            for_each_unordered_2d_c_contig,
-                            for_each_unordered_2d_f_contig,
-                            for_each_unordered_2d_non_contig);
+                           from_std_array,
+                           from_std_vector,
+                           iterator,
+                           reverse_iterator,
+                           fill,
+                           _2d_indexing,
+                           front_back,
+                           virtual_array,
+                           negative_strides,
+                           slice_npos_end,
+                           slice_start_end,
+                           slice_end_greater_than_size_positive_step,
+                           slice_start_equal_end,
+                           slice_positive_step,
+                           slice_negative_step,
+                           slice_0_step,
+                           construction_from_const_view,
+                           for_each_unordered_1d_contig,
+                           for_each_unordered_1d_non_contig,
+                           for_each_unordered_2d_c_contig,
+                           for_each_unordered_2d_f_contig,
+                           for_each_unordered_2d_non_contig);
 
 template<typename T>
 struct tuple_to_types;
@@ -412,8 +412,8 @@ using array_view_test_types =
     typename add_const<char, unsigned char, int, float, double, custom_object>::type;
 
 INSTANTIATE_TYPED_TEST_SUITE_P(typed_,
-                               array_view,
-                               typename tuple_to_types<array_view_test_types>::type);
+                              array_view,
+                              typename tuple_to_types<array_view_test_types>::type);
 
 class array_view_extra : public with_python_interpreter {};
 

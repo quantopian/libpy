@@ -3,18 +3,14 @@
 #include <utility>
 
 namespace py::util {
-/** Assign an arbitrary callback to run when the scope closes, either through an
-   exception
-    or return. This callback may be dismissed later. This is useful for
-   implementing
-    transactional behavior, where all operations either succeed or fail
-   together.
+/** Assign an arbitrary callback to run when the scope closes, either through an exception
+    or return. This callback may be dismissed later. This is useful for implementing
+    transactional behavior, where all operations either succeed or fail together.
 
     ### Example
 
     \code
-    // add objects to all vectors, if an exception is thrown, no objects will be
-   added
+    // add objects to all vectors, if an exception is thrown, no objects will be added
     //  to any vectors.
     void add_objects(std::vector<A>& as,
                      const A& a,
@@ -30,8 +26,7 @@ namespace py::util {
 
         cs.push_back(c);
 
-        // everything that could fail has already run, if we make it here we
-   succeeded so
+        // everything that could fail has already run, if we make it here we succeeded so
         // we can dismiss the guards
         a_guard.dismiss();
         b_guard.dismiss();

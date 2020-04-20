@@ -90,8 +90,7 @@ void test_map_to_object_impl(M m) {
             py::borrowed_ref result = PyDict_GetItem(ob.get(), py_key.get());
             ASSERT_TRUE(result) << "Key should have been in the map";
 
-            bool values_equal =
-                PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
+            bool values_equal = PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
             EXPECT_EQ(values_equal, 1) << "Dict values were not equal";
         }
     };
@@ -112,8 +111,7 @@ void test_map_to_object_impl(M m) {
 
 TEST_F(to_object, map_to_object) {
     // NOTE: This test takes a long time to compile (about a .5s per entry in this
-    // tuple). This is just enough coverage to test all three of our hash table
-    // types,
+    // tuple). This is just enough coverage to test all three of our hash table types,
     // and a few important key/value types.
     auto maps = std::make_tuple(py::dense_hash_map<std::string, py::owned_ref<PyObject>>(
                                     "missing_value"s),
@@ -134,8 +132,7 @@ void test_sequence_to_object_impl(V v) {
         EXPECT_EQ(std::size_t(len), v.size())
             << "Python list length should match C++ vector length.";
 
-        // Values in Python list should be the result of calling to_object on each
-        // entry
+        // Values in Python list should be the result of calling to_object on each entry
         // in the C++ vector.
         for (auto [i, cxx_value] : py::enumerate(v)) {
             auto py_value = py::to_object(cxx_value);
@@ -143,8 +140,7 @@ void test_sequence_to_object_impl(V v) {
             py::borrowed_ref result = PyList_GetItem(ob.get(), i);
             ASSERT_TRUE(result) << "Should have had a value at index " << i;
 
-            bool values_equal =
-                PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
+            bool values_equal = PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
             EXPECT_EQ(values_equal, 1)
                 << "List values at index " << i << " were not equal";
         }
@@ -233,8 +229,7 @@ TEST_F(to_object, any_ref_of_object_refcnt) {
 }
 
 TEST_F(to_object, any_ref_non_convertible_object) {
-    // The most simple type which can be put into an `any_ref`. There is no
-    // `to_object`
+    // The most simple type which can be put into an `any_ref`. There is no `to_object`
     // dispatch, so we expect `to_object(S{})` would throw a runtime exception.
     struct S {
         bool operator==(const S&) const {

@@ -5,11 +5,9 @@
 #include "libpy/meta.h"
 
 namespace py::detail {
-/** Sentinel struct used to store a name and a type for py::table and related
-   types.
+/** Sentinel struct used to store a name and a type for py::table and related types.
 
-    The classes defined in table.h (table, table_view, row, and row_view) are
-   all
+    The classes defined in table.h (table, table_view, row, and row_view) are all
     templated on a variable number of "column singletons", which are pointers to
     specializations of ``column``.
 
@@ -19,22 +17,15 @@ namespace py::detail {
     1. A name (e.g. "asof_date").
     2. A type (e.g. "datetime64").
 
-    Templating on types is straightforward, but templating on names is hard to
-   make
-    ergonomic. We can use py::char_sequence literals ("foo"_cs) to define values
-   that
-    encode compile-time strings, but we can't make them template parameters
-   directly
-    without requiring heavy use of ``decltype`` for clients of ``table``,
-   because
+    Templating on types is straightforward, but templating on names is hard to make
+    ergonomic. We can use py::char_sequence literals ("foo"_cs) to define values that
+    encode compile-time strings, but we can't make them template parameters directly
+    without requiring heavy use of ``decltype`` for clients of ``table``, because
     char_sequence values that can't be used as template parameters.
 
-    What we can do, however, is make ``py::C`` be a function that returns a
-   **pointer** to
-    an instance of the type we want to encode, and to template ``table`` and
-   friends on
-    those pointers. Inside the table and row types, we can use
-   `py::unwrap_column` on the
+    What we can do, however, is make ``py::C`` be a function that returns a **pointer** to
+    an instance of the type we want to encode, and to template ``table`` and friends on
+    those pointers. Inside the table and row types, we can use `py::unwrap_column` on the
     value to get the column type that it is a pointer to.
 
     All of this enables the following, relatively pleasant syntax for consumers:
@@ -55,8 +46,7 @@ struct column {
 
 /** Variable template for sentinel instances of ``column``.
 
-    We use addresses of these values as template parameters for ``table`` and
-   its
+    We use addresses of these values as template parameters for ``table`` and its
     associated types.
 */
 template<typename T>
@@ -82,18 +72,13 @@ struct relabeled_column_name_impl<
                                       std::tuple<To...>>;
 };
 
-/** Given a column name, and a set of relabel mappings to apply, get the new
-   column
-    name. This is used to help implement `relabel()` on `row_view` and
-   `table_view`.
+/** Given a column name, and a set of relabel mappings to apply, get the new column
+    name. This is used to help implement `relabel()` on `row_view` and `table_view`.
 
     @tparam C The name of the column to lookup.
-    @tparam Mappings A `std::tuple` of `std::pair`s mapping old column names to
-   new column
-            names. If `C` is the value of `first_type` on any of the pairs, the
-   result
-            will be that same pair's `second_type`. Otherwise, `C` will be
-   returned
+    @tparam Mappings A `std::tuple` of `std::pair`s mapping old column names to new column
+            names. If `C` is the value of `first_type` on any of the pairs, the result
+            will be that same pair's `second_type`. Otherwise, `C` will be returned
             unchanged.
  */
 template<typename C, typename Mappings>

@@ -110,8 +110,7 @@ TYPED_TEST_P(datetime64_all_units, stream_format) {
     using dt = py::datetime64<TypeParam>;
     constexpr std::size_t step_size = 18446657673709550807ULL / (1 << 16);
     constexpr auto min_ticks = static_cast<std::int64_t>(dt::min());
-    // numpy overflows the repr code somewhere if we use really massively negative
-    // values
+    // numpy overflows the repr code somewhere if we use really massively negative values
     for (int step = 1; step < (1 << 16); ++step) {
         std::int64_t ticks = min_ticks + step * step_size;
         dt value(ticks);
@@ -137,14 +136,8 @@ TYPED_TEST_P(datetime64_all_units, stream_format) {
     }
 }
 
-REGISTER_TYPED_TEST_SUITE_P(datetime64_all_units,
-                            from_int,
-                            epoch,
-                            max,
-                            nat,
-                            min,
-                            stream_format_nat,
-                            stream_format);
+REGISTER_TYPED_TEST_SUITE_P(datetime64_all_units, from_int, epoch, max, nat,
+                            min, stream_format_nat, stream_format);
 
 using units = testing::Types<py::chrono::ns,
                              py::chrono::us,

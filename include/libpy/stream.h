@@ -43,8 +43,7 @@ protected:
 
     /** Flush the data to the Python file.
 
-        Note: This does not actually flush the underlying Python file-like object,
-       it just
+        Note: This does not actually flush the underlying Python file-like object, it just
         commits the C++ buffered writes to the Python object.
      */
     virtual int sync() override {

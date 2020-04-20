@@ -32,6 +32,8 @@ constexpr void zero_non_pyobject_base(T* b) {
 
 namespace detail {
 
+
+
 template<typename T>
 constexpr void nop_clear_base(T*) {}
 }  // namespace detail
@@ -55,19 +57,14 @@ private:
 
     /** Marker that statically asserts that the unsafe API is enabled.
 
-        Call this function first in any top-level function that is part of the
-       unsafe API.
+        Call this function first in any top-level function that is part of the unsafe API.
      */
     template<typename U = void>
     static void unsafe_api() {
-        // We need to put this in a template-dependent scope so that the
-        // static_assert
-        // only fails if you call an unsafe API function. `is_samve_V<U, U>` will
-        // always
-        // return true, but it becomes a template-dependent scope because it depends
-        // on
-        // `U`. If `!LIBPY_AUTOCLASS_UNSAFE_API` we put a `!` in front of the result
-        // to
+        // We need to put this in a template-dependent scope so that the static_assert
+        // only fails if you call an unsafe API function. `is_samve_V<U, U>` will always
+        // return true, but it becomes a template-dependent scope because it depends on
+        // `U`. If `!LIBPY_AUTOCLASS_UNSAFE_API` we put a `!` in front of the result to
         // negate it.
         constexpr bool is_valid =
 #if !LIBPY_AUTOCLASS_UNSAFE_API
@@ -93,10 +90,8 @@ private:
     PyType_Spec m_spec;
     py::owned_ref<PyTypeObject> m_py_basetype;
 
-    /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we
-       implement
-        at least `Py_tp_traverse`, and will use `PyObject_GC_New` and
-       `PyObject_GC_Del`.
+    /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we implement
+        at least `Py_tp_traverse`, and will use `PyObject_GC_New` and `PyObject_GC_Del`.
      */
     bool have_gc() const {
         return m_spec.flags & Py_TPFLAGS_HAVE_GC;
@@ -180,8 +175,7 @@ private:
     struct free_function_impl<R(T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
-    // dispatch for a noexcept free function that accepts as a first argument
-    // `const T&`
+    // dispatch for a noexcept free function that accepts as a first argument `const T&`
     template<typename R, typename... Args, auto impl>
     struct free_function_impl<R(const T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
@@ -212,8 +206,7 @@ private:
     struct member_function_impl<R (C::*)(Args...) const noexcept, impl>
         : public pointer_to_member_function_base<impl, R, Args...> {};
 
-    /** Assert that `m_storage->type` isn't yet initialized. Many operations like
-       adding
+    /** Assert that `m_storage->type` isn't yet initialized. Many operations like adding
        methods will not have any affect after the type is initialized.
 
         @param msg The error message to forward to the `ValueError` thrown if this
@@ -250,8 +243,7 @@ private:
 public:
     /** Look up an already created type.
 
-        @return The already created type, or `nullptr` if the type wasn't yet
-       created.
+        @return The already created type, or `nullptr` if the type wasn't yet created.
      */
     static py::owned_ref<PyTypeObject> lookup_type() {
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
@@ -298,8 +290,7 @@ public:
         constructor arguments.
 
         @param args The arguments to forward to the C++ type's constructor.
-        @return A new reference to a Python wrapped version of `T`, or nullptr on
-       failure.
+        @return A new reference to a Python wrapped version of `T`, or nullptr on failure.
      */
     template<typename... Args>
     static py::owned_ref<> construct(Args&&... args) {
@@ -324,8 +315,7 @@ public:
     }
 
 private:
-    /** Get the `tp_flags` from the user provided extra flags and Python base
-       type.
+    /** Get the `tp_flags` from the user provided extra flags and Python base type.
 
         @param extra_flags any extra flags the user explicitly provided.
         @param base_type A potentially null pointer to the Python base type.
@@ -417,14 +407,11 @@ public:
     autoclass_impl(autoclass_impl&&) = default;
     autoclass_impl& operator=(autoclass_impl&&) = default;
 
-    /** Add a `tp_traverse` field to this type. This is only allowed, but required
-       if
+    /** Add a `tp_traverse` field to this type. This is only allowed, but required if
         `extra_flags & Py_TPFLAGS_HAVE_GC`.
 
-        @tparam impl The implementation of the traverse function. This should
-       either be an
-                     `int(T&, visitproc, void*)` or `int (T::*)(visitproc,
-       void*)`.
+        @tparam impl The implementation of the traverse function. This should either be an
+                     `int(T&, visitproc, void*)` or `int (T::*)(visitproc, void*)`.
      */
     template<auto impl>
     concrete& traverse() {
@@ -452,8 +439,7 @@ public:
     /** Add a `tp_clear` field to this type. This is only allowed if
         `extra_flags & Py_TPFLAGS_HAVE_GC`.
 
-        @tparam impl The implementation of the clear function. This should either
-       be an
+        @tparam impl The implementation of the clear function. This should either be an
                      `int(T&)` or `int (T::*)()`.
      */
     template<auto impl>
@@ -518,8 +504,7 @@ private:
         }
     }
 
-    /** Helper for adapting a function which constructs a `T` into a Python
-       `__new__`
+    /** Helper for adapting a function which constructs a `T` into a Python `__new__`
         implementation.
     */
     template<bool have_gc, typename F, auto impl>
@@ -543,8 +528,7 @@ private:
         }
     };
 
-    /** Function which will be used to expose one of `T`'s constructors as the
-     * `__new__`.
+    /** Function which will be used to expose one of `T`'s constructors as the `__new__`.
      */
     template<bool have_gc, typename... ConstructorArgs>
     static PyObject* constructor_new_impl(PyTypeObject* cls, ConstructorArgs... args) {
@@ -578,8 +562,7 @@ private:
 public:
     /** Add a `__new__` function to this class.
 
-        @tparam impl A function which returns a value which can be used to
-       construct a
+        @tparam impl A function which returns a value which can be used to construct a
                 `T`.
         @return *this.
      */
@@ -597,8 +580,7 @@ public:
         return add_slot(Py_tp_new, new_);
     }
 
-    /** Add a `__new__` function to this class by adapting one of the constructors
-       of `T`.
+    /** Add a `__new__` function to this class by adapting one of the constructors of `T`.
 
         @tparam ConstructorArgs The C++ signature of the constructor to use.
         @return *this.
@@ -647,21 +629,18 @@ public:
     /** Add a `__len__` method from `T::size()`
      */
     concrete& len() {
-        // this isn't really unsafe, but it is just dumb without `iter()` or
-        // `mapping()`.
+        // this isn't really unsafe, but it is just dumb without `iter()` or `mapping()`.
         unsafe_api();
         require_uninitialized("cannot add size method after the class has been created");
         return add_slot(Py_mp_length, get_length_func<T>());
     }
 
 private:
-    /** Template to filter `RHS` down to only the valid types which may appear on
-       the RHS
+    /** Template to filter `RHS` down to only the valid types which may appear on the RHS
         of some binary operator.
 
         @tparam F A template that takes two types and provides a
-                  `static constexpr bool value` member which indicates whether `T
-       op RHS`
+                  `static constexpr bool value` member which indicates whether `T op RHS`
                   is valid. This should be obtained from:
                   `test_binop<op>::template check`.
         @tparam RHS The candidate RHS types as a `std::tuple`.
@@ -676,8 +655,7 @@ private:
         using rest = std::tuple<Tail...>;
 
     public:
-        // put `Head` in the output tuple if there is a path to `Head` from
-        // `PyObject*`.
+        // put `Head` in the output tuple if there is a path to `Head` from `PyObject*`.
         using type = std::conditional_t<
             (std::is_same_v<Head, T> || py::has_from_object<Head>) &&F<T, Head>::value,
             meta::type_cat<std::tuple<Head>, typename valid_rhs_types<F, rest>::type>,
@@ -720,15 +698,12 @@ private:
         }
     };
 
-    /** Check all possible implementations of `f(lhs, rhs)`, where `rhs` is a
-       `PyObject*`
+    /** Check all possible implementations of `f(lhs, rhs)`, where `rhs` is a `PyObject*`
         and needs to be converted to a C++ value.
 
-        If `other` cannot be converted to any type in `RHS`, return
-       `NotImplemented`.
+        If `other` cannot be converted to any type in `RHS`, return `NotImplemented`.
 
-        @tparam RHS A `std::tuple` of all of the possible C++ types for `RHS` to
-       be
+        @tparam RHS A `std::tuple` of all of the possible C++ types for `RHS` to be
                     converted to.
         @tparam F The binary function to search.
         @tparam LHS Set to `T`, but lazily to be SFINAE friendly.
@@ -738,8 +713,7 @@ private:
         @return The Python result of `f(lhs, rhs)`.
 
         @note RHS appears first in the template argument list because it must be
-              explicitly provided, where `F` and `LHS` are meant to be inferred
-       from the
+              explicitly provided, where `F` and `LHS` are meant to be inferred from the
               parameters.
      */
     template<typename RHS, typename F, typename LHS>
@@ -749,14 +723,12 @@ private:
                                                                    rhs);
     }
 
-    /** Curried metafunction to check if `op` will be callable with values of type
-       `L`
+    /** Curried metafunction to check if `op` will be callable with values of type `L`
         and `R`.
      */
     template<typename op>
     struct test_binop {
-        /** The binary metafunction which checks if `op` is callable with values of
-           type
+        /** The binary metafunction which checks if `op` is callable with values of type
             `L` and `R`.
          */
         template<typename L, typename R>
@@ -837,8 +809,7 @@ public:
     /** Add all of the number methods by inferring them from `T`'s
         binary operators.
 
-        @tparam BinOpRHSTypes The types to consider as valid RHS types for
-       arithmetic.
+        @tparam BinOpRHSTypes The types to consider as valid RHS types for arithmetic.
      */
     template<typename... BinOpRHSTypes>
     concrete& arithmetic() {
@@ -926,8 +897,7 @@ private:
     }
 
 public:
-    /** Add unary operator methods `__neg__` and `__pos__`, and `__inv__` from the
-       C++
+    /** Add unary operator methods `__neg__` and `__pos__`, and `__inv__` from the C++
         `operator-`, `operator+`, and `operator~` respectively.  interface.
 
      */
@@ -1037,13 +1007,11 @@ private:
     }
 
 public:
-    /** Add mapping methods (``__setitem__`` and `__getitem__``) from the C++
-       `operator[]`
+    /** Add mapping methods (``__setitem__`` and `__getitem__``) from the C++ `operator[]`
         interface.
 
         @tparam KeyType The type of the keys for this mapping.
-        @tparam ValueType The type of the values. If not provided, or explicitly
-       void,
+        @tparam ValueType The type of the values. If not provided, or explicitly void,
                 the `__setitem__` method will not be generated.
      */
     template<typename KeyType, typename ValueType = void>
@@ -1061,8 +1029,7 @@ public:
 
         @tparam impl The implementation of the method to add. If `impl` is a
                 pointer to member function, it doesn't need to have the implicit
-                `PyObject* self` argument, it will just be called on the boxed
-       value of
+                `PyObject* self` argument, it will just be called on the boxed value of
                 `self`.
         @tparam flags extra flags to indicate whether a function is a static or
                 classmethod.
@@ -1092,8 +1059,7 @@ public:
 
         @tparam impl The implementation of the method to add. If `impl` is a
                 pointer to member function, it doesn't need to have the implicit
-                `PyObject* self` argument, it will just be called on the boxed
-       value of
+                `PyObject* self` argument, it will just be called on the boxed value of
                 `self`.
         @tparam flags extra flags to indicate whether a function is a static or
                 classmethod.
@@ -1188,8 +1154,7 @@ private:
     }
 
 public:
-    /** Add a `__iter__` which produces objects of a further `autoclass` generated
-       type
+    /** Add a `__iter__` which produces objects of a further `autoclass` generated type
         that holds onto the iterator-sentinel pair for this type.
     */
     concrete& iter() {
@@ -1255,8 +1220,7 @@ private:
 public:
     /** Add a `__call__` method which defers to `T::operator()`.
 
-        @tparam Args The types of the arguments. This selects the particular
-       overload of
+        @tparam Args The types of the arguments. This selects the particular overload of
                      `operator()` and is used to generate the method signature for
                      `__call__`.
      */
@@ -1323,8 +1287,7 @@ public:
     }
 
 private:
-    /** Helper function to be registered to a weakref that will clear `T` from the
-       type
+    /** Helper function to be registered to a weakref that will clear `T` from the type
         cache.
      */
     static void cache_cleanup(PyObject*, PyObject*) {
@@ -1334,8 +1297,7 @@ private:
 public:
     /** Get a reference to the Python type that represents a boxed `T`.
 
-        This function always returns a non-null pointer, but may throw an
-       exception.
+        This function always returns a non-null pointer, but may throw an exception.
 
         @note If an exception is thrown, the state of the `autoclass` object is
               unspecified.
@@ -1388,10 +1350,8 @@ public:
         // cap off our methods
         m_storage->methods.emplace_back(end_method_list);
 
-        // Move our type storage into this persistent storage. `m_storage->methods`
-        // has
-        // pointers into `m_storage->strings`, so we need to move the list as well
-        // to
+        // Move our type storage into this persistent storage. `m_storage->methods` has
+        // pointers into `m_storage->strings`, so we need to move the list as well to
         // maintain these references.
         auto [it, inserted] =
             detail::autoclass_type_cache.get().try_emplace(typeid(T),
@@ -1405,8 +1365,7 @@ public:
         py::util::scope_guard release_type_cache(
             [&] { detail::autoclass_type_cache.get().erase(typeid(T)); });
 
-        // Make the `Py_tp_methods` the newly created vector's data, not the
-        // original
+        // Make the `Py_tp_methods` the newly created vector's data, not the original
         // data.
         add_slot(Py_tp_methods, storage->methods.data());
         finalize_slots();
@@ -1434,10 +1393,8 @@ public:
         if (!callback_func) {
             throw py::exception{};
         }
-        // Create a weakref that calls `callback_func` (A Python function) when
-        // `type`
-        // dies. This will take a reference to `callback_func`, and after we leave
-        // this
+        // Create a weakref that calls `callback_func` (A Python function) when `type`
+        // dies. This will take a reference to `callback_func`, and after we leave this
         // scope, it will be the sole owner of that function.
         storage->cleanup_wr = py::owned_ref(
             PyWeakref_NewRef(static_cast<PyObject*>(type), callback_func.get()));
@@ -1486,8 +1443,7 @@ public:
 
     @tparam T The C++ type to be wrapped.
     @tparam base The static base type of the Python instances created.
-    @tparam initialize_base A function used to initialize the Python base
-   object.
+    @tparam initialize_base A function used to initialize the Python base object.
     @tparam clear_base A function used to clear the Python base object fields.
 
     ### Usage
@@ -1496,8 +1452,7 @@ public:
     you can write the following:
 
     \code
-    py::owned_ref<PyTypeObject> t =
-   py::autoclass<my_type>("modname.PythonName").type();
+    py::owned_ref<PyTypeObject> t = py::autoclass<my_type>("modname.PythonName").type();
     \endcode
 
     The resulting type will have a `__name__` of "PythonName", and a

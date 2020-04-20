@@ -323,13 +323,10 @@ public:
     using buffer_type = typename generic_ndarray_impl::buffer_type;
 
 private:
-    /** Iterator type to implement forward, const, reverse, and const reverse
-       iterators.
+    /** Iterator type to implement forward, const, reverse, and const reverse iterators.
 
-        This type cannot be implemented with just a pointer and stride because
-       stride may
-        be zero, so an index is needed to count the number of iterations in that
-       case.
+        This type cannot be implemented with just a pointer and stride because stride may
+        be zero, so an index is needed to count the number of iterations in that case.
      */
     template<typename V>
     struct generic_iterator {
@@ -584,8 +581,7 @@ public:
         std::conditional_t<std::is_same_v<T, py::any_cref>, const std::byte*, std::byte*>;
 
 protected:
-    // allow any `any_ref_ndarray_view` specialization to call the protected
-    // constructor
+    // allow any `any_ref_ndarray_view` specialization to call the protected constructor
     // of other `any_ref_ndarray_view` specializations
     template<std::size_t, typename, bool>
     friend class any_ref_ndarray_view;
@@ -831,7 +827,7 @@ public:
         return m_strides;
     }
 
-    /** Check if the array is C contiguous.
+        /** Check if the array is C contiguous.
      */
     bool is_c_contig() const {
         std::int64_t expected = vtable().size();
@@ -956,8 +952,7 @@ private:
     using generic_ndarray_impl = any_ref_ndarray_view<1, T, true>;
 
 protected:
-    // allow any `any_ref_ndarray_view` specialization to call the protected
-    // constructor
+    // allow any `any_ref_ndarray_view` specialization to call the protected constructor
     // of other `any_ref_ndarray_view` specializations
     template<std::size_t, typename, bool>
     friend class any_ref_ndarray_view;
@@ -966,13 +961,10 @@ public:
     using buffer_type = typename generic_ndarray_impl::buffer_type;
 
 private:
-    /** Iterator type to implement forward, const, reverse, and const reverse
-       iterators.
+    /** Iterator type to implement forward, const, reverse, and const reverse iterators.
 
-        This type cannot be implemented with just a pointer and stride because
-       stride may
-        be zero, so an index is needed to count the number of iterations in that
-       case.
+        This type cannot be implemented with just a pointer and stride because stride may
+        be zero, so an index is needed to count the number of iterations in that case.
      */
     template<typename R, typename C>
     struct generic_iterator {
@@ -1442,11 +1434,9 @@ struct from_object<ndarray_view<T, ndim>> {
 
 namespace detail {
 template<typename T, std::size_t ndim, typename UnaryFunction, typename... I>
-void for_each_unordered_recursive(py::ndarray_view<T, ndim> view,
-                                  UnaryFunction f,
-                                  I... ixs) {
+void for_each_unordered_recursive(py::ndarray_view<T, ndim> view, UnaryFunction f, I... ixs) {
     static_assert(sizeof...(ixs) <= ndim, "too many indexers provided");
-    if constexpr (sizeof...(ixs) == ndim) {
+    if constexpr(sizeof...(ixs) == ndim) {
         f(view(ixs...));
     }
     else {
@@ -1472,11 +1462,11 @@ UnaryFunction for_each_unordered(py::ndarray_view<T, ndim> view, UnaryFunction f
                                         view.shape().end(),
                                         1,
                                         [](auto a, auto b) { return a * b; });
-    if constexpr (!(std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) ) {
+    if constexpr (!(std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>)) {
         if (view.is_contig()) {
             // Specializing for contiguous arrays improves performance in two ways:
             // 1. it allows us to traverse the memory in an efficient order
-            // 2. it gives the compiler a chance to vectorize
+            // 2. it gives the compiler a chance to vectorize 
             T* data = reinterpret_cast<T*>(view.buffer());
             T* end = data + count;
             for (; data != end; ++data) {

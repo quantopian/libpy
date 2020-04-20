@@ -110,8 +110,7 @@ TEST_F(automethod, void_return_no_arg) {
 }
 
 PyObject* pyobject_return() {
-    // return a list object so we don't need to worry about shared immutable
-    // references
+    // return a list object so we don't need to worry about shared immutable references
     // that happen with ints or bytes.
     return py::to_object(std::vector<int>{1, 2, 3}).escape();
 }
@@ -201,10 +200,8 @@ TEST_F(automethod, const_ref_string_view_argument) {
     std::string_view input_data = "ayy lmao"sv;
     std::size_t expected_hash = py::hash_buffer(input_data.data(), input_data.size());
 
-    // Use a byte array, which cannot be converted into a string_view through just
-    // the
-    // fallback `from_object` handler; we must go through the buffer protocol
-    // handler.
+    // Use a byte array, which cannot be converted into a string_view through just the
+    // fallback `from_object` handler; we must go through the buffer protocol handler.
     py::owned_ref byte_array{
         PyByteArray_FromStringAndSize(input_data.data(), input_data.size())};
     ASSERT_TRUE(byte_array);
@@ -739,10 +736,8 @@ struct from_object<test_automethod::non_copyable_type> {
 }  // namespace py::dispatch
 
 namespace test_automethod {
-// Take `non_copyable_type` by _value_ to test that we are properly forwarding
-// values all
-// the way down to the function. This test is just to ensure we can actually
-// compile, it
+// Take `non_copyable_type` by _value_ to test that we are properly forwarding values all
+// the way down to the function. This test is just to ensure we can actually compile, it
 // doesn't need to do much at runtime.
 void non_copyable(non_copyable_type) {}
 

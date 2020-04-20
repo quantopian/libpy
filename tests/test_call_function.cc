@@ -16,8 +16,7 @@ TEST_F(call_function, basic) {
     py::borrowed_ref f = PyDict_GetItemString(ns.get(), "f");
     ASSERT_TRUE(f);
 
-    // Python functions are duck-typed, `f` should be callable with both ints and
-    // strings
+    // Python functions are duck-typed, `f` should be callable with both ints and strings
     // (and more)
     {
         auto result_ob = py::call_function(f, 1, 2);
@@ -64,8 +63,7 @@ TEST_F(call_function, method) {
     py::borrowed_ref ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
 
-    // Python functions are duck-typed, `f` should be callable with both ints and
-    // doubles
+    // Python functions are duck-typed, `f` should be callable with both ints and doubles
     // (and more)
     {
         auto result_ob = py::call_method(ob, "f", 2);
@@ -118,8 +116,7 @@ TEST_F(call_function_throws, basic) {
     py::borrowed_ref f = PyDict_GetItemString(ns.get(), "f");
     ASSERT_TRUE(f);
 
-    // Python functions are duck-typed, `f` should be callable with both ints and
-    // strings
+    // Python functions are duck-typed, `f` should be callable with both ints and strings
     // (and more)
     {
         auto result_ob = py::call_function_throws(f, 1, 2);
@@ -165,8 +162,7 @@ TEST_F(call_function_throws, method) {
     py::borrowed_ref ob = PyDict_GetItemString(ns.get(), "ob");
     ASSERT_TRUE(ob);
 
-    // Python functions are duck-typed, `f` should be callable with both ints and
-    // doubles
+    // Python functions are duck-typed, `f` should be callable with both ints and doubles
     // (and more)
     {
         auto result_ob = py::call_method_throws(ob, "f", 2);

@@ -43,8 +43,7 @@ private:
     }
 
 public:
-    /** An iterator over an archive produces pairs of entry name and the
-     * (potentially
+    /** An iterator over an archive produces pairs of entry name and the (potentially
      * decompressed) contents of the entry.
      */
     class iterator {
@@ -128,8 +127,7 @@ public:
     /** Read an entry's contents as a Python bytes object.
 
         @param ix The index of the entry to read.
-        @return A C++ tuple of the name of the entry and a new scoped reference to
-       the
+        @return A C++ tuple of the name of the entry and a new scoped reference to the
                 results.
      */
     std::pair<std::string, py::owned_ref<>> read_as_pybytes(std::size_t ix) {
@@ -163,13 +161,12 @@ public:
     }
 };
 
-/** Eagerly read all of the contents from the zipfile at `path` as Python bytes
-   objects.
+/** Eagerly read all of the contents from the zipfile at `path` as Python bytes objects.
 
     This function is meant to be exported to Python with `py::automethod`.
  */
 std::unordered_map<std::string, py::owned_ref<>> pymethod_read(PyObject*,
-                                                               const std::string& path) {
+                                                                const std::string& path) {
     archive z(path.data());
     std::size_t entries = z.size();
 
@@ -184,15 +181,12 @@ std::unordered_map<std::string, py::owned_ref<>> pymethod_read(PyObject*,
 
 /** Eagerly read all of the contents from the zipfile at `path`.
 
-    To lower memory pressure, it is often better to iterate over the `archive`
-   object
-    directly; however, this can be useful for parallizing across the entries of
-   an
+    To lower memory pressure, it is often better to iterate over the `archive` object
+    directly; however, this can be useful for parallizing across the entries of an
     `archive` because the `archive` access is not thread safe.
 
     @param `path` The path to read.
-    @return The (potentially decompressed) contents of each entry keyed by their
-   name.
+    @return The (potentially decompressed) contents of each entry keyed by their name.
  */
 std::unordered_map<std::string, std::string> read(const std::string& path) {
     archive z(path);

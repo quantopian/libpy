@@ -558,10 +558,8 @@ public:
     }
 };
 
-/** Struct which provides a single function `f` which is the actual
-   implementation of
-    `_automethod_wrapper` to use. This is implemented as a struct to allow for
-   partial
+/** Struct which provides a single function `f` which is the actual implementation of
+    `_automethod_wrapper` to use. This is implemented as a struct to allow for partial
     template specialization to optimize for the `METH_NOARGS` case.
  */
 template<auto impl, int flags, typename Self>
@@ -574,8 +572,7 @@ struct automethodwrapper_impl {
 
         if constexpr (std::is_same_v<typename f::return_type, void>) {
             f::apply(impl, self, args, kwargs);
-            // Allow auto method with void return. This will return a new reference
-            // of
+            // Allow auto method with void return. This will return a new reference of
             // None to the calling Python.
             Py_RETURN_NONE;
         }
@@ -589,8 +586,7 @@ struct automethodwrapper_impl {
 };
 
 /** The actual funtion that will be registered with the automatically created
-    PyMethodDef. This has the signature expected for a python function and will
-   handle
+    PyMethodDef. This has the signature expected for a python function and will handle
     unpacking the arguments.
 
     @param self The module or instance this is a method of.
@@ -611,8 +607,7 @@ automethodwrapper(std::conditional_t<std::is_same_v<Self, void>, PyObject*, Self
 }
 }  // namespace detail
 
-/** Wrap a function such that it is suitable for passing to the `tp_new` slot of
-   a type.
+/** Wrap a function such that it is suitable for passing to the `tp_new` slot of a type.
 
     @tparam impl The function to wrap.
  */
@@ -633,8 +628,7 @@ PyCFunction unsafe_cast_to_pycfunction(PyObject* (*f)(Self, PyObject*, PyObject*
 
     @tparam impl The function to wrap.
     @param name The name of the method to expose the Python.
-    @param doc The docstring to use. If not provided, the Python `__doc__`
-   attribute
+    @param doc The docstring to use. If not provided, the Python `__doc__` attribute
                will be None.
     @return A PyMethodDef which defines the wrapped function.
  */
@@ -655,8 +649,7 @@ constexpr PyMethodDef autofunction(const char* const name,
 
     @tparam impl The function to wrap.
     @param name The name of the method to expose the Python.
-    @param doc The docstring to use. If not provided, the Python `__doc__`
- attribute
+    @param doc The docstring to use. If not provided, the Python `__doc__` attribute
                will be None.
     @return A PyMethodDef which defines the wrapped function.
  */
