@@ -50,47 +50,30 @@ constexpr inline bool all_equal() {
 
 /** Extract a C-style string from a `str` object.
 
-    In Python 2, the result will be a view into the underlying buffer owned by `ob`.
-    In Python 3, the result will be a view into a cached utf-8 representation of `ob`.
+    The result will be a view into a cached utf-8 representation of `ob`.
 
-    In both cases, the lifetime of the returned value is the same as the lifetime of `ob`.
+    The lifetime of the returned value is the same as the lifetime of `ob`.
 */
 inline const char* pystring_to_cstring(py::borrowed_ref<> ob) {
-#if PY_MAJOR_VERSION == 2
-    if (!PyString_Check(ob)) {
-        throw std::runtime_error("ob is not a string");
-    }
-    return PyString_AS_STRING(ob.get());
-#else
     return PyUnicode_AsUTF8(ob.get());
-#endif
 }
 
 /** Get a view over the contents of a `str`.
 
-    In Python 2, the view will be over the unmodified contents of `ob`.
-    In Python 3, the view will be over a cached utf-8 representation of `ob`.
+    The view will be over a cached utf-8 representation of `ob`.
 
-    In both cases, the lifetime of the returned value is the same as the lifetime of `ob`.
+    The lifetime of the returned value is the same as the lifetime of `ob`.
 */
 inline std::string_view pystring_to_string_view(py::borrowed_ref<> ob) {
     Py_ssize_t size;
     const char* cs;
-#if PY_MAJOR_VERSION == 2
-    if (!PyString_Check(ob.get())) {
-        throw formatted_error<std::runtime_error>("expected a string, got: ",
-                                                  Py_TYPE(ob.get())->tp_name);
-    }
-    size = PyString_GET_SIZE(ob.get());
-    cs = PyString_AS_STRING(ob.get());
-#else
+
     cs = PyUnicode_AsUTF8AndSize(ob.get(), &size);
     if (!cs) {
         throw formatted_error<std::runtime_error>(
             "failed to get string and size from object of type: ",
             Py_TYPE(ob.get())->tp_name);
     }
-#endif
     return {cs, static_cast<std::size_t>(size)};
 }
 

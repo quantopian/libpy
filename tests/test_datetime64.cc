@@ -136,8 +136,14 @@ TYPED_TEST_P(datetime64_all_units, stream_format) {
     }
 }
 
-REGISTER_TYPED_TEST_SUITE_P(datetime64_all_units, from_int, epoch, max, nat,
-                            min, stream_format_nat, stream_format);
+REGISTER_TYPED_TEST_SUITE_P(datetime64_all_units,
+                            from_int,
+                            epoch,
+                            max,
+                            nat,
+                            min,
+                            stream_format_nat,
+                            stream_format);
 
 using units = testing::Types<py::chrono::ns,
                              py::chrono::us,

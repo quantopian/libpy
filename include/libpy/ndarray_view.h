@@ -827,7 +827,7 @@ public:
         return m_strides;
     }
 
-        /** Check if the array is C contiguous.
+    /** Check if the array is C contiguous.
      */
     bool is_c_contig() const {
         std::int64_t expected = vtable().size();
@@ -1434,9 +1434,11 @@ struct from_object<ndarray_view<T, ndim>> {
 
 namespace detail {
 template<typename T, std::size_t ndim, typename UnaryFunction, typename... I>
-void for_each_unordered_recursive(py::ndarray_view<T, ndim> view, UnaryFunction f, I... ixs) {
+void for_each_unordered_recursive(py::ndarray_view<T, ndim> view,
+                                  UnaryFunction f,
+                                  I... ixs) {
     static_assert(sizeof...(ixs) <= ndim, "too many indexers provided");
-    if constexpr(sizeof...(ixs) == ndim) {
+    if constexpr (sizeof...(ixs) == ndim) {
         f(view(ixs...));
     }
     else {
@@ -1462,11 +1464,11 @@ UnaryFunction for_each_unordered(py::ndarray_view<T, ndim> view, UnaryFunction f
                                         view.shape().end(),
                                         1,
                                         [](auto a, auto b) { return a * b; });
-    if constexpr (!(std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>)) {
+    if constexpr (!(std::is_same_v<T, py::any_ref> || std::is_same_v<T, py::any_cref>) ) {
         if (view.is_contig()) {
             // Specializing for contiguous arrays improves performance in two ways:
             // 1. it allows us to traverse the memory in an efficient order
-            // 2. it gives the compiler a chance to vectorize 
+            // 2. it gives the compiler a chance to vectorize
             T* data = reinterpret_cast<T*>(view.buffer());
             T* end = data + count;
             for (; data != end; ++data) {

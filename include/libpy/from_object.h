@@ -304,27 +304,13 @@ public:
     static T f(py::borrowed_ref<> value) {
         wide_type wide;
 
-#if PY_MAJOR_VERSION == 2
-        if (PyInt_Check(value.get())) {
-            if constexpr (std::is_signed_v<T>) {
-                wide = PyInt_AS_LONG(value.get());
-            }
-            else {
-                wide = static_cast<wide_type>(PyInt_AS_LONG(value.get()));
-            }
+        // convert the object to the widest type for the given signedness
+        if constexpr (std::is_signed_v<T>) {
+            wide = PyLong_AsLongLong(value.get());
         }
         else {
-#endif
-            // convert the object to the widest type for the given signedness
-            if constexpr (std::is_signed_v<T>) {
-                wide = PyLong_AsLongLong(value.get());
-            }
-            else {
-                wide = PyLong_AsUnsignedLongLong(value.get());
-            }
-#if PY_MAJOR_VERSION == 2
+            wide = PyLong_AsUnsignedLongLong(value.get());
         }
-#endif
 
         // check if `value` would overflow `wide_type`
         if (PyErr_Occurred()) {

@@ -37,16 +37,6 @@ PyMethodDef methods[] = {
     {nullptr, nullptr, 0, nullptr},
 };
 
-#if PY_MAJOR_VERSION == 2
-PyMODINIT_FUNC init_runner() LIBPY_EXPORT;
-PyMODINIT_FUNC init_runner() {
-    import_array();
-    PyObject* mod = Py_InitModule("_runner", methods);
-    if (!mod) {
-        return;
-    }
-}
-#else
 PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
     "_runner",
@@ -64,5 +54,4 @@ PyMODINIT_FUNC PyInit__runner() {
     import_array();
     return PyModule_Create(&module);
 }
-#endif
 }  // namespace test

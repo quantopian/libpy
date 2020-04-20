@@ -587,7 +587,6 @@ struct to_object<py::any_cref> {
 };
 }  // namespace dispatch
 
-
 namespace detail {
 template<std::size_t max_size, typename T>
 struct make_string_vtable_impl;
@@ -601,7 +600,7 @@ struct make_string_vtable_impl<max_size, std::index_sequence<head, tail...>> {
         default:
             return make_string_vtable_impl<max_size, std::index_sequence<tail...>>::f(
                 size);
-    }
+        }
     }
 };
 
@@ -626,8 +625,7 @@ inline any_vtable make_string_vtable(int size) {
     @param dtype The runtime numpy dtype.
     @return The any_vtable that corresponds to the given dtype.
  */
-inline any_vtable
-dtype_to_vtable(py::borrowed_ref<PyArray_Descr> dtype) {
+inline any_vtable dtype_to_vtable(py::borrowed_ref<PyArray_Descr> dtype) {
     switch (dtype->type_num) {
     case NPY_BOOL:
         return any_vtable::make<py_bool>();

@@ -1,9 +1,6 @@
 #pragma once
 
-// This triggers a warning in Python 2, add a standard place to find this header that
-// doesn't trigger this warning.
-#if PY_MAJOR_VERSION == 2
-#undef _POSIX_C_SOURCE
-#undef _XOPEN_SOURCE
-#endif
+// NOTE: This is a relic of supporting both py2 and py3, but this provides
+// A standard place to find this header and make python version dependent
+// modifications if necessary.
 #include <Python.h>

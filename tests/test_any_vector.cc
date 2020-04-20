@@ -521,7 +521,8 @@ struct non_noexcept_move_push_back_type : public push_back_base {
     non_noexcept_move_push_back_type&
     operator=(const non_noexcept_move_push_back_type&) = default;
 
-    non_noexcept_move_push_back_type& operator=(non_noexcept_move_push_back_type&& mvfrom) {
+    non_noexcept_move_push_back_type&
+    operator=(non_noexcept_move_push_back_type&& mvfrom) {
         data = mvfrom.data;
         mvfrom.data = -1;
         return *this;
@@ -541,7 +542,8 @@ struct alignas(128) over_aligned_push_back_type : public push_back_base {
 };
 
 TEST(any_vector, over_aligned_push_back) {
-    constexpr std::size_t align = alignof(over_aligned_push_back_type);;
+    constexpr std::size_t align = alignof(over_aligned_push_back_type);
+    ;
     ASSERT_GT(align, sizeof(int)) << "where are you compiling this?";
     ASSERT_GT(align, alignof(std::max_align_t));
 

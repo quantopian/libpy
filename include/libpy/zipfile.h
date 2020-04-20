@@ -166,7 +166,7 @@ public:
     This function is meant to be exported to Python with `py::automethod`.
  */
 std::unordered_map<std::string, py::owned_ref<>> pymethod_read(PyObject*,
-                                                                const std::string& path) {
+                                                               const std::string& path) {
     archive z(path.data());
     std::size_t entries = z.size();
 

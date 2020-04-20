@@ -17,21 +17,6 @@
 #include "libpy/owned_ref.h"
 #include "libpy/to_object.h"
 
-/** Helper macro for IMPORT_ARRAY_MODULE_SCOPE below. This is needed because
-    import_array() contains a return statement, and in py2 it returns void, whereas in py3
-    it returns a null pointer. We want a version that consistently doesn't return, so we
-    wrap the import_array call in a lambda and call the lambda.
-*/
-#if PY_MAJOR_VERSION == 2
-#define DO_IMPORT_ARRAY() []() -> void { import_array(); }()
-#else
-#define DO_IMPORT_ARRAY()                                                                \
-    []() -> std::nullptr_t {                                                             \
-        import_array();                                                                  \
-        return nullptr;                                                                  \
-    }()
-#endif
-
 /* Macro for ensuring that the Numpy Array API is initialized in a non-extension
    translation unit. It works by declaring an anonymous namespace containing a
    default-constructed instance of an object whose constructor initializes the numpy
@@ -56,7 +41,7 @@
     struct importer {                                                                    \
         importer() {                                                                     \
             if (!PyArray_API) {                                                          \
-                DO_IMPORT_ARRAY();                                                       \
+                import_array();                                                          \
                 if (PyErr_Occurred()) {                                                  \
                     throw py::exception{};                                               \
                 }                                                                        \
@@ -474,9 +459,9 @@ public:
  */
 template<typename C, std::size_t ndim>
 owned_ref<> move_to_numpy_array(C&& values,
-                                 py::owned_ref<PyArray_Descr> descr,
-                                 const std::array<std::size_t, ndim>& shape,
-                                 const std::array<std::int64_t, ndim>& strides) {
+                                py::owned_ref<PyArray_Descr> descr,
+                                const std::array<std::size_t, ndim>& shape,
+                                const std::array<std::int64_t, ndim>& strides) {
     auto maybe_capsule = detail::capsule<C>::alloc(std::move(values));
 
     if (!maybe_capsule) {

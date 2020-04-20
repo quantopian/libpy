@@ -26,23 +26,6 @@ TEST_F(to_stringlike, str) {
 
     py::owned_ref<> s_py = py::to_stringlike(s, py::str_type::str);
 
-#if PY_MAJOR_VERSION == 2
-    ASSERT_TRUE(PyString_CheckExact(s_py.get()));
-    ASSERT_STREQ(PyString_AS_STRING(s_py.get()), expected);
-#else
-    ASSERT_TRUE(PyUnicode_CheckExact(s_py.get()));
-    py::owned_ref<> decoded(PyUnicode_AsEncodedString(s_py.get(), "utf-8", "strict"));
-    ASSERT_TRUE(decoded);
-    EXPECT_STREQ(PyBytes_AS_STRING(decoded.get()), expected);
-#endif
-}
-
-TEST_F(to_stringlike, unicode) {
-    auto s = "foobar"_cs;
-    const char* expected = "foobar";
-
-    py::owned_ref<> s_py = py::to_stringlike(s, py::str_type::unicode);
-
     ASSERT_TRUE(PyUnicode_CheckExact(s_py.get()));
     py::owned_ref<> decoded(PyUnicode_AsEncodedString(s_py.get(), "utf-8", "strict"));
     ASSERT_TRUE(decoded);
