@@ -221,9 +221,9 @@ namespace op {
 #define DEFINE_BINOP(op, name)                                                           \
     struct name {                                                                        \
         template<typename LHS, typename RHS>                                             \
-        constexpr auto operator()(LHS&& lhs, RHS&& rhs) noexcept(noexcept(lhs op rhs)) \
+        constexpr auto operator()(LHS&& lhs, RHS&& rhs) noexcept(noexcept(lhs op rhs))   \
             -> decltype(lhs op rhs) {                                                    \
-            return (lhs op rhs);                                        \
+            return (lhs op rhs);                                                         \
         }                                                                                \
     };
 

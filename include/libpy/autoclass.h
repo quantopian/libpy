@@ -32,8 +32,6 @@ constexpr void zero_non_pyobject_base(T* b) {
 
 namespace detail {
 
-
-
 template<typename T>
 constexpr void nop_clear_base(T*) {}
 }  // namespace detail

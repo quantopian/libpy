@@ -423,8 +423,7 @@ write(char* data, char* end, std::ptrdiff_t& ix, char c, std::int64_t count) {
     return {};
 }
 
-inline no_discard_errc
-write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v) {
+inline no_discard_errc write(char* data, char* end, std::ptrdiff_t& ix, std::int64_t v) {
 #if defined(_LIBCPP_VERSION)
     // XXX: workaround for a bug in libc++ which adds unnecessary leading 0s to
     // 64 bit integers with 9, 10, or 11 digits.
@@ -498,7 +497,8 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
         return detail::formatting::write(first, last, ix, args...);
     };
 
-    auto zero_pad = [&](int expected_digits, std::int64_t value) -> detail::no_discard_errc {
+    auto zero_pad = [&](int expected_digits,
+                        std::int64_t value) -> detail::no_discard_errc {
         std::int64_t digits = std::floor(std::log10(value));
         digits += 1;
         if (expected_digits > digits) {
@@ -596,8 +596,7 @@ to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = fa
             return finalize(ec);
         }
         std::int64_t expected_digits = std::log10(unit::period::den);
-        if (auto ec = zero_pad(expected_digits, fractional_seconds);
-            ec != std::errc{}) {
+        if (auto ec = zero_pad(expected_digits, fractional_seconds); ec != std::errc{}) {
             return finalize(ec);
         }
         if (auto ec = write(fractional_seconds); ec != std::errc{}) {

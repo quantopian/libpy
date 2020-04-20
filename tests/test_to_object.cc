@@ -90,7 +90,8 @@ void test_map_to_object_impl(M m) {
             py::borrowed_ref result = PyDict_GetItem(ob.get(), py_key.get());
             ASSERT_TRUE(result) << "Key should have been in the map";
 
-            bool values_equal = PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
+            bool values_equal =
+                PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
             EXPECT_EQ(values_equal, 1) << "Dict values were not equal";
         }
     };
@@ -140,7 +141,8 @@ void test_sequence_to_object_impl(V v) {
             py::borrowed_ref result = PyList_GetItem(ob.get(), i);
             ASSERT_TRUE(result) << "Should have had a value at index " << i;
 
-            bool values_equal = PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
+            bool values_equal =
+                PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
             EXPECT_EQ(values_equal, 1)
                 << "List values at index " << i << " were not equal";
         }

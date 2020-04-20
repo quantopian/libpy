@@ -143,8 +143,7 @@ private:
     template<typename F, typename E>
     void for_each_with_ix_helper(F&& f, const std::vector<E>& entries) const {
         for (const auto& [views, ix] : entries) {
-          std::apply([&, &ix = ix](const auto &... args) { f(ix, args...); },
-                     views);
+            std::apply([&, &ix = ix](const auto&... args) { f(ix, args...); }, views);
         }
     }
 

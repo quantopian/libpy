@@ -647,8 +647,7 @@ TEST(table, to_python_dict_types) {
     { expect_key_types(T{}.to_python_dict(py::str_type::bytes), &PyBytes_Type); }
     {
         T table;
-        expect_key_types(T{}.to_python_dict(py::str_type::str),
-                         &PyUnicode_Type);
+        expect_key_types(T{}.to_python_dict(py::str_type::str), &PyUnicode_Type);
     }
 }
 
