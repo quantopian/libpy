@@ -9,11 +9,14 @@
 #include "libpy/numpy_utils.h"
 #include "libpy/object_map_key.h"
 #include "libpy/owned_ref.h"
+#include "libpy/table.h"
 #include "libpy/util.h"
 
 #include "test_utils.h"
 
 namespace test_from_object {
+using namespace py::cs::literals;
+
 class from_object : public with_python_interpreter {};
 
 template<typename T>
@@ -240,6 +243,31 @@ TEST_F(from_object, ndarray_view_any_ref) {
             EXPECT_EQ(v, expected);
             ++expected;
         }
+    }
+}
+
+TEST_F(from_object, table_view) {
+    py::owned_ref ns = RUN_PYTHON(R"(
+        import numpy as np
+        table_dict = {b'a': np.array([1] * 4, dtype='i8'),
+                      b'b': np.array([2] * 4, dtype='f8')}
+    )");
+    ASSERT_TRUE(ns);
+
+    py::borrowed_ref table_dict = PyDict_GetItemString(ns.get(), "table_dict");
+    ASSERT_TRUE(table_dict);
+
+    using my_table_view = py::table_view<py::C<std::int64_t>("a"_cs),
+                                         py::C<double>("b"_cs)>;
+    auto table_view = py::from_object<my_table_view>(table_dict);
+    ASSERT_EQ(table_view.size(), 4ul);
+
+    for (auto row_view : table_view) {
+        const auto& a = row_view.get("a"_cs);
+        const auto& b = row_view.get("b"_cs);
+
+        EXPECT_EQ(a, 1);
+        EXPECT_EQ(b, 2.0);
     }
 }
 

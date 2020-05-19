@@ -1140,18 +1140,18 @@ private:
     using type = py::table_view<columns...>;
 
     template<typename Column>
-    static auto pop_column(PyObject* t) {
+    static auto pop_column(py::borrowed_ref<> t) {
         auto text = py::cs::to_array(typename Column::key{});
         auto column_name = py::to_object(
             *reinterpret_cast<std::array<char, text.size() - 1>*>(text.data()));
         if (!column_name) {
             throw py::exception();
         }
-        PyObject* column_ob = PyDict_GetItem(t, column_name.get());
+        PyObject* column_ob = PyDict_GetItem(t.get(), column_name.get());
         if (!column_ob) {
             throw py::exception(PyExc_ValueError, "missing column: ", column_name);
         }
-        if (PyDict_DelItem(t, column_name.get())) {
+        if (PyDict_DelItem(t.get(), column_name.get())) {
             // pop the item to track which columns we used
             throw py::exception();
         }
@@ -1159,20 +1159,20 @@ private:
     }
 
 public:
-    static type f(PyObject* t) {
-        if (!PyDict_Check(t)) {
+    static type f(py::borrowed_ref<> t) {
+        if (!PyDict_Check(t.get())) {
             throw py::exception(
                 PyExc_TypeError,
                 "from_object<table_view<...>> input must be a Python dictionary, got: ",
-                Py_TYPE(t)->tp_name);
+                Py_TYPE(t.get())->tp_name);
         }
 
-        py::owned_ref copy(PyDict_Copy(t));
+        py::owned_ref copy(PyDict_Copy(t.get()));
         if (!copy) {
             throw py::exception();
         }
 
-        type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
+        type out(pop_column<py::detail::unwrap_column<columns>>(copy)...);
         if (PyDict_Size(copy.get())) {
             py::owned_ref keys(PyDict_Keys(copy.get()));
             if (!keys) {
@@ -1190,18 +1190,18 @@ private:
     using type = py::row<columns...>;
 
     template<typename Column>
-    static auto pop_column(PyObject* t) {
+    static auto pop_column(py::borrowed_ref<> t) {
         auto text = py::cs::to_array(typename Column::key{});
         auto column_name = py::to_object(
             *reinterpret_cast<std::array<char, text.size() - 1>*>(text.data()));
         if (!column_name) {
             throw py::exception();
         }
-        PyObject* column_ob = PyDict_GetItem(t, column_name.get());
+        PyObject* column_ob = PyDict_GetItem(t.get(), column_name.get());
         if (!column_ob) {
             throw py::exception(PyExc_ValueError, "missing column: ", column_name);
         }
-        if (PyDict_DelItem(t, column_name.get())) {
+        if (PyDict_DelItem(t.get(), column_name.get())) {
             // pop the item to track which columns we used
             throw py::exception();
         }
@@ -1209,20 +1209,20 @@ private:
     }
 
 public:
-    static type f(PyObject* t) {
-        if (!PyDict_Check(t)) {
+    static type f(py::borrowed_ref<> t) {
+        if (!PyDict_Check(t.get())) {
             throw py::exception(
                 PyExc_TypeError,
-                "from_object<table_view<...>> input must be a Python dictionary, got: ",
-                Py_TYPE(t)->tp_name);
+                "from_object<row<...>> input must be a Python dictionary, got: ",
+                Py_TYPE(t.get())->tp_name);
         }
 
-        py::owned_ref copy(PyDict_Copy(t));
+        py::owned_ref copy(PyDict_Copy(t.get()));
         if (!copy) {
             throw py::exception();
         }
 
-        type out(pop_column<py::detail::unwrap_column<columns>>(copy.get())...);
+        type out(pop_column<py::detail::unwrap_column<columns>>(copy)...);
         if (PyDict_Size(copy.get())) {
             py::owned_ref keys(PyDict_Keys(copy.get()));
             if (!keys) {
