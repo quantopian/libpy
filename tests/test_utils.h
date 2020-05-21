@@ -97,7 +97,7 @@ inline py::owned_ref<> run_python(
     const std::unordered_map<std::string, py::owned_ref<>>& python_namespace = {}) {
     py::owned_ref py_ns{PyDict_New()};
 
-    for (const auto [k, v] : python_namespace) {
+    for (const auto &[k, v] : python_namespace) {
         if (PyDict_SetItemString(py_ns.get(), k.data(), v.get())) {
             return nullptr;
         }
