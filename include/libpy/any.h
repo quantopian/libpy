@@ -372,6 +372,9 @@ public:
     inline any_ref(void* addr, const any_vtable& vtable)
         : m_addr(addr), m_vtable(vtable) {}
 
+    inline any_ref(const any_ref& cpfrom)
+        : m_addr(cpfrom.m_addr), m_vtable(cpfrom.m_vtable) {}
+
     inline any_ref& operator=(const any_ref& rhs) {
         typecheck(rhs);
         m_vtable.copy_assign(m_addr, rhs.m_addr);

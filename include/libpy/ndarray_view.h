@@ -1155,6 +1155,14 @@ public:
                 any_vtable::make<U>()};
     }
 
+    any_ref_ndarray_view& operator=(const any_ref_ndarray_view& other) {
+        this->m_buffer = other.m_buffer;
+        this->m_shape = other.m_shape;
+        this->m_strides = other.m_strides;
+        this->m_vtable = other.m_vtable;
+        return *this;
+    }
+
     iterator begin() const {
         return {this->m_buffer, 0, this->m_strides[0], this->m_vtable};
     }
