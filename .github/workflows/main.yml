@@ -79,7 +79,7 @@ jobs:
     - name: Set clang envvars
       if: matrix.compiler == 'clang'
       run: |
-        echo ::set-env name=CC::clang-9
+        echo ::set-env name=CC::clang-10
         echo ::set-env name=CXX::clang++
     - name: Set gcc envvars
       if: matrix.compiler == 'gcc'
