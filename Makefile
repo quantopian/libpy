@@ -40,7 +40,8 @@ GCC_WARNINGS := \
 CLANG_WARNINGS := \
 	-Wno-gnu-string-literal-operator-template \
 	-Wno-missing-braces \
-	-Wno-self-assign-overloaded
+	-Wno-self-assign-overloaded \
+	-Wno-deprecated-copy
 WARNINGS := $(BASE_WARNINGS) $($(COMPILER)_WARNINGS)
 
 BASE_CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
