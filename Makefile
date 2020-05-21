@@ -77,6 +77,10 @@ ifeq ($(OS),Darwin)
 ifeq ($(COMPILER),GCC)
 	# #sparseahash uses realloc which osx+gcc are not happy about
 	CXXFLAGS += -Wno-class-memaccess
+	GCCVERSIONLT9 := $(shell test `$(COMPILER) -dumpversion | cut -f1 -d.` -lt 9 && echo true)
+ifeq ($(GCCVERSIONLT9),true)
+	LDFLAGS += -lstdc++fs
+endif
 endif
 else
 	CXXFLAGS += -fstack-protector-strong
