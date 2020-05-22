@@ -42,5 +42,9 @@ setup(
             "libpy_tutorial.bind_scalar_function",
             ["libpy_tutorial/bind_scalar_function.cc"],
         ),
+        extension(
+            "libpy_tutorial.arrays",
+            ["libpy_tutorial/arrays.cc"],
+        ),
     ],
 )
