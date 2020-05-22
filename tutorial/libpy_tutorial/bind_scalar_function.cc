@@ -13,8 +13,8 @@ bool bool_scalar(py::py_bool a) {
 float monte_carlo_pi(int n_samples) {
     int accumulator = 0;
 
-    std::random_device rd;  //Will be used to obtain a seed for the random number engine
-    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    std::random_device rd;   // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd());  // Standard mersenne_twister_engine seeded with rd()
     std::uniform_real_distribution<> dis(0, 1);
 
     for (int i = 0; i < n_samples; ++i) {
@@ -54,4 +54,4 @@ PyMODINIT_FUNC PyInit_bind_scalar_function() {
     return PyModule_Create(&module);
 }
 }  // namespace
-}  // namespace dd::ingester
+}  // namespace libpy_tutorial
