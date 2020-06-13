@@ -220,7 +220,7 @@ public:
         return ndim;
     }
 
-    /** The number of bytes to go from one element to the next.
+    /** The shape of this array.
      */
     const std::array<std::size_t, ndim>& shape() const {
         return m_shape;
@@ -815,10 +815,10 @@ public:
         return ndim;
     }
 
-    /** The number of bytes to go from one element to the next.
+    /** The shape of this array.
      */
     const std::array<std::size_t, ndim>& shape() const {
-        return m_strides;
+        return m_shape;
     }
 
     /** The number of bytes to go from one element to the next.
