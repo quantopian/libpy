@@ -11,7 +11,6 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::int64_t, 3> pixels,
                              py::ndarray_view<const std::int64_t, 2> kernel) {
 
     std::vector<std::int64_t> out;
-    std::cout << "Test";
     auto n_dimensions = pixels.shape()[2];
     auto n_rows = pixels.shape()[0];
     auto n_columns = pixels.shape()[1];
@@ -38,8 +37,8 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::int64_t, 3> pixels,
 
                         if (input_row_idx < n_rows && input_column_idx < n_columns) {
                             accumulated_sum +=
-                                pixels.at({input_row_idx, input_column_idx, dim}) *
-                                kernel.at({row_idx, col_idx});
+                                pixels(input_row_idx, input_column_idx, dim) *
+                                kernel(row_idx, col_idx);
                         }
                     }
                 }

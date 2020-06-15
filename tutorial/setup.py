@@ -50,5 +50,9 @@ setup(
             "libpy_tutorial.ndarrays",
             ["libpy_tutorial/ndarrays.cc"],
         ),
+        extension(
+            "libpy_tutorial.exceptions",
+            ["libpy_tutorial/exceptions.cc"],
+        ),
     ],
 )
