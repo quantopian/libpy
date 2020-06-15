@@ -46,5 +46,9 @@ setup(
             "libpy_tutorial.arrays",
             ["libpy_tutorial/arrays.cc"],
         ),
+        extension(
+            "libpy_tutorial.ndarrays",
+            ["libpy_tutorial/ndarrays.cc"],
+        ),
     ],
 )
