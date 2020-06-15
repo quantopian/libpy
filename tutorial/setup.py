@@ -54,5 +54,9 @@ setup(
             "libpy_tutorial.exceptions",
             ["libpy_tutorial/exceptions.cc"],
         ),
+        extension(
+            "libpy_tutorial.autoclass",
+            ["libpy_tutorial/autoclass.cc"],
+        ),
     ],
 )
