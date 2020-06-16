@@ -35,9 +35,19 @@ public:
         return m_b + a + b;
     }
 
-    int operator+(const sample_class& other) const {                                      \
+    int operator +(const sample_class& other) const {                                      \
         return m_a + other.a();                                             \
     }
+    bool operator >(const sample_class& other) const {                                      \
+        return m_a > other.a();                                             \
+    }
+    int operator -() {                                      \
+        return -m_a;                                             \
+    }
+    explicit operator std::int64_t() const {
+        return m_a;
+    }
+
 };
 
 namespace {
@@ -72,9 +82,15 @@ PyMODINIT_FUNC PyInit_autoclass() {
                         .def<&sample_class::sum_plus>("sum_plus")
                         .doc("Small docstring for my class")
                         .callable<int, double>()
+                        .arithmetic<sample_class, int>() //define artithmetic
+                        .comparisons<sample_class, bool>() //define comparisons
+                        .unary() //unary ops
+                        .conversions() //type conversions
+                        //.repr<&sample_class::repr>()
                         //.hash()
                         //.iter()
-                        // clallable
+                        // .string()
+                        // .hash()
                         // operator override
                         .type();
         if (PyObject_SetAttrString(m.get(),
