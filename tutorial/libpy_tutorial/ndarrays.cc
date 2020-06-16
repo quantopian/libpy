@@ -42,6 +42,13 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::int64_t, 3> pixels,
                         }
                     }
                 }
+                if (accumulated_sum < 0) {
+                    accumulated_sum = 0;
+                } else if (accumulated_sum > 255)
+                {
+                    accumulated_sum = 255;
+                }
+
                 out.emplace_back(accumulated_sum);
             }
         }
