@@ -45,10 +45,6 @@ py::owned_ref<> is_prime(
     return py::move_to_numpy_array(std::move(out));
 }
 
-// py::owned_ref<> tables_are_cool() {
-
-// }
-
 namespace {
 PyMethodDef methods[] = {
     py::autofunction<simple_sum>("simple_sum"),

@@ -91,7 +91,6 @@ PyMODINIT_FUNC PyInit_autoclass() {
                         //.iter()
                         // .string()
                         // .hash()
-                        // operator override
                         .type();
         if (PyObject_SetAttrString(m.get(),
                                    "SampleClass",
