@@ -150,32 +150,32 @@ private:
 
     // dispatch for free function that accepts as a first argument `T`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(T, Args...), impl>
+    struct free_function_impl<R(*)(T, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for free function that accepts as a first argument `T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(T&, Args...), impl>
+    struct free_function_impl<R(*)(T&, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for free function that accepts as a first argument `const T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(const T&, Args...), impl>
+    struct free_function_impl<R(*)(const T&, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for a noexcept free function that accepts as a first argument `T`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(T, Args...) noexcept, impl>
+    struct free_function_impl<R(*)(T, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for noexcept free function that accepts as a first argument `T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(T&, Args...) noexcept, impl>
+    struct free_function_impl<R(*)(T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for a noexcept free function that accepts as a first argument `const T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(const T&, Args...) noexcept, impl>
+    struct free_function_impl<R(*)(const T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     template<auto impl, typename R, typename... Args>
@@ -247,6 +247,7 @@ public:
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
         if (type_search != detail::autoclass_type_cache.get().end()) {
             PyTypeObject* type = type_search->second->type;
+            //py::borrowed_ref<PyTypeObject> type = type_search->second->type;
             Py_INCREF(type);
             return py::owned_ref(type);
         }
