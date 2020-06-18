@@ -77,5 +77,4 @@ PyMODINIT_FUNC PyInit_ndarrays() {
     return PyModule_Create(&module);
 }
 }  // namespace
-
 }  // namespace libpy_tutorial

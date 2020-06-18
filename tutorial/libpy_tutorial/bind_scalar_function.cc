@@ -6,11 +6,11 @@
 
 namespace libpy_tutorial {
 
-bool bool_scalar(py::py_bool a) {
+bool bool_scalar(bool a) {
     return !a;
 }
 
-float monte_carlo_pi(int n_samples) {
+double monte_carlo_pi(int n_samples) {
     int accumulator = 0;
 
     std::random_device rd;   // Will be used to obtain a seed for the random number engine
@@ -20,7 +20,7 @@ float monte_carlo_pi(int n_samples) {
     for (int i = 0; i < n_samples; ++i) {
         auto x = dis(gen);
         auto y = dis(gen);
-        if ((pow(x, 2) + pow(y, 2)) < 1.0) {
+        if ((std::pow(x, 2) + std::pow(y, 2)) < 1.0) {
             accumulator += 1;
         }
     }

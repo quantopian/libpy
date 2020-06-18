@@ -1,5 +1,5 @@
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <libpy/abi.h>
@@ -21,13 +21,7 @@ void throw_value_error(int a) {
 }
 
 void raise_from_cxx() {
-    try {
-        throw std::invalid_argument("Supposedly a bad argument was used");
-    }
-    catch (std::invalid_argument& e) {
-        py::raise_from_cxx_exception(e);
-        throw py::exception{};
-    }
+    throw std::invalid_argument("Supposedly a bad argument was used");
 }
 
 namespace {

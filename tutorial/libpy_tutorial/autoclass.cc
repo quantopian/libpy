@@ -35,19 +35,18 @@ public:
         return m_b + a + b;
     }
 
-    int operator +(const sample_class& other) const {                                      \
-        return m_a + other.a();                                             \
+    int operator+(const sample_class& other) const {
+        return m_a + other.a();
     }
-    bool operator >(const sample_class& other) const {                                      \
-        return m_a > other.a();                                             \
+    bool operator>(const sample_class& other) const {
+        return m_a > other.a();
     }
-    int operator -() {                                      \
-        return -m_a;                                             \
+    int operator-() {
+        return -m_a;
     }
     explicit operator std::int64_t() const {
         return m_a;
     }
-
 };
 
 namespace {
@@ -75,17 +74,17 @@ PyMODINIT_FUNC PyInit_autoclass() {
     }
     try {
         auto type = py::autoclass<sample_class>("SampleClass")
-                        .new_<int, float>()  //__new__ takes parameters
+                        .new_<int, float>()                   //__new__ takes parameters
+                        .doc("Small docstring for my class")  // add a class docstring
                         .def<&sample_class::a>("a")
                         .def<&sample_class::b>("b")
                         .def<&sample_class::sum>("sum")
                         .def<&sample_class::sum_plus>("sum_plus")
-                        .doc("Small docstring for my class")
                         .callable<int, double>()
-                        .arithmetic<sample_class, int>() //define artithmetic
-                        .comparisons<sample_class, bool>() //define comparisons
-                        .unary() //unary ops
-                        .conversions() //type conversions
+                        .arithmetic<sample_class, int>()    // define artithmetic
+                        .comparisons<sample_class, bool>()  // define comparisons
+                        .unary()                            // unary ops
+                        .conversions()                      // type conversions
                         //.repr<&sample_class::repr>()
                         //.hash()
                         //.iter()
