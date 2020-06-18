@@ -7,7 +7,7 @@
 
 namespace libpy_tutorial {
 
-py::owned_ref<> apply_kernel(py::ndarray_view<const std::int64_t, 3> pixels,
+py::owned_ref<> apply_kernel(py::ndarray_view<const std::uint8_t, 3> pixels,
                              py::ndarray_view<const std::int64_t, 2> kernel) {
 
     auto n_dimensions = pixels.shape()[2];
@@ -16,11 +16,12 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::int64_t, 3> pixels,
 
     auto k_rows = kernel.shape()[0];
     auto k_columns = kernel.shape()[1];
-    std::vector<std::int64_t> out(n_dimensions * n_rows * n_columns, 0);
+    std::vector<std::uint8_t> out(n_dimensions * n_rows * n_columns, 0);
+    py::ndarray_view out_view(out.data(), pixels.shape(), pixels.strides());
 
     for (std::size_t dim = 0; dim < n_dimensions; ++dim) {
-        for (std::size_t column = 0; column < n_columns; ++column) {
-            for (std::size_t row = 0; row < n_rows; ++row) {
+        for (std::size_t row = 0; row < n_rows; ++row) {
+            for (std::size_t column = 0; column < n_columns; ++column) {
 
                 auto accumulated_sum = 0.0;
 
@@ -43,12 +44,14 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::int64_t, 3> pixels,
                 else if (accumulated_sum > 255) {
                     accumulated_sum = 255;
                 }
-                out[dim * (n_rows * n_columns) + (n_columns * column) + row] =
-                    accumulated_sum;
+                out_view(row, column, dim) = accumulated_sum;
             }
         }
     }
-    return py::move_to_numpy_array(std::move(out));
+    return py::move_to_numpy_array(std::move(out),
+                                   py::new_dtype<uint8_t>(),
+                                   pixels.shape(),
+                                   pixels.strides());
 }
 
 namespace {
