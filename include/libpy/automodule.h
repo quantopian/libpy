@@ -16,31 +16,18 @@
 
 #define _libpy_MODULE_PATH(parent, name) _libpy_STR(parent) "." _libpy_STR(name)
 
-#if PY_MAJOR_VERSION == 2
-// No return value in py2.
-#define _libpy_MOD_RETURN_ERROR return
-#define _libpy_MOD_RETURN_SUCCESS(m) std::move(m).escape()
-#else
-// Return the module in py3.
 #define _libpy_MOD_RETURN_ERROR return nullptr
 #define _libpy_MOD_RETURN_SUCCESS(m) return std::move(m).escape()
-#endif
 
 #define _libpy_XCAT(a, b) a##b
 #define _libpy_CAT(a, b) _libpy_XCAT(a, b)
 
-#if PY_MAJOR_VERSION == 2
-#define _libpy_MODINIT_NAME(name) _libpy_CAT(init, name)
-#define _libpy_MODULE_SETUP(path)
-#define _libpy_MODULE_CREATE(path) Py_InitModule(path, methods)
-#else
 #define _libpy_MODINIT_NAME(name) _libpy_CAT(PyInit_, name)
 #define _libpy_MODULE_SETUP(path)                                                        \
     static PyModuleDef _libpy_module {                                                   \
         PyModuleDef_HEAD_INIT, path, nullptr, -1, methods,                               \
     }
 #define _libpy_MODULE_CREATE(path) PyModule_Create(&_libpy_module)
-#endif
 
 /** Define a Python module.
 
