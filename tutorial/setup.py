@@ -39,8 +39,8 @@ setup(
     url="https://github.com/quantopian/libpy",
     ext_modules=[
         extension(
-            "libpy_tutorial.bind_scalar_function",
-            ["libpy_tutorial/bind_scalar_function.cc"],
+            "libpy_tutorial.scalar_functions",
+            ["libpy_tutorial/scalar_functions.cc"],
         ),
         extension(
             "libpy_tutorial.arrays",
@@ -55,8 +55,8 @@ setup(
             ["libpy_tutorial/exceptions.cc"],
         ),
         extension(
-            "libpy_tutorial.autoclass",
-            ["libpy_tutorial/autoclass.cc"],
+            "libpy_tutorial.classes",
+            ["libpy_tutorial/classes.cc"],
         ),
     ],
 )

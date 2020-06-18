@@ -53,7 +53,7 @@ namespace {
 
 PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
-    "libpy_tutorial.autoclass",
+    "libpy_tutorial.classes",
     nullptr,
     -1,
     nullptr,
@@ -63,7 +63,7 @@ PyModuleDef module = {
     nullptr,
 };
 
-PyMODINIT_FUNC PyInit_autoclass() {
+PyMODINIT_FUNC PyInit_classes() {
     if (py::abi::ensure_compatible_libpy_abi()) {
         return nullptr;
     }

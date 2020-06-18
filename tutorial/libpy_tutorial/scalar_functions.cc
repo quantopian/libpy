@@ -36,7 +36,7 @@ PyMethodDef methods[] = {
 
 PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
-    "libpy_tutorial.bind_scalar_function",
+    "libpy_tutorial.scalar_functions",
     nullptr,
     -1,
     methods,
@@ -46,7 +46,7 @@ PyModuleDef module = {
     nullptr,
 };
 
-PyMODINIT_FUNC PyInit_bind_scalar_function() {
+PyMODINIT_FUNC PyInit_scalar_functions() {
     if (py::abi::ensure_compatible_libpy_abi()) {
         return nullptr;
     }
