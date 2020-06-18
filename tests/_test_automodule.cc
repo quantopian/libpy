@@ -18,7 +18,7 @@ float second(const int_float_pair& ob) {
 
 LIBPY_AUTOMODULE(tests, _test_automodule, py::autofunction<is_42>("is_42"))
 (py::borrowed_ref<> m) {
-    py::scoped_ref t = py::autoclass<int_float_pair>("_test_automodule.int_float_pair")
+    py::owned_ref t = py::autoclass<int_float_pair>("_test_automodule.int_float_pair")
                            .new_<int, float>()
                            .comparisons<int_float_pair>()
                            .def<first>("first")

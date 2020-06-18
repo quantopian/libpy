@@ -9,7 +9,7 @@
 #include "libpy/detail/api.h"
 #include "libpy/detail/numpy.h"
 #include "libpy/detail/python.h"
-#include "libpy/scoped_ref.h"
+#include "libpy/owned_ref.h"
 
 #define _libpy_XSTR(s) #s
 #define _libpy_STR(s) _libpy_XSTR(s)
@@ -61,7 +61,7 @@
         }                                                                                \
         static PyMethodDef methods[] = {__VA_ARGS__ __VA_OPT__(, ) py::end_method_list}; \
         _libpy_MODULE_SETUP(_libpy_MODULE_PATH(parent, name));                           \
-        py::scoped_ref m(_libpy_MODULE_CREATE(_libpy_MODULE_PATH(parent, name)));        \
+        py::owned_ref m(_libpy_MODULE_CREATE(_libpy_MODULE_PATH(parent, name)));        \
         if (!m) {                                                                        \
             _libpy_MOD_RETURN_ERROR;                                                     \
         }                                                                                \
