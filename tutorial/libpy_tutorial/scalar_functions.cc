@@ -3,6 +3,8 @@
 
 #include <libpy/abi.h>
 #include <libpy/automethod.h>
+#include <libpy/build_tuple.h>
+#include <libpy/char_sequence.h>
 
 namespace libpy_tutorial {
 
@@ -27,10 +29,26 @@ double monte_carlo_pi(int n_samples) {
     return 4.0 * accumulator / n_samples;
 }
 
+using namespace py::cs::literals;
+
+std::string optional_arg(py::arg::optional<std::string> opt_arg) {
+    return opt_arg.get().value_or("default value");
+}
+
+py::owned_ref<> keyword_args(
+    py::arg::kwd<decltype("kw_arg_kwd"_cs), int> kw_arg_kwd,
+    py::arg::opt_kwd<decltype("opt_kw_arg_kwd"_cs), int>
+        opt_kw_arg_kwd) {
+
+    return py::build_tuple(kw_arg_kwd.get(), opt_kw_arg_kwd.get());
+}
+
 namespace {
 PyMethodDef methods[] = {
     py::autofunction<bool_scalar>("bool_scalar"),
     py::autofunction<monte_carlo_pi>("monte_carlo_pi"),
+    py::autofunction<optional_arg>("optional_arg"),
+    py::autofunction<keyword_args>("keyword_args"),
     py::end_method_list,
 };
 

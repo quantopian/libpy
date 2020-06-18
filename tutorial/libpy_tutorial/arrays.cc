@@ -35,12 +35,7 @@ bool check_prime(std::int64_t n) {
     return true;
 }
 
-using namespace py::cs::literals;
-
-py::owned_ref<> is_prime(
-    py::arg::kwd<decltype("values"_cs), py::array_view<const std::int64_t>> values_kwd) {
-    const auto values = values_kwd.get();
-
+py::owned_ref<> is_prime(py::array_view<const std::int64_t> values) {
     std::vector<py::py_bool> out(values.size());
     std::transform(values.begin(), values.end(), out.begin(), check_prime);
 
