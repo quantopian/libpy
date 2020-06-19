@@ -27,6 +27,12 @@ def extension(*args, **kwargs):
         **kwargs
     )
 
+install_requires = [
+    'setuptools',
+    'libpy',
+    'matplotlib',
+    'pillow',
+]
 
 setup(
     name="libpy_tutorial",
@@ -38,6 +44,7 @@ setup(
     package_data={
         "": ["*.png"],
     },
+    install_requires=install_requires,
     license="Apache 2.0",
     url="https://github.com/quantopian/libpy",
     ext_modules=[
