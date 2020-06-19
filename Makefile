@@ -200,7 +200,6 @@ test: $(PYTHON_TESTS) $(TEST_MODULE) tests/_test_automodule.so
 		$(LD_PRELOAD_VAR)="$(TEST_LD_PRELOAD)" \
 		ASAN_OPTIONS=$(ASAN_OPTIONS) \
 		LSAN_OPTIONS=$(LSAN_OPTIONS) \
-		LSAN_OPTIONS=$(LSAN_OPTIONS) \
 		GTEST_ARGS=--gtest_filter=$(GTEST_FILTER) \
 		$(PYTEST) tests/ $(PYTEST_ARGS)
 
@@ -221,9 +220,9 @@ tests/%.o: tests/%.cc .make/all-flags
 		-isystem submodules/googletest/googletest/src \
 		-MD -fPIC -c $< -o $@
 
-$(TEST_MODULE): gtest.a $(TEST_OBJECTS) $(SONAME)
+$(TEST_MODULE): gtest.a $(TEST_OBJECTS) libpy/libpy.so
 	$(CXX) -shared -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-		-lpthread $(LDFLAGS)
+            -Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .make/all-flags
 	$(CXX) $(filter-out $(WARNINGS),$(CXXFLAGS)) -I $(GTEST_DIR) \
