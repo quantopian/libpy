@@ -85,11 +85,6 @@ PyMODINIT_FUNC PyInit_classes() {
                         .comparisons<sample_class, bool>()  // define comparisons
                         .unary()                            // unary ops
                         .conversions()                      // type conversions
-                        //.repr<&sample_class::repr>()
-                        //.hash()
-                        //.iter()
-                        // .string()
-                        // .hash()
                         .type();
         if (PyObject_SetAttrString(m.get(),
                                    "SampleClass",

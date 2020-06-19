@@ -7,7 +7,7 @@ A *concise* overview of ``libpy``.
 Simple Scalar Functions
 =======================
 
-We start by building simple scalar functions in C++ which we can call from Python.
+We start by building simple scalar functions in C++ which we can call from Python. For an introduction to extending Python with C or C++ please see `the Python documentation <https://docs.python.org/3/extending/extending.html>`_.
 
 **TODO**: some sort of skeleton reference or something. Embed some code here.
 
@@ -17,11 +17,17 @@ We start by building simple scalar functions in C++ which we can call from Pytho
 
 A simple scalar function:
 
+.. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
+   :lines: 11-13
+
 .. ipython:: python
 
   scalar_functions.bool_scalar(False)
 
 A great way to use ``libpy`` is to write the code that needs to be fast in C++ and expose that code via Python. Let's estimate ``pi`` using a monte carlo simulation:
+
+.. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
+   :lines: 15-30
 
 .. ipython:: python
 
@@ -31,12 +37,18 @@ Of course, we can build C++ functions that support all the features of regular P
 
 ``libpy`` supports optional args:
 
+.. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
+   :lines: 34-36
+
 .. ipython:: python
 
   scalar_functions.optional_arg(b"An argument was passed")
   scalar_functions.optional_arg()
 
 and keyword/optional keyword arguments:
+
+.. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
+   :lines: 38-44
 
 .. ipython:: python
 
@@ -56,6 +68,9 @@ It is also very useful to be able to work with ``numpy`` arrays.
 
 We can take ``numpy`` arrays as input:
 
+.. literalinclude:: tutorial/libpy_tutorial/arrays.cc
+   :lines: 11-17
+
 .. ipython:: python
 
   some_numbers = np.arange(20000)
@@ -63,12 +78,18 @@ We can take ``numpy`` arrays as input:
 
 and return them as output:
 
+.. literalinclude:: tutorial/libpy_tutorial/arrays.cc
+   :lines: 23-43
+
 .. ipython:: python
 
   prime_mask = arrays.is_prime(some_numbers)
   some_numbers[prime_mask][:100]
 
 .. note:: ``numpy`` arrays passed to C++ can be operatated on as iterable types
+
+.. literalinclude:: tutorial/libpy_tutorial/arrays.cc
+   :lines: 19-21
 
 .. ipython:: python
 
@@ -89,6 +110,9 @@ We can also work with n-dimensional arrays. As a motivating example, let's sharp
   img = Image.open(img_file)
   @savefig original.png width=200px
   plt.imshow(img)
+
+.. literalinclude:: tutorial/libpy_tutorial/ndarrays.cc
+   :lines: 10-55
 
 .. ipython:: python
 
@@ -118,6 +142,9 @@ Creating Classes
 
 C++ classes are able to emulate all the features of Python classes:
 
+.. literalinclude:: tutorial/libpy_tutorial/classes.cc
+   :lines: 10-50, 76-88
+
 .. ipython:: python
 
   SampleClass.__doc__
@@ -146,9 +173,10 @@ We can throw exceptions in C++ that will then be dealt with in Python. Three pat
 2. Construct and throw an exception at the same time
 3. ``py::raise_from_cxx_exception`` to raise a exception from a C++ exception, and then throw ``py::exception{}``. This will happen automatically if you ``throw`` a C++ exception to Python.
 
-.. error:: I cannot get my exception examples included without segfaulting sphinx. Unlcear why.
+.. literalinclude:: tutorial/libpy_tutorial/exceptions.cc
+   :lines: 11-25
 
-.. code::
+::
 
     In [39]: exceptions.raise_a_value_error()
     ---------------------------------------------------------------------------
