@@ -7,6 +7,8 @@ release = '0.1.0'
 
 extensions = [
     'breathe',
+    'IPython.sphinxext.ipython_console_highlighting',
+    'IPython.sphinxext.ipython_directive',
 ]
 
 breathe_projects = {'libpy': '../doxygen-build/xml'}
