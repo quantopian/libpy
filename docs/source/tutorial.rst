@@ -148,7 +148,31 @@ We can throw exceptions in C++ that will then be dealt with in Python. Three pat
 
 .. error:: I cannot get my exception examples included without segfaulting sphinx. Unlcear why.
 
+.. code::
 
+    In [39]: exceptions.raise_a_value_error()
+    ---------------------------------------------------------------------------
+    ValueError                                Traceback (most recent call last)
+    <ipython-input-39-5010484f9a47> in <module>
+    ----> 1 exceptions.raise_a_value_error()
+
+    ValueError: failed to do something because: wargl bargle
+
+    In [40]: exceptions.throw_value_error(4)
+    ---------------------------------------------------------------------------
+    ValueError                                Traceback (most recent call last)
+    <ipython-input-40-6cfdcf9a1ea9> in <module>
+    ----> 1 exceptions.throw_value_error(4)
+
+    ValueError: You passed 4 and this is the exception
+
+    In [41]: exceptions.raise_from_cxx()
+    ---------------------------------------------------------------------------
+    RuntimeError                              Traceback (most recent call last)
+    <ipython-input-41-ee2345413222> in <module>
+    ----> 1 exceptions.raise_from_cxx()
+
+    RuntimeError: a C++ exception was raised: Supposedly a bad argument was used
 
 .. rubric:: Footnotes
 
