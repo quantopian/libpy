@@ -59,7 +59,7 @@
         if (py::abi::ensure_compatible_libpy_abi()) {                                    \
             _libpy_MOD_RETURN_ERROR;                                                     \
         }                                                                                \
-        static PyMethodDef methods[] = __VA_ARGS__, py::end_method_list}; \
+        static PyMethodDef methods[] = __VA_ARGS__; \
         _libpy_MODULE_SETUP(_libpy_MODULE_PATH(parent, name));                           \
         py::owned_ref m(_libpy_MODULE_CREATE(_libpy_MODULE_PATH(parent, name)));        \
         if (!m) {                                                                        \
