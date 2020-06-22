@@ -246,7 +246,7 @@ public:
     static py::owned_ref<PyTypeObject> lookup_type() {
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
         if (type_search != detail::autoclass_type_cache.get().end()) {
-            PyTypeObject* type = type_search->second->type;
+            PyTypeObject* type = type_search->second->type.get();
             Py_INCREF(type);
             return py::owned_ref(type);
         }
