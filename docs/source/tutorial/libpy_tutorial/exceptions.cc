@@ -8,14 +8,6 @@
 
 namespace libpy_tutorial {
 
-void raise_a_value_error() {
-    auto reason = "wargl bargle";
-    py::raise(PyExc_ValueError) << "failed to do something because: " << reason;
-    // do some other things
-
-    throw py::exception{};
-}
-
 void throw_value_error(int a) {
     throw py::exception(PyExc_ValueError, "You passed ", a, " and this is the exception");
 }
@@ -26,7 +18,6 @@ void raise_from_cxx() {
 
 namespace {
 PyMethodDef methods[] = {
-    py::autofunction<raise_a_value_error>("raise_a_value_error"),
     py::autofunction<throw_value_error>("throw_value_error"),
     py::autofunction<raise_from_cxx>("raise_from_cxx"),
     py::end_method_list,

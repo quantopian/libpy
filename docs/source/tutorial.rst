@@ -2,14 +2,12 @@
 Shock and Awe [#f1]_
 ====================
 
-A *concise* overview of ``libpy``.
+A *concise* overview of ``libpy``. For an introduction to extending Python with C or C++ please see `the Python documentation <https://docs.python.org/3/extending/extending.html>`_ or `Joe Jevnik's C Extension Tutorial <https://llllllllll.github.io/c-extension-tutorial/>`_.
 
 Simple Scalar Functions
 =======================
 
-We start by building simple scalar functions in C++ which we can call from Python. For an introduction to extending Python with C or C++ please see `the Python documentation <https://docs.python.org/3/extending/extending.html>`_.
-
-**TODO**: some sort of skeleton reference or something. Embed some code here.
+We start by building simple scalar functions in C++ which we can call from Python.
 
 .. ipython:: python
 
@@ -86,7 +84,7 @@ and return them as output:
   prime_mask = arrays.is_prime(some_numbers)
   some_numbers[prime_mask][:100]
 
-.. note:: ``numpy`` arrays passed to C++ can be operatated on as iterable types
+.. note:: ``numpy`` arrays passed to C++ are `ranges <https://en.cppreference.com/w/cpp/ranges/range>`_.
 
 .. literalinclude:: tutorial/libpy_tutorial/arrays.cc
    :lines: 19-21
@@ -167,24 +165,15 @@ Working with exceptions is also important.
 
   from libpy_tutorial import exceptions
 
-We can throw exceptions in C++ that will then be dealt with in Python. Three patterns:
+We can throw exceptions in C++ that will then be dealt with in Python. Two patterns:
 
-1. ``py::raise`` a  Python exception and then ``throw`` it with ``py::exception{}``
-2. Construct and throw an exception at the same time
-3. ``py::raise_from_cxx_exception`` to raise a exception from a C++ exception, and then throw ``py::exception{}``. This will happen automatically if you ``throw`` a C++ exception to Python.
+1. Throw your own exception: ``throw py::exception(type, msg...)``, maybe in response to an exception from a C-API function.
+2. Throw a C++ exception directly.
 
 .. literalinclude:: tutorial/libpy_tutorial/exceptions.cc
-   :lines: 11-25
+   :lines: 11-17
 
 ::
-
-    In [39]: exceptions.raise_a_value_error()
-    ---------------------------------------------------------------------------
-    ValueError                                Traceback (most recent call last)
-    <ipython-input-39-5010484f9a47> in <module>
-    ----> 1 exceptions.raise_a_value_error()
-
-    ValueError: failed to do something because: wargl bargle
 
     In [40]: exceptions.throw_value_error(4)
     ---------------------------------------------------------------------------
@@ -212,7 +201,7 @@ Python Extensions
 
 In order to create and use a Python Extension we must do four basic things:
 
-First, we use `py::autofunction` to create an array of `PyMethoddef <https://docs.python.org/3/c-api/structures.html#c.PyMethodDef>`_.
+First, we use :cpp:func:`py::autofunction` to create an array of `PyMethoddef <https://docs.python.org/3/c-api/structures.html#c.PyMethodDef>`_.
 
 .. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
    :lines: 47-53
