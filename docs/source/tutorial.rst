@@ -205,3 +205,31 @@ We can throw exceptions in C++ that will then be dealt with in Python. Three pat
 .. rubric:: Footnotes
 
 .. [#f1] With naming credit to the intorduction of `Q for Mortals <https://code.kx.com/q4m3/1_Q_Shock_and_Awe/>`_.
+
+=================
+Python Extensions
+=================
+
+In order to create and use a Python Extension we must do four basic things:
+
+First, we use `py::autofunction` to create an array of `PyMethoddef <https://docs.python.org/3/c-api/structures.html#c.PyMethodDef>`_.
+
+.. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
+   :lines: 47-53
+
+Second, we create a `PyModuleDef <https://docs.python.org/3/c-api/module.html#c.PyModuleDef>`_ module.
+
+.. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
+   :lines: 55-65
+
+Then we intialize the module (`see also <https://docs.python.org/3/extending/extending.html#the-module-s-method-table-and-initialization-function>`_):
+
+.. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
+   :lines: 67-74
+
+.. note:: The initialization function must be named ``PyInit_name()``, where name is the name of the module.
+
+Finally, we must tell ``setup.py`` to build our module using the ``LibpyExtension`` helper:
+
+.. literalinclude:: tutorial/setup.py
+   :lines: 18-28,37,50-54,71-72
