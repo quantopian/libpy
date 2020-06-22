@@ -16,17 +16,10 @@
 
 #define _libpy_MODULE_PATH(parent, name) _libpy_STR(parent) "." _libpy_STR(name)
 
-#define _libpy_MOD_RETURN_ERROR return nullptr
-#define _libpy_MOD_RETURN_SUCCESS(m) return std::move(m).escape()
-
 #define _libpy_XCAT(a, b) a##b
 #define _libpy_CAT(a, b) _libpy_XCAT(a, b)
 
 #define _libpy_MODINIT_NAME(name) _libpy_CAT(PyInit_, name)
-#define _libpy_MODULE_SETUP(path)                                                        \
-    static PyModuleDef _libpy_module {                                                   \
-        PyModuleDef_HEAD_INIT, path, nullptr, -1, methods,                               \
-    }
 #define _libpy_MODULE_CREATE(path) PyModule_Create(&_libpy_module)
 
 /** Define a Python module.
@@ -57,28 +50,36 @@
     PyMODINIT_FUNC _libpy_MODINIT_NAME(name)() {                                         \
         import_array();                                                                  \
         if (py::abi::ensure_compatible_libpy_abi()) {                                    \
-            _libpy_MOD_RETURN_ERROR;                                                     \
+            return nullptr;                                                     \
         }                                                                                \
-        _libpy_MODULE_SETUP(_libpy_MODULE_PATH(parent, name));                           \
-        py::owned_ref m(_libpy_MODULE_CREATE(_libpy_MODULE_PATH(parent, name)));        \
+        static std::vector<PyMethodDef> ms methods;                                      \
+        ms.emplace_back(py::end_method_list);                                            \
+        static PyModuleDef _libpy_module{                                                \
+            PyModuleDef_HEAD_INIT,                                                       \
+            _libpy_MODULE_PATH(parent, name),                                            \
+            nullptr,                                                                     \
+            -1,                                                                          \
+            ms.data(),                                                                   \
+        };                                                                               \
+        py::owned_ref m(_libpy_MODULE_CREATE(_libpy_MODULE_PATH(parent, name)));         \
         if (!m) {                                                                        \
-            _libpy_MOD_RETURN_ERROR;                                                     \
+            return nullptr;                                                     \
         }                                                                                \
         try {                                                                            \
             if (_libpy_user_mod_init(m)) {                                               \
-                _libpy_MOD_RETURN_ERROR;                                                 \
+                return nullptr;                                                 \
             }                                                                            \
         }                                                                                \
         catch (const std::exception& e) {                                                \
             py::raise_from_cxx_exception(e);                                             \
-            _libpy_MOD_RETURN_ERROR;                                                     \
+            return nullptr;                                                     \
         }                                                                                \
         catch (...) {                                                                    \
             if (!PyErr_Occurred()) {                                                     \
                 py::raise(PyExc_RuntimeError) << "an unknown C++ exception was raised";  \
-                _libpy_MOD_RETURN_ERROR;                                                 \
+                return nullptr;                                                 \
             }                                                                            \
         }                                                                                \
-        _libpy_MOD_RETURN_SUCCESS(m);                                                    \
+        return std::move(m).escape();                                                    \
     }                                                                                    \
     bool _libpy_user_mod_init
