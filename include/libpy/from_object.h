@@ -119,7 +119,7 @@ public:
                 throw invalid_conversion::make<T&>(ob);
             }
             int res = PyObject_IsInstance(ob.get(),
-                                          reinterpret_cast<PyObject*>(
+                                          static_cast<PyObject*>(
                                               search->second->type));
             if (res < 0) {
                 throw py::exception{};

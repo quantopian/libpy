@@ -247,7 +247,6 @@ public:
         auto type_search = detail::autoclass_type_cache.get().find(typeid(T));
         if (type_search != detail::autoclass_type_cache.get().end()) {
             PyTypeObject* type = type_search->second->type;
-            //py::borrowed_ref<PyTypeObject> type = type_search->second->type;
             Py_INCREF(type);
             return py::owned_ref(type);
         }
