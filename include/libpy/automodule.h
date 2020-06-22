@@ -26,7 +26,8 @@
 
     @param parent A symbol indicating the parent module.
     @param name The leaf name of the module.
-    @param ... PyMethodDef objects representing the functions to add to the module.
+    @param methods ({...}) list of  objects representing the functions to add to the
+   module. Note this list must be surrounded by parentheses.
 
     ## Examples
 
@@ -36,21 +37,21 @@
     \code
     LIBPY_AUTOMODULE(my_package.submodule,
                      my_module,
-                     py::autofunction<f>("f"),
-                     py::autofunction<g>("g"))
+                     ({py::autofunction<f>("f"),
+                       py::autofunction<g>("g")}))
     (py::borrowed_ref<> m) {
         py::borrowed_ref t = py::autoclass<T>("T").new_().type();
         return PyObject_SetAttrString(m.get(), "T", static_cast<PyObject*>(t));
     }
     /endcode
  */
-#define LIBPY_AUTOMODULE(parent, name, methods)                                      \
+#define LIBPY_AUTOMODULE(parent, name, methods)                                          \
     bool _libpy_user_mod_init(py::borrowed_ref<>);                                       \
     PyMODINIT_FUNC _libpy_MODINIT_NAME(name)() LIBPY_EXPORT;                             \
     PyMODINIT_FUNC _libpy_MODINIT_NAME(name)() {                                         \
         import_array();                                                                  \
         if (py::abi::ensure_compatible_libpy_abi()) {                                    \
-            return nullptr;                                                     \
+            return nullptr;                                                              \
         }                                                                                \
         static std::vector<PyMethodDef> ms methods;                                      \
         ms.emplace_back(py::end_method_list);                                            \
@@ -63,21 +64,21 @@
         };                                                                               \
         py::owned_ref m(_libpy_MODULE_CREATE(_libpy_MODULE_PATH(parent, name)));         \
         if (!m) {                                                                        \
-            return nullptr;                                                     \
+            return nullptr;                                                              \
         }                                                                                \
         try {                                                                            \
             if (_libpy_user_mod_init(m)) {                                               \
-                return nullptr;                                                 \
+                return nullptr;                                                          \
             }                                                                            \
         }                                                                                \
         catch (const std::exception& e) {                                                \
             py::raise_from_cxx_exception(e);                                             \
-            return nullptr;                                                     \
+            return nullptr;                                                              \
         }                                                                                \
         catch (...) {                                                                    \
             if (!PyErr_Occurred()) {                                                     \
                 py::raise(PyExc_RuntimeError) << "an unknown C++ exception was raised";  \
-                return nullptr;                                                 \
+                return nullptr;                                                          \
             }                                                                            \
         }                                                                                \
         return std::move(m).escape();                                                    \
