@@ -51,7 +51,7 @@
     }
     /endcode
  */
-#define LIBPY_AUTOMODULE(parent, name, ...)                                      \
+#define LIBPY_AUTOMODULE(parent, name, methods)                                      \
     bool _libpy_user_mod_init(py::borrowed_ref<>);                                       \
     PyMODINIT_FUNC _libpy_MODINIT_NAME(name)() LIBPY_EXPORT;                             \
     PyMODINIT_FUNC _libpy_MODINIT_NAME(name)() {                                         \
@@ -59,7 +59,6 @@
         if (py::abi::ensure_compatible_libpy_abi()) {                                    \
             _libpy_MOD_RETURN_ERROR;                                                     \
         }                                                                                \
-        static PyMethodDef methods[] = __VA_ARGS__; \
         _libpy_MODULE_SETUP(_libpy_MODULE_PATH(parent, name));                           \
         py::owned_ref m(_libpy_MODULE_CREATE(_libpy_MODULE_PATH(parent, name)));        \
         if (!m) {                                                                        \

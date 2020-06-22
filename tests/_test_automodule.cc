@@ -21,7 +21,13 @@ float second(const int_float_pair& ob) {
     return ob.second;
 }
 
-LIBPY_AUTOMODULE(tests, _test_automodule, {py::autofunction<is_42>("is_42"), py::autofunction<is_true>("is_true")})
+PyMethodDef methods[] = {
+    py::autofunction<is_42>("is_42"),
+    py::autofunction<is_true>("is_true"),
+    py::end_method_list,
+};
+
+LIBPY_AUTOMODULE(tests, _test_automodule, methods)
 (py::borrowed_ref<> m) {
     py::owned_ref t = py::autoclass<int_float_pair>("_test_automodule.int_float_pair")
                            .new_<int, float>()
