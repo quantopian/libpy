@@ -222,7 +222,7 @@ tests/%.o: tests/%.cc .make/all-flags
 
 $(TEST_MODULE): gtest.a $(TEST_OBJECTS) libpy/libpy.so
 	$(CXX) -shared -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-            -Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
+            	-Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .make/all-flags
 	$(CXX) $(filter-out $(WARNINGS),$(CXXFLAGS)) -I $(GTEST_DIR) \

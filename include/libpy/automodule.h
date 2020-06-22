@@ -27,7 +27,7 @@
     @param parent A symbol indicating the parent module.
     @param name The leaf name of the module.
     @param methods ({...}) list of  objects representing the functions to add to the
-   module. Note this list must be surrounded by parentheses.
+                    module. Note this list must be surrounded by parentheses.
 
     ## Examples
 
