@@ -13,6 +13,7 @@ html/*
 docs/doxygen-build/*
 docs/build/*
 docs/.built-doxygen
+docs/.installed-tutorial
 
 # scratch file for testing linking
 scratch.cc
@@ -58,7 +59,9 @@ libpy_report.xml
 .coverage
 
 # python support artifacts
-libpy.egg-info/*
+*.egg-info/*
+docs/source/tutorial/libpy_tutorial.egg-info/*
+docs/source/savefig/*
 dist/*
 
 venv*/*
