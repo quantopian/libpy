@@ -30,7 +30,6 @@ if 'build_ext' in sys.argv or 'egg_info' in sys.argv and not dont_build:
 setup(
     name='libpy',
     url='https://github.com/quantopian/libpy',
-    version='0.1.0',
     author='Quantopian Inc.',
     author_email='opensource@quantopian.com',
     packages=find_packages(),
@@ -53,4 +52,6 @@ setup(
     zip_safe=False,
     include_package_data=True,
     install_requires=['numpy'],
+    setup_requires=['setuptools_scm'],
+    use_scm_version=True,
 )
