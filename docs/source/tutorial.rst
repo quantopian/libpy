@@ -57,7 +57,7 @@ and keyword/optional keyword arguments:
 Working With Arrays
 ===================
 
-It is also very useful to be able to work with ``numpy`` arrays.
+In order to write performant code it is often useful to write vectorized functions that act on arrays. Thus, libpy has extenstive support for ``numpy`` arrays.
 
 .. ipython:: python
 
