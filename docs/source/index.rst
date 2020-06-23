@@ -6,6 +6,7 @@ Welcome to libpy's documentation!
    :caption: Contents:
 
    tutorial
+   install
    appendix
 
 
