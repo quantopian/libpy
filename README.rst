@@ -7,8 +7,8 @@
 
 Utilities for writing C++ extension modules for CPython.
 
-Install
--------
+Requirements
+------------
 
 lipy supports:
 
@@ -27,17 +27,22 @@ libpy also depends on:
 
 To install these dependencies:
 
-**ubuntu**
+ubuntu
+~~~~~~
 
 .. code-block:: bash
 
     $ sudo apt install libpcre2-dev libsparsehash-dev
 
-**macOS**
+macOS
+~~~~~
 
 .. code-block:: bash
 
     $ brew install pcre2 google-sparsehash
+
+Install
+-------
 
 To install for development:
 
