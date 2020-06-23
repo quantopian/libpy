@@ -1,3 +1,4 @@
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -6,51 +7,67 @@
 #include <libpy/exception.h>
 
 namespace libpy_tutorial {
-
-class sample_class {
+class vec3d {
 private:
-    int m_a;
-    float m_b;
+    std::array<double, 3> m_values;
 
 public:
-    sample_class(int a, float b) : m_a(a), m_b(b) {}
+    vec3d(double x, double y, double z) : m_values({x, y, z}) {}
 
-    int a() const {
-        return m_a;
-    }
-
-    float b() const {
-        return m_b;
+    double x() const {
+        return m_values[0];
     }
 
-    float sum() const {
-        return m_a + m_b;
+    double y() const {
+        return m_values[1];
     }
 
-    float sum_plus(float arg) const {
-        return sum() + arg;
+    double z() const {
+        return m_values[2];
     }
 
-    double operator()(int a, double b) const {
-        return m_b + a + b;
+    vec3d operator+(const vec3d& other) const {
+        return {x() + other.x(), y() + other.y(), z() + other.z()};
     }
 
-    int operator+(const sample_class& other) const {
-        return m_a + other.a();
+    vec3d operator-(const vec3d& other) const {
+        return {x() - other.x(), y() - other.y(), z() - other.z()};
     }
-    bool operator>(const sample_class& other) const {
-        return m_a > other.a();
+
+    double operator*(const vec3d& other) const {
+        return std::inner_product(m_values.begin(),
+                                  m_values.end(),
+                                  other.m_values.begin(),
+                                  0.0);
     }
-    int operator-() {
-        return -m_a;
-    }
-    explicit operator std::int64_t() const {
-        return m_a;
+
+    double magnitude() const {
+        return std::sqrt(*this * *this);
     }
 };
 
-namespace {
+std::ostream& operator<<(std::ostream& s, const vec3d& v) {
+    return s << '{' << v.x() << ", " << v.y() << ", " << v.z() << '}';
+}
 
+// `repr` could also be a member function, but free functions are useful for adding
+// a Python repr without modifying the methods of the type.
+std::string repr(const vec3d& v) {
+    std::stringstream ss;
+    ss << "Vec3d(" << v.x() << ", " << v.y() << ", " << v.z() << ')';
+    return ss.str();
+}
+}  // namespace libpy_tutorial
+
+namespace py::dispatch {
+// Make it possible to convert a `vec3d` into a Python object.
+template<>
+struct LIBPY_NO_EXPORT to_object<libpy_tutorial::vec3d>
+    : public py::autoclass<libpy_tutorial::vec3d>::to_object {};
+}  // namespace py::dispatch
+
+namespace libpy_tutorial {
+namespace {
 PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
     "libpy_tutorial.classes",
@@ -73,22 +90,21 @@ PyMODINIT_FUNC PyInit_classes() {
         return nullptr;
     }
     try {
-        auto type = py::autoclass<sample_class>("SampleClass")
-                        .new_<int, float>()                   //__new__ takes parameters
-                        .doc("Small docstring for my class")  // add a class docstring
-                        .def<&sample_class::a>("a")
-                        .def<&sample_class::b>("b")
-                        .def<&sample_class::sum>("sum")
-                        .def<&sample_class::sum_plus>("sum_plus")
-                        .callable<int, double>()
-                        .arithmetic<sample_class, int>()    // define artithmetic
-                        .comparisons<sample_class, bool>()  // define comparisons
-                        .unary()                            // unary ops
-                        .conversions()                      // type conversions
-                        .type();
-        if (PyObject_SetAttrString(m.get(),
-                                   "SampleClass",
-                                   static_cast<PyObject*>(type))) {
+        auto type =
+            py::autoclass<vec3d>("Vec3d")
+                .doc("An efficient 3-vector.")   // add a class docstring
+                .new_<double, double, double>()  //__new__ takes parameters
+                // bind the named methods to Python
+                .def<&vec3d::x>("x")
+                .def<&vec3d::y>("y")
+                .def<&vec3d::z>("z")
+                .def<&vec3d::magnitude>("magnitude")
+                .str()  // set `operator<<(std::ostream&, vec3d) to `str(x)` in Python
+                .repr<repr>()  // set `repr` to be the result of `repr(x)` in Python
+                .arithmetic<vec3d>()  // bind the arithmetic operators to their Python
+                                      // equivalents
+                .type();
+        if (PyObject_SetAttrString(m.get(), "Vec3d", static_cast<PyObject*>(type))) {
             return nullptr;
         }
     }

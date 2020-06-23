@@ -136,25 +136,27 @@ Creating Classes
 
 .. ipython:: python
 
-  from libpy_tutorial.classes import SampleClass
+  from libpy_tutorial.classes import Vec3d
 
 C++ classes are able to emulate all the features of Python classes:
 
 .. literalinclude:: tutorial/libpy_tutorial/classes.cc
-   :lines: 10-50, 76-88
+   :lines: 9-67
+
+.. literalinclude:: tutorial/libpy_tutorial/classes.cc
+   :lines: 93-106
 
 .. ipython:: python
 
-  SampleClass.__doc__
-  sample = SampleClass(5, 10)
-  sample.b()
-  sample.sum()
-  sample(100, 1)
-  other_sample = SampleClass(500, 10)
-  sample + other_sample
-  sample > other_sample
-  -sample
-  int(sample)
+  Vec3d.__doc__
+  v = Vec3d(1, 2, 3)
+  v
+  str(v)
+  v.x(), v.y(), v.z()
+  w = Vec3d(4, 5, 6); w
+  v + w
+  v * w
+  v.magnitude()
 
 Exceptions
 ==========
