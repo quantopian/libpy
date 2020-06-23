@@ -55,13 +55,24 @@ public:
         }
     }
 
+    /** Check if the gil is currently held.
+     */
     static inline bool held() {
         return PyGILState_Check();
     }
 
     /** RAII resource for ensuring that the gil is released in a given block.
 
-        For example: `py::gil::release_block released;`
+        For example:
+
+        \code
+        // the gil may or may not be released here
+        {
+            py::gil::release_block released;
+            // the gil is now definitely released
+        }
+        // the gil may or may not be released here
+        \endcode
      */
     struct release_block final {
     private:
@@ -72,21 +83,32 @@ public:
             gil::ensure_released();
         }
 
+        /** Reset this gil back to the state it was in when this object was created.
+         */
         inline void dismiss() {
-            m_acquire = false;
-            gil::ensure_acquired();
+            if (m_acquire) {
+                gil::acquire();
+                m_acquire = false;
+            }
         }
 
         inline ~release_block() {
-            if (m_acquire) {
-                gil::acquire();
-            }
+            dismiss();
         }
     };
 
     /** RAII resource for ensuring that the gil is held in a given block.
 
-        For example: `py::gil::hold_block held;`
+        For example:
+
+        \code
+        // the gil may or may not be held here
+        {
+            py::gil::hold_block held;
+            // the gil is now definitely held
+        }
+        // the gil may or may not be held here
+        \endcode
      */
     struct hold_block final {
     private:
@@ -97,15 +119,17 @@ public:
             gil::ensure_acquired();
         }
 
+        /** Reset this gil back to the state it was in when this object was created.
+         */
         inline void dismiss() {
-            m_release = false;
-            gil::ensure_released();
+            if (m_release) {
+                gil::release();
+                m_release = false;
+            }
         }
 
         inline ~hold_block() {
-            if (m_release) {
-                gil::release();
-            }
+            dismiss();
         }
     };
 };

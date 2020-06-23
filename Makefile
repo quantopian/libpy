@@ -242,6 +242,10 @@ tidy:
 format:
 	@$(CLANG_FORMAT) -i $(ALL_SOURCES) $(ALL_HEADERS)
 
+.PHONY: docs
+docs: $(ALL_SOURCES) $(ALL_HEADERS)
+	@cd docs && make html
+
 
 .PHONY: clean
 clean:

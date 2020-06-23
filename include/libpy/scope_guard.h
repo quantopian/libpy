@@ -41,6 +41,8 @@ private:
 public:
     scope_guard(F&& callback) : m_callback(std::move(callback)) {}
 
+    /** Dismiss the scope guard causing the registered callback to not be called.
+     */
     void dismiss() {
         m_callback = std::nullopt;
     }

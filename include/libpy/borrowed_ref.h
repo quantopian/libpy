@@ -8,16 +8,19 @@ class owned_ref;
 
 /** A type that explicitly indicates that a Python object is a borrowed
     reference. This is implicitly convertible from a regular `PyObject*` or a
-    `py::owned_ref`. This type may be used as a Python object parameter like:
+    `py::owned_ref`. This type should be used to accept Python object parameters like:
 
     \code
-    int f(borrowed_ref a, borrowed_ref b);
+    int f(py::borrowed_ref<> a, py::borrowed_ref<> b);
     \endcode
 
-    This allows calling this function with either `py::owned_ref` or
-    `PyObject*`.
+    This allows calling this function with a `py::owned_ref`,
+    `PyObject*`, or a `py::borrowed_ref`.
 
-    @note A `borrowed_ref` may still hold a value of `nullptr`.
+    `py::borrowed_ref<>` should be used instead of `PyObject*` wherever possible to avoid
+    ambiguity.
+
+    @note A `borrowed_ref` may hold a value of `nullptr`.
  */
 template<typename T = PyObject>
 class borrowed_ref {
@@ -25,6 +28,12 @@ private:
     T* m_ref;
 
 public:
+    /** The type of the underlying pointer.
+     */
+    using element_type = T;
+
+    /** Default construct a borrowed ref to a `nullptr`.
+     */
     constexpr borrowed_ref() : m_ref(nullptr) {}
     constexpr borrowed_ref(std::nullptr_t) : m_ref(nullptr) {}
     constexpr borrowed_ref(T* ref) : m_ref(ref) {}
@@ -33,6 +42,10 @@ public:
     constexpr borrowed_ref(const borrowed_ref&) = default;
     constexpr borrowed_ref& operator=(const borrowed_ref& ob) = default;
 
+    /** Get the underlying pointer.
+
+        @return The pointer managed by this `borrowed_ref`.
+     */
     constexpr T* get() const {
         return m_ref;
     }
@@ -60,12 +73,20 @@ public:
         return m_ref;
     }
 
+    /** Object identity comparison.
+
+        @return `get() == other.get()`.
+     */
     bool operator==(borrowed_ref other) const {
-        return m_ref == other.get();
+        return get() == other.get();
     }
 
+    /** Object identity comparison.
+
+        @return `get() != other.get()`.
+     */
     bool operator!=(borrowed_ref other) const {
-        return m_ref != other.get();
+        return get() != other.get();
     }
 };
 }  // namespace py

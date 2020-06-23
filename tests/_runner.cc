@@ -1,7 +1,6 @@
 #include "gtest/gtest.h"
 
 #define LIBPY_TEST_MAIN
-#include "libpy/automethod.h"
 #include "libpy/detail/api.h"
 #include "libpy/detail/python.h"
 #include "libpy/numpy_utils.h"

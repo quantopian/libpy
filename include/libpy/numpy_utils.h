@@ -450,6 +450,8 @@ public:
 };
 }  // namespace detail
 
+class any_vector;
+
 /** Convert a container into a numpy `ndarray`. This steals the underlying
     buffer from the values array.
 
@@ -471,13 +473,21 @@ owned_ref<> move_to_numpy_array(C&& values,
 
     auto& [pycapsule, container] = *maybe_capsule;
 
+    std::byte* data;
+    if constexpr (std::is_same_v<C, py::any_vector>) {
+        data = container.buffer();
+    }
+    else {
+        data = reinterpret_cast<std::byte*>(container.data());
+    }
+
     owned_ref arr(PyArray_NewFromDescr(
         &PyArray_Type,
         descr.get(),
         ndim,
         const_cast<npy_intp*>(reinterpret_cast<const npy_intp*>(shape.data())),
         const_cast<npy_intp*>(reinterpret_cast<const npy_intp*>(strides.data())),
-        container.data(),
+        data,
         NPY_ARRAY_CARRAY,
         nullptr));
     if (!arr) {

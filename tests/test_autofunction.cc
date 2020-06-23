@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "libpy/automethod.h"
+#include "libpy/autofunction.h"
 #include "libpy/call_function.h"
 #include "libpy/exception.h"
 #include "libpy/from_object.h"
@@ -292,7 +292,7 @@ TEST_F(automethod, array_view_wrong_dtype) {
     EXPECT_FALSE(res);
     expect_pyerr_type_and_message(PyExc_TypeError,
                                   "cannot adapt buffer of format: "s +
-                                      py::buffer_format<float> +
+                                      static_cast<char>(py::buffer_format<float>) +
                                       " to an ndarray_view of type: int"s);
     PyErr_Clear();
 }

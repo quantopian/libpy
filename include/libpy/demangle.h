@@ -47,8 +47,8 @@ LIBPY_END_EXPORT
 /** Get the name for a given type. If the demangled name cannot be given, returns the
     mangled name.
 
-    @tparam The type to get the name of.
-    @return The demangled name.
+    @tparam T The type to get the name of.
+    @return The type's name.
  */
 template<typename T>
 std::string type_name() {

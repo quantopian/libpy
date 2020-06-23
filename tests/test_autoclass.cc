@@ -1112,4 +1112,35 @@ TEST_F(autoclass, interface_type_inherited_method) {
     auto res = py::from_object<std::string>(py::call_method_throws(inst, "f"));
     EXPECT_EQ(res, "impl");
 }
+
+TEST_F(autoclass, matmul) {
+    struct s {
+        double value;
+
+        s() = default;
+        s(double value) : value(value) {}
+
+        double matmul(double other) const {
+            // use a non-commutative operator to ensure we don't swap the operands.
+            return value / other;
+        }
+    };
+
+    double lhs_val = 4;
+    double rhs_val = 5;
+
+    py::owned_ref cls = py::autoclass<s>().new_<>().matmul<&s::matmul>().type();
+    ASSERT_TRUE(cls);
+
+    auto inst = py::autoclass<s>::construct(lhs_val);
+    ASSERT_TRUE(inst);
+    auto rhs = py::to_object(rhs_val);
+    ASSERT_TRUE(rhs);
+
+    py::owned_ref result{PyNumber_MatrixMultiply(inst.get(), rhs.get())};
+    ASSERT_TRUE(result);
+
+    auto unboxed_result = py::from_object<double>(result);
+    EXPECT_EQ(unboxed_result, lhs_val / rhs_val);
+}
 }  // namespace test_autoclass

@@ -61,6 +61,7 @@ protected:
     Unit m_value;
 
 public:
+    /// The value of each tick.
     using unit = Unit;
 
     /** The largest representable datetime64.
@@ -226,8 +227,8 @@ static_assert(sizeof(datetime64ns) == sizeof(std::int64_t),
               "alias type should be the same size as aliased type");
 
 namespace chrono {
-/* The number of days in each month. The array at index 0 holds the counts for non-leap
-   years. The array at index 1 holds the counts for leap years.
+/** The number of days in each month. The array at index 0 holds the counts for non-leap
+    years. The array at index 1 holds the counts for leap years.
 */
 static constexpr std::array<std::array<std::int8_t, 12>, 2> days_in_month = {
     // The number of days in each month for non-leap years.
@@ -293,8 +294,8 @@ inline constexpr int leap_years_before(int year) {
     month and day.
 
     @param year
-    @month The month, 1-indexed (1 = January)
-    @day The day, 1-indexed (1 = The first of the month).
+    @param month The month, 1-indexed (1 = January)
+    @param day The day, 1-indexed (1 = The first of the month).
     @return The time since the epoch as a `std::chrono::duration`.
  */
 inline constexpr auto time_since_epoch(int year, int month, int day) {
@@ -480,6 +481,17 @@ write(char* data, char* end, std::ptrdiff_t& ix, const std::string_view& v) {
 }  // namespace formatting
 }  // namespace detail
 
+/** Write a textual representation of a datetime64 into preallocated buffer.
+
+    Datetimes will be written with the equivalent of the `strftime` format `%Y-%m-%d %T`.
+
+    @param first The beginning of the output buffer range.
+    @param last The end of the output buffer range.
+    @param dt The value to write.
+    @param compress Strip the time component entirely if it is 0 (midnight)
+    @return A `std::to_chars_result`. This function can only fail if the provided range
+            is not large enough to hold the textual representation of this datetime.
+ */
 template<typename unit>
 std::to_chars_result
 to_chars(char* first, char* last, const datetime64<unit>& dt, bool compress = false) {

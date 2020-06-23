@@ -49,8 +49,14 @@ private:
     decltype(py::from_object<T>(nullptr)) m_memb;
 
 public:
+    /** Construct an adapter for a given Python object.
+
+        @param ob The object to adapt.
+     */
     adapt_argument(py::borrowed_ref<> ob) : m_memb(py::from_object<T>(ob)) {}
 
+    /** Get the C++ value.
+     */
     decltype(m_memb) get() {
         return std::forward<decltype(m_memb)>(m_memb);
     }
@@ -165,16 +171,18 @@ class adapt_argument<const py::ndarray_view<T, ndim>&>
 namespace arg {
 /** A wrapper for specifying that a type may be passed by keyword in Python.
 
-    @tparam Name A `py::char_sequence` encoding the name.
+    @tparam Name A `py::cs::char_sequence` encoding the name.
     @tparam T The name of the argument in Python.
  */
 template<typename Name, typename T>
-struct keyword {
+class keyword {
 private:
     T m_value;
 
 public:
+    /// The name of the keyword argument as a `py::cs::char_sequence` type.
     using name = Name;
+    /// The type of the argument.
     using type = T;
 
     template<typename... Args>
@@ -185,10 +193,14 @@ public:
     keyword(keyword& cpfrom) : m_value(cpfrom.m_value) {}
     keyword& operator=(const keyword&) = default;
 
+    /** Get the argument value.
+     */
     T& get() {
         return m_value;
     }
 
+    /** Get the argument value.
+     */
     const T& get() const {
         return m_value;
     }
@@ -203,6 +215,7 @@ private:
     std::optional<T> m_value;
 
 public:
+    /// The type of the argument.
     using type = T;
 
     template<typename... Args>
@@ -213,24 +226,31 @@ public:
     optional(optional& cpfrom) : m_value(cpfrom.m_value) {}
     optional& operator=(const optional&) = default;
 
+    /** Get the argument value.
+     */
     std::optional<T>& get() {
         return m_value;
     }
 
+    /** Get the argument value.
+     */
     const std::optional<T>& get() const {
         return m_value;
     }
 };
 
-// partial specialization to peek through the `keyword` type to avoid
-// `.get().get()` calls.
+/* partial specialization to peek through the `keyword` type to avoid
+   `.get().get()` calls.
+*/
 template<typename Name, typename T, bool none_is_missing>
-struct optional<keyword<Name, T>, none_is_missing> {
+class optional<keyword<Name, T>, none_is_missing> {
 private:
     std::optional<T> m_value;
 
 public:
+    /// The name of the keyword argument as a `py::cs::char_sequence` type.
     using name = Name;
+    /// The type of the argument.
     using type = T;
 
     template<typename... Args>
@@ -241,10 +261,20 @@ public:
     optional(optional& cpfrom) = default;
     optional& operator=(const optional&) = default;
 
+    /** Get the argument value.
+
+        @note This combines both the `py::arg::optional::get` and `py::arg::keyword::get`
+              to just give the `std::optional` directly.
+     */
     std::optional<T>& get() {
         return m_value;
     }
 
+    /** Get the argument value.
+
+        @note This combines both the `py::arg::optional::get` and `py::arg::keyword::get`
+              to just give the `std::optional` directly.
+     */
     const std::optional<T>& get() const {
         return m_value;
     }

@@ -22,52 +22,62 @@ struct buffer_free {
 };
 }  // namespace detail
 
+/** A smart pointer adapter for `Py_buffer` that ensures the underlying buffer is
+    released.
+ */
 using buffer = std::unique_ptr<Py_buffer, detail::buffer_free>;
 
+enum buffer_format_code : char {};
+
+/** The Python buffor format character for the given type.
+
+    If there is no corresponding buffer format character, this template evaluates to
+    `'\0'`.
+ */
 template<typename T>
-inline constexpr char buffer_format = '\0';
+inline constexpr buffer_format_code buffer_format{'\0'};
 
 template<>
-inline constexpr char buffer_format<char> = 'c';
+inline constexpr buffer_format_code buffer_format<char>{'c'};
 
 template<>
-inline constexpr char buffer_format<signed char> = 'b';
+inline constexpr buffer_format_code buffer_format<signed char>{'b'};
 
 template<>
-inline constexpr char buffer_format<unsigned char> = 'B';
+inline constexpr buffer_format_code buffer_format<unsigned char>{'B'};
 
 template<>
-inline constexpr char buffer_format<bool> = '?';
+inline constexpr buffer_format_code buffer_format<bool>{'?'};
 
 template<>
-inline constexpr char buffer_format<short> = 'h';
+inline constexpr buffer_format_code buffer_format<short>{'h'};
 
 template<>
-inline constexpr char buffer_format<unsigned short> = 'H';
+inline constexpr buffer_format_code buffer_format<unsigned short>{'H'};
 
 template<>
-inline constexpr char buffer_format<int> = 'i';
+inline constexpr buffer_format_code buffer_format<int>{'i'};
 
 template<>
-inline constexpr char buffer_format<unsigned int> = 'I';
+inline constexpr buffer_format_code buffer_format<unsigned int>{'I'};
 
 template<>
-inline constexpr char buffer_format<long> = 'l';
+inline constexpr buffer_format_code buffer_format<long>{'l'};
 
 template<>
-inline constexpr char buffer_format<unsigned long> = 'L';
+inline constexpr buffer_format_code buffer_format<unsigned long>{'L'};
 
 template<>
-inline constexpr char buffer_format<long long> = 'q';
+inline constexpr buffer_format_code buffer_format<long long>{'q'};
 
 template<>
-inline constexpr char buffer_format<unsigned long long> = 'Q';
+inline constexpr buffer_format_code buffer_format<unsigned long long>{'Q'};
 
 template<>
-inline constexpr char buffer_format<float> = 'f';
+inline constexpr buffer_format_code buffer_format<float>{'f'};
 
 template<>
-inline constexpr char buffer_format<double> = 'd';
+inline constexpr buffer_format_code buffer_format<double>{'d'};
 
 namespace detail {
 // clang-format off
@@ -132,7 +142,7 @@ LIBPY_EXPORT py::buffer get_buffer(py::borrowed_ref<> ob, int flags);
     @return Is the buffer code compatible with `T`?
  */
 template<typename T>
-bool buffer_type_compatible(char fmt) {
+bool buffer_type_compatible(buffer_format_code fmt) {
     auto arr = py::cs::to_array(
         typename detail::buffer_compatible_format_chars<T, detail::buffer_format_types>::
             type{});
@@ -155,6 +165,6 @@ bool buffer_type_compatible(const py::buffer& buf) {
     if (!buf->format || std::strlen(buf->format) != 1) {
         return false;
     }
-    return buffer_type_compatible<T>(*buf->format);
+    return buffer_type_compatible<T>(buffer_format_code{*buf->format});
 }
 }  // namespace py
