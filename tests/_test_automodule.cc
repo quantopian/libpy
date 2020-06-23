@@ -1,5 +1,5 @@
 #include "libpy/autoclass.h"
-#include "libpy/automethod.h"
+#include "libpy/autofunction.h"
 #include "libpy/automodule.h"
 
 bool is_42(int arg) {
