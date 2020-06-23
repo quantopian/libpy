@@ -17,7 +17,11 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::uint8_t, 3> pixels,
     auto k_rows = kernel.shape()[0];
     auto k_columns = kernel.shape()[1];
     std::vector<std::uint8_t> out(n_dimensions * n_rows * n_columns, 0);
-    py::ndarray_view out_view(out.data(), pixels.shape(), pixels.strides());
+    py::ndarray_view out_view(out.data(),
+                              pixels.shape(),
+                              {static_cast<int>(n_dimensions * n_rows),
+                               static_cast<int>(n_dimensions),
+                               1});
 
     for (std::size_t dim = 0; dim < n_dimensions; ++dim) {
         for (std::size_t row = 0; row < n_rows; ++row) {
