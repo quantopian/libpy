@@ -145,6 +145,7 @@ private:
 
     template<auto impl, typename R, typename... Args>
     struct free_function_base {
+        using args_with_self = std::tuple<Args...>;
         static R f(PyObject* self, Args... args) {
             return impl(unbox(self), std::forward<Args>(args)...);
         }
@@ -182,6 +183,7 @@ private:
 
     template<auto impl, typename R, typename... Args>
     struct pointer_to_member_function_base {
+        using args_with_self = std::tuple<T&, Args...>;
         static R f(PyObject* self, Args... args) {
             return (unbox(self).*impl)(std::forward<Args>(args)...);
         }
@@ -831,6 +833,36 @@ public:
         return *static_cast<concrete*>(this);
     }
 
+    /** Add a function as the `@` (matmul) operator.
+
+        @tparam impl The function to add as the `@` operator. This can be a free function
+                which takes `self` as the first argument, or a member function.
+     */
+    template<auto impl>
+    concrete& matmul() {
+        require_uninitialized(
+            "cannot add matmul operator after the class has been created");
+
+        using F = python_member_function<decltype(impl), impl>;
+        static_assert(std::tuple_size_v<typename F::args_with_self> == 2,
+                      "impl must be a binary function or unary member function");
+
+        using rhs_arg_type = std::tuple_element_t<1, typename F::args_with_self>;
+
+        binaryfunc py_impl = [](PyObject* lhs, PyObject* rhs) -> PyObject* {
+            try {
+                dispatch::adapt_argument<rhs_arg_type> adapted_rhs(rhs);
+
+                return py::to_object(F::f(lhs, adapted_rhs.get())).escape();
+            }
+            catch (const std::exception& e) {
+                return raise_from_cxx_exception(e);
+            }
+        };
+
+        return add_slot(Py_nb_matrix_multiply, py_impl);
+    }
+
 private:
     template<typename RHS>
     static PyObject* richcompare_impl(PyObject* self, PyObject* other, int cmp) {
@@ -1422,23 +1454,25 @@ public:
         \code
         namespace py::dispatch {
         template<>
-        struct to_object<C> : public py::autoclass<C>::to_object {};
+        struct LIBPY_NO_EXPORT to_object<C> : public py::autoclass<C>::to_object {};
         }  // namespace py::dispatch
         \endcode
          */
-    class to_object {
+    struct to_object {
         template<typename U>
-        static PyObject* f(U&& value) {
+        static py::owned_ref<> f(U&& value) {
             py::owned_ref<PyTypeObject> cls = lookup_type();
             if (!cls) {
                 py::raise(PyExc_RuntimeError) << "autoclass type wasn't initialized yet";
                 return nullptr;
             }
             if (cls->tp_flags & Py_TPFLAGS_HAVE_GC) {
-                return constructor_new_impl<true>(cls.get(), std::forward<U>(value));
+                return py::owned_ref{
+                    constructor_new_impl<true>(cls.get(), std::forward<U>(value))};
             }
             else {
-                return constructor_new_impl<false>(cls.get(), std::forward<U>(value));
+                return py::owned_ref{
+                    constructor_new_impl<false>(cls.get(), std::forward<U>(value))};
             }
         }
     };
