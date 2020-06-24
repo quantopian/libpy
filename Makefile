@@ -7,17 +7,20 @@ PYTHON ?= python
 PYTEST ?= pytest
 EXTRA_INCLUDE_DIRS ?=
 
-MAJOR_VERSION := 1
-MINOR_VERSION := 0
-MICRO_VERSION := 0
+CLANG_TIDY ?= clang-tidy
+CLANG_FORMAT ?= clang-format
+GTEST_BREAK ?= 1
+
+# not using $(file <version) because it was added in GNU Make 4.2 which is
+# newer that what is on macos and our github actions workers
+VERSION_PARTS := $(subst ., ,$(shell cat version))
+MAJOR_VERSION := $(word 1,$(VERSION_PARTS))
+MINOR_VERSION := $(word 2,$(VERSION_PARTS))
+MICRO_VERSION := $(word 3,$(VERSION_PARTS))
 
 PY_VERSION := $(shell $(PYTHON) etc/python_version.py)
 PY_MAJOR_VERSION := $(word 1,$(PY_VERSION))
 PY_MINOR_VERSION := $(word 2,$(PY_VERSION))
-
-CLANG_TIDY ?= clang-tidy
-CLANG_FORMAT ?= clang-format
-GTEST_BREAK ?= 1
 
 COMPILER := $(shell CXX=$(CXX) ./etc/build-and-run etc/detect-compiler.cc)
 ifeq ($(COMPILER),UNKNOWN)
@@ -49,7 +52,10 @@ BASE_CXXFLAGS = -std=gnu++17 -g -O$(OPTLEVEL) \
 	-fvisibility=hidden \
 	$(WARNINGS) \
 	-DPY_MAJOR_VERSION=$(PY_MAJOR_VERSION) \
-	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION)
+	-DPY_MINOR_VERSION=$(PY_MINOR_VERSION) \
+	-DLIBPY_MAJOR_VERSION=$(MAJOR_VERSION) \
+	-DLIBPY_MINOR_VERSION=$(MINOR_VERSION) \
+	-DLIBPY_MICRO_VERSION=$(MICRO_VERSION)
 GCC_FLAGS = -fmax-errors=$(MAX_ERRORS)
 CLANG_FLAGS = -ferror-limit=$(MAX_ERRORS)
 CXXFLAGS = $(BASE_CXXFLAGS) $($(COMPILER)_FLAGS)
@@ -222,7 +228,7 @@ tests/%.o: tests/%.cc .make/all-flags
 
 $(TEST_MODULE): gtest.a $(TEST_OBJECTS) libpy/libpy.so
 	$(CXX) -shared -o $@ $(TEST_OBJECTS) gtest.a $(TEST_INCLUDE) \
-            	-Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
+		-Wl,-rpath,`pwd` -lpthread -L. $(SONAME) $(LDFLAGS)
 
 gtest.o: $(GTEST_SRCS) .make/all-flags
 	$(CXX) $(filter-out $(WARNINGS),$(CXXFLAGS)) -I $(GTEST_DIR) \
