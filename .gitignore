@@ -67,3 +67,6 @@ dist/*
 venv*/*
 
 .dir-locals.el
+
+# automatically created by setuptools_scm
+libpy/version.py
