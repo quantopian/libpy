@@ -31,7 +31,7 @@ install_requires = [
     'setuptools',
     'libpy',
     'matplotlib',
-    'pillow',
+    'pillow'
 ]
 
 setup(
