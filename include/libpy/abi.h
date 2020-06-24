@@ -17,7 +17,9 @@ struct abi_version {
 LIBPY_EXPORT std::ostream& operator<<(std::ostream&, abi_version);
 
 namespace detail {
-constexpr abi_version header_libpy_abi_version{0, 2, 0};
+constexpr abi_version header_libpy_abi_version{LIBPY_MAJOR_VERSION,
+                                               LIBPY_MINOR_VERSION,
+                                               LIBPY_MICRO_VERSION};
 }  // namespace detail
 
 /** The version of the libpy shared object.
