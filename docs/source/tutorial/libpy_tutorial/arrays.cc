@@ -1,8 +1,8 @@
 #include <string>
 #include <vector>
 
-#include <libpy/abi.h>
 #include <libpy/autofunction.h>
+#include <libpy/automodule.h>
 #include <libpy/ndarray_view.h>
 #include <libpy/numpy_utils.h>
 
@@ -42,32 +42,11 @@ py::owned_ref<> is_prime(py::array_view<const std::int64_t> values) {
     return py::move_to_numpy_array(std::move(out));
 }
 
-namespace {
-PyMethodDef methods[] = {
-    py::autofunction<simple_sum>("simple_sum"),
-    py::autofunction<simple_sum_iterator>("simple_sum_iterator"),
-    py::autofunction<is_prime>("is_prime"),
-    py::end_method_list,
-};
+LIBPY_AUTOMODULE(libpy_tutorial,
+                 arrays,
+                 ({py::autofunction<simple_sum>("simple_sum"),
+                   py::autofunction<simple_sum_iterator>("simple_sum_iterator"),
+                   py::autofunction<is_prime>("is_prime")}))
 
-PyModuleDef module = {
-    PyModuleDef_HEAD_INIT,
-    "libpy_tutorial.arrays",
-    nullptr,
-    -1,
-    methods,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-};
 
-PyMODINIT_FUNC PyInit_arrays() {
-    if (py::abi::ensure_compatible_libpy_abi()) {
-        return nullptr;
-    }
-    import_array();
-    return PyModule_Create(&module);
-}
-}  // namespace
 }  // namespace libpy_tutorial

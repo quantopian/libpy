@@ -2,8 +2,8 @@
 #include <string>
 #include <vector>
 
-#include <libpy/abi.h>
 #include <libpy/autofunction.h>
+#include <libpy/automodule.h>
 #include <libpy/exception.h>
 
 namespace libpy_tutorial {
@@ -16,31 +16,10 @@ void raise_from_cxx() {
     throw std::invalid_argument("Supposedly a bad argument was used");
 }
 
-namespace {
-PyMethodDef methods[] = {
-    py::autofunction<throw_value_error>("throw_value_error"),
-    py::autofunction<raise_from_cxx>("raise_from_cxx"),
-    py::end_method_list,
-};
+LIBPY_AUTOMODULE(libpy_tutorial,
+                 exceptions,
+                 ({py::autofunction<throw_value_error>("throw_value_error"),
+                   py::autofunction<raise_from_cxx>("raise_from_cxx")}))
 
-PyModuleDef module = {
-    PyModuleDef_HEAD_INIT,
-    "libpy_tutorial.exceptions",
-    nullptr,
-    -1,
-    methods,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-};
 
-PyMODINIT_FUNC PyInit_exceptions() {
-    if (py::abi::ensure_compatible_libpy_abi()) {
-        return nullptr;
-    }
-    import_array();
-    return PyModule_Create(&module);
-}
-}  // namespace
 }  // namespace libpy_tutorial
