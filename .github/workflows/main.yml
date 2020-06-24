@@ -87,6 +87,8 @@ jobs:
       run: |
         pip install .
     - name: Check that docs can be built
+      if: startsWith(matrix.os, 'macos')
       run: |
         pip install sphinx sphinx_rtd_theme breathe ipython
+        echo ::set-env name=CC::clang++
         make docs
