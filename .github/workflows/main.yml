@@ -88,5 +88,5 @@ jobs:
         pip install .
     - name: Check that docs can be built
       run: |
-        pip install sphinx sphinx_rtd_theme breathe
+        pip install sphinx sphinx_rtd_theme breathe ipython
         make docs
