@@ -53,5 +53,8 @@ setup(
     include_package_data=True,
     install_requires=['numpy'],
     setup_requires=['setuptools_scm'],
-    use_scm_version=True,
+    use_scm_version={
+        'write_to': 'libpy/version.py',
+        'write_to_template': '__version__ = "{version}"',
+    },
 )
