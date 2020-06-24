@@ -10,12 +10,12 @@ Utilities for writing C++ extension modules for CPython.
 Requirements
 ------------
 
-lipy supports:
+libpy supports:
 
 - macOS/Linux
 - Python >=3.5
 
-lipy requires:
+libpy requires:
 
 - gcc>=8 or clang>=10
 - numpy>=1.11.3
