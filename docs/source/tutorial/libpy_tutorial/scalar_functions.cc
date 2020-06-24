@@ -48,5 +48,8 @@ LIBPY_AUTOMODULE(libpy_tutorial,
                    py::autofunction<monte_carlo_pi>("monte_carlo_pi"),
                    py::autofunction<optional_arg>("optional_arg"),
                    py::autofunction<keyword_args>("keyword_args")}))
+(py::borrowed_ref<>) {
+    return false;
+}
 
 }  // namespace libpy_tutorial

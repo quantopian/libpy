@@ -206,7 +206,7 @@ In order to create and use a Python Extensions we must do two things:
 First, we use the ``LIBPY_AUTOMODULE`` macro to create and initialize the module:
 
 .. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
-   :lines: 47-53
+   :lines: 45-53
 
 Then we must tell ``setup.py`` to build our module using the ``LibpyExtension`` helper:
 

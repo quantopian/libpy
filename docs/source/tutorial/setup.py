@@ -45,6 +45,7 @@ setup(
     package_data={
         "": ["*.png"],
     },
+    include_package_data=True,
     install_requires=install_requires,
     license="Apache 2.0",
     url="https://github.com/quantopian/libpy",

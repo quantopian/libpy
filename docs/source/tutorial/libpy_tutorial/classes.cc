@@ -2,8 +2,8 @@
 #include <string>
 #include <vector>
 
-#include <libpy/abi.h>
 #include <libpy/autoclass.h>
+#include <libpy/automodule.h>
 #include <libpy/exception.h>
 
 namespace libpy_tutorial {
@@ -69,7 +69,6 @@ struct LIBPY_NO_EXPORT to_object<libpy_tutorial::vec3d>
 namespace libpy_tutorial {
 
 LIBPY_AUTOMODULE(libpy_tutorial, classes, ({}))
-
 (py::borrowed_ref<> m) {
     py::owned_ref t =
         py::autoclass<vec3d>("classes.Vec3d")
@@ -85,6 +84,6 @@ LIBPY_AUTOMODULE(libpy_tutorial, classes, ({}))
             .arithmetic<vec3d>()  // bind the arithmetic operators to their Python
                                   // equivalents
             .type();
-    return PyObject_SetAttrString(m.get(), "int_float_pair", static_cast<PyObject*>(t));
+    return PyObject_SetAttrString(m.get(), "Vec3d", static_cast<PyObject*>(t));
 }
 }  // namespace libpy_tutorial

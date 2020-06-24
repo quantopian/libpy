@@ -61,4 +61,7 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::uint8_t, 3> pixels,
 LIBPY_AUTOMODULE(libpy_tutorial,
                  ndarrays,
                  ({py::autofunction<apply_kernel>("apply_kernel")}))
+(py::borrowed_ref<>) {
+    return false;
+}
 }  // namespace libpy_tutorial

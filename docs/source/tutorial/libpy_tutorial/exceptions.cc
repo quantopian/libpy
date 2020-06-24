@@ -20,6 +20,8 @@ LIBPY_AUTOMODULE(libpy_tutorial,
                  exceptions,
                  ({py::autofunction<throw_value_error>("throw_value_error"),
                    py::autofunction<raise_from_cxx>("raise_from_cxx")}))
-
+(py::borrowed_ref<>) {
+    return false;
+}
 
 }  // namespace libpy_tutorial

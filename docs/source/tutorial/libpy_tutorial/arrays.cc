@@ -47,6 +47,8 @@ LIBPY_AUTOMODULE(libpy_tutorial,
                  ({py::autofunction<simple_sum>("simple_sum"),
                    py::autofunction<simple_sum_iterator>("simple_sum_iterator"),
                    py::autofunction<is_prime>("is_prime")}))
-
+(py::borrowed_ref<>) {
+    return false;
+}
 
 }  // namespace libpy_tutorial
