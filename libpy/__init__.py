@@ -1,5 +1,6 @@
 import ctypes
 import os
+from .version import __version__  # noqa
 
 
 _so = ctypes.CDLL(
@@ -26,4 +27,4 @@ class VersionInfo(ctypes.Structure):
 
 
 version_info = VersionInfo.in_dll(_so, 'libpy_abi_version')
-__version__ = str(version_info)
+__abi_version__ = str(version_info)
