@@ -48,6 +48,8 @@ class build_py(_build_py):
 
 setup(
     name='libpy',
+    description='Utilities for writing C++ extension modules.',
+    long_description=open('README.rst').read(),
     url='https://github.com/quantopian/libpy',
     version=open('version').read().strip(),
     author='Quantopian Inc.',
