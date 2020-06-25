@@ -86,10 +86,6 @@ jobs:
     - name: Check that we can still install
       run: |
         pip install .
-    - name: Force compiler on osx
-      if: startsWith(matrix.os, 'macos')
-      run: |
-        echo ::set-env name=CC::clang++
     - name: Check that docs can be built
       run: |
         pip install sphinx sphinx_rtd_theme breathe ipython
