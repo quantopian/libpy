@@ -70,5 +70,7 @@ setup(
     zip_safe=False,
     install_requires=['numpy'],
     cmdclass={'build_py': build_py},
-    package_data={'libpy': ['include/**/*.h']},
+    package_data={
+        'libpy': ['include/**/*.h', '_build-and-run', '_detect-compiler.cc'],
+    },
 )
