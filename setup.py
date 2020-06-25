@@ -1,8 +1,9 @@
 import ast
+from distutils.command.build_py import build_py as _build_py
 import os
-import sys
+import shutil
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 class BuildFailed(Exception):
@@ -18,14 +19,28 @@ class BuildFailed(Exception):
 # advanced feature and shouldn't be used without care as it may produce invalid
 # installs of ``libpy``.
 dont_build = ast.literal_eval(os.environ.get('LIBPY_DONT_BUILD', '0'))
-if 'build_ext' in sys.argv or 'egg_info' in sys.argv and not dont_build:
-    path = os.path.dirname(os.path.abspath(__file__))
-    command = 'make -C "%s"' % path
-    out = os.system(command)
-    if out:
-        raise BuildFailed(
-            "Command {!r} failed with code {}".format(command, out)
+
+
+class build_py(_build_py):
+    def run(self):
+        if self.dry_run or dont_build:
+            return super().run()
+
+        super().run()
+        path = os.path.dirname(os.path.abspath(__file__))
+        command = 'make -C "%s" libpy/libpy.so' % path
+        out = os.system(command)
+        if out:
+            raise BuildFailed(
+                "Command {!r} failed with code {}".format(command, out)
+            )
+
+        print(os.listdir('libpy'))
+        shutil.copyfile(
+            'libpy/libpy.so',
+            os.path.join(self.build_lib, 'libpy', 'libpy.so'),
         )
+
 
 setup(
     name='libpy',
@@ -53,6 +68,7 @@ setup(
     # we need the headers to be available to the C compiler as regular files;
     # we cannot be imported from a ziparchive.
     zip_safe=False,
-    include_package_data=True,
     install_requires=['numpy'],
+    cmdclass={'build_py': build_py},
+    package_data={'libpy': ['include/**/*.h']},
 )
