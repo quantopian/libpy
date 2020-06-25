@@ -23,7 +23,7 @@ jobs:
         pip install numpy==1.18.1
     - name: Install c++ dependencies (ubuntu)
       run: |
-        sudo apt-get -y install libpcre2-dev libsparsehash-dev
+        sudo apt-get -y install libpcre2-dev libsparsehash-dev doxygen
     - name: Set gcc envvars
       run: |
         echo ::set-env name=CC::gcc-8
@@ -43,12 +43,25 @@ jobs:
         pip install --extra-index-url https://test.pypi.org/simple libpy
         python -c 'import libpy;print(libpy.__version__)'
         pip uninstall -y libpy
+
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
+        skip_existing: true
         password: ${{ secrets.pypi_password }}
 
     - name: Install and test running
       run: |
         pip install libpy
         python -c 'import libpy;print(libpy.__version__)
+
+    - name: Build the docs
+      run: |
+        pip install sphinx sphinx_rtd_theme breathe ipython
+        make docs
+
+    - name: Deploy the docs
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/build/html

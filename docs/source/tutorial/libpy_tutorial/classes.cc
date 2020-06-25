@@ -68,10 +68,12 @@ struct LIBPY_NO_EXPORT to_object<libpy_tutorial::vec3d>
 
 namespace libpy_tutorial {
 
+using namespace std::string_literals;
+
 LIBPY_AUTOMODULE(libpy_tutorial, classes, ({}))
 (py::borrowed_ref<> m) {
     py::owned_ref t =
-        py::autoclass<vec3d>(PyModule_GetName(m.get()) + std::string(".Vec3d"))
+        py::autoclass<vec3d>(PyModule_GetName(m.get()) + ".Vec3d"s)
             .doc("An efficient 3-vector.")   // add a class docstring
             .new_<double, double, double>()  //__new__ takes parameters
             // bind the named methods to Python
