@@ -2,8 +2,8 @@
 #include <string>
 #include <vector>
 
-#include <libpy/abi.h>
 #include <libpy/autoclass.h>
+#include <libpy/automodule.h>
 #include <libpy/exception.h>
 
 namespace libpy_tutorial {
@@ -67,52 +67,23 @@ struct LIBPY_NO_EXPORT to_object<libpy_tutorial::vec3d>
 }  // namespace py::dispatch
 
 namespace libpy_tutorial {
-namespace {
-PyModuleDef module = {
-    PyModuleDef_HEAD_INIT,
-    "libpy_tutorial.classes",
-    nullptr,
-    -1,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-};
 
-PyMODINIT_FUNC PyInit_classes() {
-    if (py::abi::ensure_compatible_libpy_abi()) {
-        return nullptr;
-    }
-    import_array();
-    auto m = py::owned_ref(PyModule_Create(&module));
-    if (!m) {
-        return nullptr;
-    }
-    try {
-        auto type =
-            py::autoclass<vec3d>("Vec3d")
-                .doc("An efficient 3-vector.")   // add a class docstring
-                .new_<double, double, double>()  //__new__ takes parameters
-                // bind the named methods to Python
-                .def<&vec3d::x>("x")
-                .def<&vec3d::y>("y")
-                .def<&vec3d::z>("z")
-                .def<&vec3d::magnitude>("magnitude")
-                .str()  // set `operator<<(std::ostream&, vec3d) to `str(x)` in Python
-                .repr<repr>()  // set `repr` to be the result of `repr(x)` in Python
-                .arithmetic<vec3d>()  // bind the arithmetic operators to their Python
-                                      // equivalents
-                .type();
-        if (PyObject_SetAttrString(m.get(), "Vec3d", static_cast<PyObject*>(type))) {
-            return nullptr;
-        }
-    }
-    catch (const std::exception& e) {
-        return py::raise_from_cxx_exception(e);
-    }
-
-    return std::move(m).escape();
+LIBPY_AUTOMODULE(libpy_tutorial, classes, ({}))
+(py::borrowed_ref<> m) {
+    py::owned_ref t =
+        py::autoclass<vec3d>(PyModule_GetName(m) + ".Vec3d")
+            .doc("An efficient 3-vector.")   // add a class docstring
+            .new_<double, double, double>()  //__new__ takes parameters
+            // bind the named methods to Python
+            .def<&vec3d::x>("x")
+            .def<&vec3d::y>("y")
+            .def<&vec3d::z>("z")
+            .def<&vec3d::magnitude>("magnitude")
+            .str()         // set `operator<<(std::ostream&, vec3d) to `str(x)` in Python
+            .repr<repr>()  // set `repr` to be the result of `repr(x)` in Python
+            .arithmetic<vec3d>()  // bind the arithmetic operators to their Python
+                                  // equivalents
+            .type();
+    return PyObject_SetAttrString(m.get(), "Vec3d", static_cast<PyObject*>(t));
 }
-}  // namespace
 }  // namespace libpy_tutorial

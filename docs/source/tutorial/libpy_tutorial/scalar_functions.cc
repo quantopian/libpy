@@ -1,8 +1,8 @@
 #include <cmath>
 #include <random>
 
-#include <libpy/abi.h>
 #include <libpy/autofunction.h>
+#include <libpy/automodule.h>
 #include <libpy/build_tuple.h>
 #include <libpy/char_sequence.h>
 
@@ -35,41 +35,21 @@ std::string optional_arg(py::arg::optional<std::string> opt_arg) {
     return opt_arg.get().value_or("default value");
 }
 
-py::owned_ref<> keyword_args(
-    py::arg::kwd<decltype("kw_arg_kwd"_cs), int> kw_arg_kwd,
-    py::arg::opt_kwd<decltype("opt_kw_arg_kwd"_cs), int>
-        opt_kw_arg_kwd) {
+py::owned_ref<>
+keyword_args(py::arg::kwd<decltype("kw_arg_kwd"_cs), int> kw_arg_kwd,
+             py::arg::opt_kwd<decltype("opt_kw_arg_kwd"_cs), int> opt_kw_arg_kwd) {
 
     return py::build_tuple(kw_arg_kwd.get(), opt_kw_arg_kwd.get());
 }
 
-namespace {
-PyMethodDef methods[] = {
-    py::autofunction<bool_scalar>("bool_scalar"),
-    py::autofunction<monte_carlo_pi>("monte_carlo_pi"),
-    py::autofunction<optional_arg>("optional_arg"),
-    py::autofunction<keyword_args>("keyword_args"),
-    py::end_method_list,
-};
-
-PyModuleDef module = {
-    PyModuleDef_HEAD_INIT,
-    "libpy_tutorial.scalar_functions",
-    nullptr,
-    -1,
-    methods,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-};
-
-PyMODINIT_FUNC PyInit_scalar_functions() {
-    if (py::abi::ensure_compatible_libpy_abi()) {
-        return nullptr;
-    }
-    import_array();
-    return PyModule_Create(&module);
+LIBPY_AUTOMODULE(libpy_tutorial,
+                 scalar_functions,
+                 ({py::autofunction<bool_scalar>("bool_scalar"),
+                   py::autofunction<monte_carlo_pi>("monte_carlo_pi"),
+                   py::autofunction<optional_arg>("optional_arg"),
+                   py::autofunction<keyword_args>("keyword_args")}))
+(py::borrowed_ref<>) {
+    return false;
 }
-}  // namespace
+
 }  // namespace libpy_tutorial

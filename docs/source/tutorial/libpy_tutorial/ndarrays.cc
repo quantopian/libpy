@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <libpy/abi.h>
 #include <libpy/autofunction.h>
+#include <libpy/automodule.h>
 #include <libpy/ndarray_view.h>
 #include <libpy/numpy_utils.h>
 
@@ -58,30 +58,10 @@ py::owned_ref<> apply_kernel(py::ndarray_view<const std::uint8_t, 3> pixels,
                                    pixels.strides());
 }
 
-namespace {
-PyMethodDef methods[] = {
-    py::autofunction<apply_kernel>("apply_kernel"),
-    py::end_method_list,
-};
-
-PyModuleDef module = {
-    PyModuleDef_HEAD_INIT,
-    "libpy_tutorial.ndarrays",
-    nullptr,
-    -1,
-    methods,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-};
-
-PyMODINIT_FUNC PyInit_ndarrays() {
-    if (py::abi::ensure_compatible_libpy_abi()) {
-        return nullptr;
-    }
-    import_array();
-    return PyModule_Create(&module);
+LIBPY_AUTOMODULE(libpy_tutorial,
+                 ndarrays,
+                 ({py::autofunction<apply_kernel>("apply_kernel")}))
+(py::borrowed_ref<>) {
+    return false;
 }
-}  // namespace
 }  // namespace libpy_tutorial
