@@ -46,7 +46,6 @@ jobs:
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
-        skip_existing: true
         password: ${{ secrets.pypi_password }}
 
     - name: Install and test running
