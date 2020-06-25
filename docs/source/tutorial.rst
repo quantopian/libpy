@@ -29,7 +29,7 @@ A great way to use ``libpy`` is to write the code that needs to be fast in C++ a
 
 .. ipython:: python
 
-  scalar_functions.monte_carlo_pi(10_000_000)
+  scalar_functions.monte_carlo_pi(10000000)
 
 Of course, we can build C++ functions that support all the features of regular Python functions.
 

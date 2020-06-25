@@ -1,7 +1,9 @@
 import ast
 from distutils.command.build_py import build_py as _build_py
 import os
+import pathlib
 import shutil
+import stat
 
 from setuptools import setup
 
@@ -35,11 +37,13 @@ class build_py(_build_py):
                 "Command {!r} failed with code {}".format(command, out)
             )
 
-        print(os.listdir('libpy'))
         shutil.copyfile(
             'libpy/libpy.so',
             os.path.join(self.build_lib, 'libpy', 'libpy.so'),
         )
+
+        p = pathlib.Path(self.build_lib) / 'libpy/_build-and-run'
+        p.chmod(p.stat().st_mode | stat.S_IEXEC)
 
 
 setup(
@@ -71,6 +75,11 @@ setup(
     install_requires=['numpy'],
     cmdclass={'build_py': build_py},
     package_data={
-        'libpy': ['include/**/*.h', '_build-and-run', '_detect-compiler.cc'],
+        'libpy': [
+            'include/libpy/*.h',
+            'include/libpy/detail/*.h',
+            '_build-and-run',
+            '_detect-compiler.cc',
+        ],
     },
 )
