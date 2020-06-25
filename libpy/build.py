@@ -7,6 +7,8 @@ import warnings
 import setuptools
 import numpy as np
 
+import libpy
+
 
 def detect_compiler():
     p = subprocess.Popen(
@@ -113,6 +115,9 @@ class LibpyExtension(setuptools.Extension, object):
         '-fvisibility-inlines-hidden',
         '-DPY_MAJOR_VERSION=%d' % sys.version_info.major,
         '-DPY_MINOR_VERSION=%d' % sys.version_info.minor,
+        '-DLIBPY_MAJOR_VERSION=%d' % libpy.version_info.major,
+        '-DLIBPY_MINOR_VERSION=%d' % libpy.version_info.minor,
+        '-DLIBPY_MICRO_VERSION=%d' % libpy.version_info.micro,
     ]
 
     def __init__(self, *args, **kwargs):
