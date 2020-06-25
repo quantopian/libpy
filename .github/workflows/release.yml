@@ -54,7 +54,7 @@ jobs:
     - name: Install and test running
       run: |
         pip install libpy
-        mkdir tmp && cd tmp && python -c 'import libpy;print(libpy.__version__)
+        cd tmp && python -c 'import libpy;print(libpy.__version__)'
         cd ..
 
     - name: Build the docs
