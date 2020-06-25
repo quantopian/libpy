@@ -208,7 +208,9 @@ First, we use the ``LIBPY_AUTOMODULE`` macro to create and initialize the module
 .. literalinclude:: tutorial/libpy_tutorial/scalar_functions.cc
    :lines: 45-53
 
-Then we must tell ``setup.py`` to build our module using the ``LibpyExtension`` helper:
+Next, we must tell ``setup.py`` to build our module using the ``LibpyExtension`` helper:
 
 .. literalinclude:: tutorial/setup.py
    :lines: 18-28,37,50-54,71-72
+
+Finally, we must ensure that we ``import libpy`` in Python before importing the extension module.
