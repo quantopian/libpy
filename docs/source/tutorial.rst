@@ -201,7 +201,7 @@ We can throw exceptions in C++ that will then be dealt with in Python. Two patte
 Python Extensions
 =================
 
-In order to create and use a Python Extensions we must do two things:
+In order to create and use Python Extensions we must do two things:
 
 First, we use the ``LIBPY_AUTOMODULE`` macro to create and initialize the module:
 
