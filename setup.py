@@ -37,7 +37,6 @@ class build_py(_build_py):
                 "Command {!r} failed with code {}".format(command, out)
             )
 
-        print(os.listdir('libpy'))
         shutil.copyfile(
             'libpy/libpy.so',
             os.path.join(self.build_lib, 'libpy', 'libpy.so'),
