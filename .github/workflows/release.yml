@@ -41,8 +41,9 @@ jobs:
     - name: Install from test and test running
       run: |
         pip install --extra-index-url https://test.pypi.org/simple libpy
-        python -c 'import libpy;print(libpy.__version__)'
+        mkdir tmp && cd tmp && python -c 'import libpy;print(libpy.__version__)'
         pip uninstall -y libpy
+        cd ..
 
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@master
@@ -53,7 +54,8 @@ jobs:
     - name: Install and test running
       run: |
         pip install libpy
-        python -c 'import libpy;print(libpy.__version__)
+        mkdir tmp && cd tmp && python -c 'import libpy;print(libpy.__version__)
+        cd ..
 
     - name: Build the docs
       run: |
