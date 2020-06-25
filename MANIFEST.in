@@ -1,3 +1,4 @@
+# buildtime data
 include Makefile
 include etc/detect-compiler.cc
 include etc/build-and-run
@@ -5,9 +6,11 @@ include etc/ext_suffix.py
 include etc/asan-path
 include etc/python_version.py
 include version
+recursive-include src/ *.cc
+recursive-include include/ *.h
 
+# runtime data
 include LICENSE
-include libpy/libpy.so
 include libpy/_build-and-run
 include libpy/_detect-compiler.cc
 recursive-include libpy *.h
