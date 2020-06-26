@@ -23,7 +23,7 @@ jobs:
         pip install numpy==1.18.1
     - name: Install c++ dependencies (ubuntu)
       run: |
-        sudo apt-get -y install libpcre2-dev libsparsehash-dev doxygen
+        sudo apt-get -y install libsparsehash-dev doxygen
     - name: Set gcc envvars
       run: |
         echo ::set-env name=CC::gcc-8
