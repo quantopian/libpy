@@ -5,6 +5,9 @@
     :alt: GitHub Actions status
     :target: https://github.com/quantopian/libpy/actions?query=workflow%3ACI+branch%3Amaster
 
+.. image:: https://badge.fury.io/py/libpy.svg
+    :target: https://badge.fury.io/py/libpy
+
 Utilities for writing C++ extension modules for CPython.
 
 `Full documentation <https://quantopian.github.io/libpy/>`_
