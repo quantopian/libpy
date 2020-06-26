@@ -8,7 +8,7 @@
 .. image:: https://badge.fury.io/py/libpy.svg
     :target: https://badge.fury.io/py/libpy
 
-Utilities for writing C++ extension modules for CPython.
+``libpy`` is a lbrary to help you write amazing Python extensions in C++. ``libpy``makes it easy to expose C++ code to Python. It lets you automatically wrap functions and classes. It is designed for high performance and safety, so using libpy should be both faster and safer than using the C api directly.
 
 `Full documentation <https://quantopian.github.io/libpy/>`_
 
