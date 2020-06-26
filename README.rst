@@ -7,6 +7,8 @@
 
 Utilities for writing C++ extension modules for CPython.
 
+`Full documentation <https://quantopian.github.io/libpy/>`_
+
 Requirements
 ------------
 
