@@ -57,11 +57,11 @@ jobs:
     - name: Install c++ dependencies (ubuntu)
       if: startsWith(matrix.os, 'ubuntu')
       run: |
-        sudo apt-get -y install libpcre2-dev libsparsehash-dev doxygen
+        sudo apt-get -y install libsparsehash-dev doxygen
     - name: Install c++ dependencies (macos)
       if: startsWith(matrix.os, 'macos')
       run: |
-        brew install pcre2 google-sparsehash doxygen
+        brew install google-sparsehash doxygen
     - name: Set llvm related envvars (macos)
       if: startsWith(matrix.os, 'macos')
       run: |

@@ -28,9 +28,8 @@ libpy requires:
 - gcc>=8 or clang>=10
 - numpy>=1.11.3
 
-libpy also depends on:
+libpy also depends on the following system packages:
 
-- pcre
 - google sparsehash
 
 To install these dependencies:
@@ -40,14 +39,14 @@ ubuntu
 
 .. code-block:: bash
 
-    $ sudo apt install libpcre2-dev libsparsehash-dev
+    $ sudo apt install libsparsehash-dev
 
 macOS
 ~~~~~
 
 .. code-block:: bash
 
-    $ brew install pcre2 google-sparsehash
+    $ brew install google-sparsehash
 
 Install
 -------
