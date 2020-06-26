@@ -16,7 +16,7 @@ categories:
       - 'bug'
   - title: 'Deprecation'
     labels:
-      - 'deprication'
+      - 'deprecation'
   - title: 'Development Enhancements'
     labels:
       - 'development'
@@ -42,5 +42,5 @@ categories:
     labels:
       - 'release'
 template: |
-  ## What’s Changed
+  # What’s Changed
   $CHANGES
