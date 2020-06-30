@@ -6,7 +6,6 @@
 
 #include "libpy/any.h"
 #include "libpy/char_sequence.h"
-#include "libpy/dense_hash_map.h"
 #include "libpy/itertools.h"
 #include "libpy/meta.h"
 #include "libpy/numpy_utils.h"
@@ -114,10 +113,7 @@ TEST_F(to_object, map_to_object) {
     // NOTE: This test takes a long time to compile (about a .5s per entry in this
     // tuple). This is just enough coverage to test all three of our hash table types,
     // and a few important key/value types.
-    auto maps = std::make_tuple(py::dense_hash_map<std::string, py::owned_ref<PyObject>>(
-                                    "missing_value"s),
-                                py::sparse_hash_map<std::int64_t, std::array<char, 3>>(),
-                                std::unordered_map<std::string, bool>());
+    auto maps = std::make_tuple(std::unordered_map<std::string, bool>());
 
     // Call test_map_to_object_impl on each entry in ``maps``.
     std::apply([&](auto... map) { (test_map_to_object_impl(map), ...); }, maps);

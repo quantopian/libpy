@@ -150,7 +150,7 @@ GTEST_SRCS := $(wildcard $(GTEST_DIR)/src/*.cc) \
 	$(wildcard $(GTEST_DIR)/src/*.h) $(GTEST_HEADERS)
 GTEST_FILTER ?= '*'
 
-TEST_SOURCES := $(wildcard tests/*.cc)
+TEST_SOURCES := $(wildcard tests/*.cc) $(wildcard tests/library_wrappers/*.cc)
 TEST_DFILES := $(TEST_SOURCES:.cc=.d)
 TEST_OBJECTS := $(TEST_SOURCES:.cc=.o)
 TEST_HEADERS := $(wildcard tests/*.h) $(GTEST_HEADERS)

@@ -42,4 +42,16 @@ TEST(dense_hash_set, invalid_empty_key) {
     EXPECT_THROW((M8_key{py::datetime64ns::nat()}), std::invalid_argument);
     EXPECT_THROW((M8_key{py::datetime64ns::nat(), 10}), std::invalid_argument);
 }
+
+TEST(any_vtable, map_key) {
+    py::dense_hash_map<py::any_vtable, int> map(py::any_vtable{});
+
+    map[py::any_vtable::make<int>()] = 0;
+    map[py::any_vtable::make<float>()] = 1;
+    map[py::any_vtable::make<std::string>()] = 2;
+
+    EXPECT_EQ(map[py::any_vtable::make<int>()], 0);
+    EXPECT_EQ(map[py::any_vtable::make<float>()], 1);
+    EXPECT_EQ(map[py::any_vtable::make<std::string>()], 2);
+}
 }  // namespace test_dense_hash_map
