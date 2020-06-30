@@ -3,8 +3,9 @@
 
 #include "gtest/gtest.h"
 
+#include "libpy/any.h"
 #include "libpy/datetime64.h"
-#include "libpy/dense_hash_map.h"
+#include "libpy/library_wrappers/sparsehash.h"
 
 namespace test_dense_hash_map {
 TEST(dense_hash_map, invalid_empty_key) {
@@ -54,4 +55,5 @@ TEST(any_vtable, map_key) {
     EXPECT_EQ(map[py::any_vtable::make<float>()], 1);
     EXPECT_EQ(map[py::any_vtable::make<std::string>()], 2);
 }
+
 }  // namespace test_dense_hash_map

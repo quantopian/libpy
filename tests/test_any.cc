@@ -4,7 +4,6 @@
 #include "gtest/gtest.h"
 
 #include "libpy/any.h"
-#include "libpy/dense_hash_map.h"
 
 namespace test_any {
 TEST(any_vtable, void_vtable) {
@@ -85,18 +84,6 @@ TEST(any_vtable, ostream_format) {
         EXPECT_THROW(vtable.ostream_format(stream, &value), py::exception);
         PyErr_Clear();
     }
-}
-
-TEST(any_vtable, map_key) {
-    py::dense_hash_map<py::any_vtable, int> map(py::any_vtable{});
-
-    map[py::any_vtable::make<int>()] = 0;
-    map[py::any_vtable::make<float>()] = 1;
-    map[py::any_vtable::make<std::string>()] = 2;
-
-    EXPECT_EQ(map[py::any_vtable::make<int>()], 0);
-    EXPECT_EQ(map[py::any_vtable::make<float>()], 1);
-    EXPECT_EQ(map[py::any_vtable::make<std::string>()], 2);
 }
 
 TEST(any_ref, test_construction) {
