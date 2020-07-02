@@ -21,9 +21,6 @@ using namespace py::cs::literals;
 class to_object : public with_python_interpreter {};
 
 TEST_F(to_object, map_to_object) {
-    // NOTE: This test takes a long time to compile (about a .5s per entry in this
-    // tuple). This is just enough coverage to test all three of our hash table types,
-    // and a few important key/value types.
     auto map = std::unordered_map<std::string, bool>();
     py_test::test_map_to_object_impl(map);
 }
