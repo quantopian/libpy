@@ -16,7 +16,6 @@ using namespace py::cs::literals;
 
 class sparsehash_to_object : public with_python_interpreter {};
 
-
 TEST_F(sparsehash_to_object, sparse_hash_map) {
     // NOTE: This test takes a long time to compile (about a .5s per entry in this
     // tuple). This is just enough coverage to test all three of our hash table types,
@@ -41,7 +40,9 @@ TEST_F(sparsehash_to_object, sparse_hash_set) {
 
 TEST_F(sparsehash_to_object, dense_hash_set) {
     auto filler = py_test::examples<std::string>();
-    auto a = google::dense_hash_set<std::string>(filler.begin(), filler.end(), "the_empty_key"s);
+    auto a = google::dense_hash_set<std::string>(filler.begin(),
+                                                 filler.end(),
+                                                 "the_empty_key"s);
     py_test::test_set_to_object_impl(a);
 }
 

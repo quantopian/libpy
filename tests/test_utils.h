@@ -358,4 +358,4 @@ void test_set_to_object_impl(V v) {
     check_python_set(rvalueref_result);
 }
 
-}
+}  // namespace py_test
