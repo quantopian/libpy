@@ -86,6 +86,18 @@ TEST(any_vtable, ostream_format) {
     }
 }
 
+TEST(any_vtable, map_key) {
+    std::unordered_map<py::any_vtable, int> map;
+
+    map[py::any_vtable::make<int>()] = 0;
+    map[py::any_vtable::make<float>()] = 1;
+    map[py::any_vtable::make<std::string>()] = 2;
+
+    EXPECT_EQ(map[py::any_vtable::make<int>()], 0);
+    EXPECT_EQ(map[py::any_vtable::make<float>()], 1);
+    EXPECT_EQ(map[py::any_vtable::make<std::string>()], 2);
+}
+
 TEST(any_ref, test_construction) {
     int underlying = 1;
     py::any_ref ref = py::make_any_ref(underlying);
