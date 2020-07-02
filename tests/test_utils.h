@@ -192,7 +192,7 @@ inline py::owned_ref<> run_python(
 namespace py_test {
 
 template<typename T>
-inline std::array<T, 3> examples();
+std::array<T, 3> examples();
 
 template<>
 inline std::array<std::int64_t, 3> examples() {
@@ -233,7 +233,7 @@ inline std::array<py::owned_ref<>, 3> examples() {
 }
 
 template<typename M>
-inline void test_map_to_object_impl(M m) {
+void test_map_to_object_impl(M m) {
 
     // Fill the map with some example values.
     auto it = py::zip(examples<typename M::key_type>(),
@@ -281,7 +281,7 @@ inline void test_map_to_object_impl(M m) {
 }
 
 template<typename V>
-inline void test_sequence_to_object_impl(V v) {
+void test_sequence_to_object_impl(V v) {
     auto check_python_list = [&](py::owned_ref<PyObject> ob) {
         ASSERT_TRUE(ob) << "to_object should not return null";
         EXPECT_EQ(PyList_Check(ob.get()), 1) << "ob should be a list";
@@ -320,7 +320,7 @@ inline void test_sequence_to_object_impl(V v) {
 }
 
 template<typename V>
-inline void test_set_to_object_impl(V v) {
+void test_set_to_object_impl(V v) {
     auto check_python_set = [&](py::owned_ref<PyObject> ob) {
         ASSERT_TRUE(ob) << "to_object should not return null";
         EXPECT_EQ(PySet_Check(ob.get()), 1) << "ob should be a set";

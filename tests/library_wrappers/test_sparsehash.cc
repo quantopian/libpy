@@ -17,21 +17,29 @@ using namespace py::cs::literals;
 class sparsehash_to_object : public with_python_interpreter {};
 
 
-TEST_F(sparsehash_to_object, map_to_object) {
+TEST_F(sparsehash_to_object, sparse_hash_map) {
     // NOTE: This test takes a long time to compile (about a .5s per entry in this
     // tuple). This is just enough coverage to test all three of our hash table types,
     // and a few important key/value types.
-    auto a = google::sparse_hash_map<std::string, bool>();
-    auto b = google::dense_hash_map<std::string, bool>();
-    b.set_empty_key("the_empty_key"s);
+    auto map = google::sparse_hash_map<std::string, bool>();
 
-    auto maps = std::make_tuple(a, b);
-
-    // Call test_map_to_object_impl on each entry in ``maps``.
-    std::apply([&](auto... map) { (py_test::test_map_to_object_impl(map), ...); }, maps);
+    py_test::test_map_to_object_impl(map);
 }
 
-TEST_F(sparsehash_to_object, set_to_object) {
+TEST_F(sparsehash_to_object, dense_hash_map) {
+    auto map = google::dense_hash_map<std::string, bool>();
+    map.set_empty_key("the_empty_key"s);
+
+    py_test::test_map_to_object_impl(map);
+}
+
+TEST_F(sparsehash_to_object, sparse_hash_set) {
+    auto filler = py_test::examples<std::string>();
+    auto a = google::sparse_hash_set<std::string>(filler.begin(), filler.end());
+    py_test::test_set_to_object_impl(a);
+}
+
+TEST_F(sparsehash_to_object, dense_hash_set) {
     auto filler = py_test::examples<std::string>();
     auto a = google::dense_hash_set<std::string>(filler.begin(), filler.end(), "the_empty_key"s);
     py_test::test_set_to_object_impl(a);

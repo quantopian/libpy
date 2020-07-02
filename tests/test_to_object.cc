@@ -24,10 +24,8 @@ TEST_F(to_object, map_to_object) {
     // NOTE: This test takes a long time to compile (about a .5s per entry in this
     // tuple). This is just enough coverage to test all three of our hash table types,
     // and a few important key/value types.
-    auto maps = std::make_tuple(std::unordered_map<std::string, bool>());
-
-    // Call test_map_to_object_impl on each entry in ``maps``.
-    std::apply([&](auto... map) { (py_test::test_map_to_object_impl(map), ...); }, maps);
+    auto map = std::unordered_map<std::string, bool>();
+    py_test::test_map_to_object_impl(map);
 }
 
 TEST_F(to_object, vector_to_object) {
