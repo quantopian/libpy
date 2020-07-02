@@ -3,11 +3,40 @@
 
 #include "gtest/gtest.h"
 
-#include "libpy/any.h"
 #include "libpy/datetime64.h"
+#include "libpy/itertools.h"
 #include "libpy/library_wrappers/sparsehash.h"
 
-namespace test_dense_hash_map {
+#include "test_utils.h"
+
+namespace test_sparsehash {
+
+using namespace std::literals;
+using namespace py::cs::literals;
+
+class sparsehash_to_object : public with_python_interpreter {};
+
+
+TEST_F(sparsehash_to_object, map_to_object) {
+    // NOTE: This test takes a long time to compile (about a .5s per entry in this
+    // tuple). This is just enough coverage to test all three of our hash table types,
+    // and a few important key/value types.
+    auto a = google::sparse_hash_map<std::string, bool>();
+    auto b = google::dense_hash_map<std::string, bool>();
+    b.set_empty_key("the_empty_key"s);
+
+    auto maps = std::make_tuple(a, b);
+
+    // Call test_map_to_object_impl on each entry in ``maps``.
+    std::apply([&](auto... map) { (py_test::test_map_to_object_impl(map), ...); }, maps);
+}
+
+TEST_F(sparsehash_to_object, set_to_object) {
+    auto filler = py_test::examples<std::string>();
+    auto a = google::dense_hash_set<std::string>(filler.begin(), filler.end(), "the_empty_key"s);
+    py_test::test_set_to_object_impl(a);
+}
+
 TEST(dense_hash_map, invalid_empty_key) {
     using double_key = py::dense_hash_map<double, int>;
     EXPECT_THROW((double_key{std::numeric_limits<double>::quiet_NaN()}),
@@ -44,4 +73,4 @@ TEST(dense_hash_set, invalid_empty_key) {
     EXPECT_THROW((M8_key{py::datetime64ns::nat(), 10}), std::invalid_argument);
 }
 
-}  // namespace test_dense_hash_map
+}  // namespace test_sparsehash

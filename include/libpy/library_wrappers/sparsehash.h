@@ -153,5 +153,19 @@ template<typename Key, typename HashFcn, typename EqualKey, typename Alloc>
 struct to_object<dense_hash_set<Key, HashFcn, EqualKey, Alloc>>
     : public set_to_object<dense_hash_set<Key, HashFcn, EqualKey, Alloc>> {};
 
+
+template<typename Key, typename T, typename HashFcn, typename EqualKey, typename Alloc>
+struct to_object<google::dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>>
+    : public map_to_object<google::dense_hash_map<Key, T, HashFcn, EqualKey, Alloc>> {};
+
+template<typename Key, typename T, typename HashFcn, typename EqualKey, typename Alloc>
+struct to_object<google::sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>>
+    : public map_to_object<google::sparse_hash_map<Key, T, HashFcn, EqualKey, Alloc>> {};
+
+template<typename Key, typename HashFcn, typename EqualKey, typename Alloc>
+struct to_object<google::dense_hash_set<Key, HashFcn, EqualKey, Alloc>>
+    : public set_to_object<google::dense_hash_set<Key, HashFcn, EqualKey, Alloc>> {};
+
+
 }  // namespace dispatch
 }  // namespace py
