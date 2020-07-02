@@ -14,25 +14,12 @@ lipy requires:
 - gcc>=8 or clang>=10
 - numpy>=1.11.3
 
-libpy also depends on the following system packages:
+Optional Requirements
+---------------------
+
+libpy optionally provides wrappers for the following libraries:
 
 - google sparsehash
-
-To install these dependencies:
-
-ubuntu
-~~~~~~
-
-.. code-block:: bash
-
-    $ sudo apt install libsparsehash-dev
-
-macOS
-~~~~~
-
-.. code-block:: bash
-
-    $ brew install google-sparsehash
 
 Install
 -------

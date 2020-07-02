@@ -3,7 +3,6 @@
 
 #include "gtest/gtest.h"
 
-#include "libpy/dense_hash_map.h"
 #include "libpy/exception.h"
 #include "libpy/meta.h"
 #include "libpy/object_map_key.h"
@@ -241,8 +240,6 @@ void test_use_in_map(M map) {
 TEST_F(object_map_key, use_in_map) {
     test_use_in_map(std::map<py::object_map_key, int>{});
     test_use_in_map(std::unordered_map<py::object_map_key, int>{});
-    test_use_in_map(py::sparse_hash_map<py::object_map_key, int>{});
-    test_use_in_map(py::dense_hash_map<py::object_map_key, int>{py::object_map_key{}});
 }
 
 TEST_F(object_map_key, convert) {

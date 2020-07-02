@@ -6,7 +6,6 @@
 
 #include "libpy/any.h"
 #include "libpy/char_sequence.h"
-#include "libpy/dense_hash_map.h"
 #include "libpy/itertools.h"
 #include "libpy/meta.h"
 #include "libpy/numpy_utils.h"
@@ -21,162 +20,26 @@ using namespace py::cs::literals;
 
 class to_object : public with_python_interpreter {};
 
-template<typename T>
-std::array<T, 3> examples();
-
-template<>
-std::array<std::int64_t, 3> examples() {
-    return {-200, 0, 1000};
-}
-
-template<>
-std::array<std::string, 3> examples() {
-    return {"foo", "", "arglebargle"};
-}
-
-template<>
-std::array<std::array<char, 3>, 3> examples() {
-    std::array<char, 3> foo{'f', 'o', 'o'};
-    std::array<char, 3> bar{'b', 'a', 'r'};
-    std::array<char, 3> baz{'b', 'a', 'z'};
-    return {foo, bar, baz};
-}
-
-template<>
-std::array<bool, 3> examples() {
-    return {true, false, true};
-}
-
-template<>
-std::array<double, 3> examples() {
-    return {-1.0, -0.0, 100.0};
-}
-
-template<>
-std::array<py::owned_ref<>, 3> examples() {
-    Py_INCREF(Py_True);
-    Py_INCREF(Py_False);
-    Py_INCREF(Py_None);
-    return {py::owned_ref<>(Py_True),
-            py::owned_ref<>(Py_False),
-            py::owned_ref<>(Py_None)};
-}
-
-template<typename M>
-void test_map_to_object_impl(M m) {
-
-    // Fill the map with some example values.
-    auto it = py::zip(examples<typename M::key_type>(),
-                      examples<typename M::mapped_type>());
-    for (auto [key, value] : it) {
-        m[key] = value;
-    }
-
-    auto check_python_map = [&](py::owned_ref<PyObject> ob) {
-        ASSERT_TRUE(ob) << "to_object should not return null";
-        EXPECT_TRUE(PyDict_Check(ob.get()));
-
-        // Python map should be the same length as C++ map.
-        Py_ssize_t len = PyDict_Size(ob.get());
-        EXPECT_EQ(std::size_t(len), m.size())
-            << "Python dict length should match C++ map length.";
-
-        // Key/Value pairs in the python map should match the result of calling
-        // to_object on each key/value pair in the C++ map.
-        for (auto& [cxx_key, cxx_value] : m) {
-            auto py_key = py::to_object(cxx_key);
-            auto py_value = py::to_object(cxx_value);
-
-            py::borrowed_ref result = PyDict_GetItem(ob.get(), py_key.get());
-            ASSERT_TRUE(result) << "Key should have been in the map";
-
-            bool values_equal =
-                PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
-            EXPECT_EQ(values_equal, 1) << "Dict values were not equal";
-        }
-    };
-
-    // Check to_object with value, const value, and rvalue reference.
-
-    py::owned_ref<PyObject> result = py::to_object(m);
-    check_python_map(result);
-
-    const M& const_ref = m;
-    py::owned_ref<PyObject> constref_result = py::to_object(const_ref);
-    check_python_map(constref_result);
-
-    M copy = m;  // Make a copy before moving b/c the lambda above uses ``m``.
-    py::owned_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
-    check_python_map(rvalueref_result);
-}
-
 TEST_F(to_object, map_to_object) {
-    // NOTE: This test takes a long time to compile (about a .5s per entry in this
-    // tuple). This is just enough coverage to test all three of our hash table types,
-    // and a few important key/value types.
-    auto maps = std::make_tuple(py::dense_hash_map<std::string, py::owned_ref<PyObject>>(
-                                    "missing_value"s),
-                                py::sparse_hash_map<std::int64_t, std::array<char, 3>>(),
-                                std::unordered_map<std::string, bool>());
-
-    // Call test_map_to_object_impl on each entry in ``maps``.
-    std::apply([&](auto... map) { (test_map_to_object_impl(map), ...); }, maps);
-}
-
-template<typename V>
-void test_sequence_to_object_impl(V v) {
-    auto check_python_list = [&](py::owned_ref<PyObject> ob) {
-        ASSERT_TRUE(ob) << "to_object should not return null";
-        EXPECT_EQ(PyList_Check(ob.get()), 1) << "ob should be a list";
-
-        Py_ssize_t len = PyList_GET_SIZE(ob.get());
-        EXPECT_EQ(std::size_t(len), v.size())
-            << "Python list length should match C++ vector length.";
-
-        // Values in Python list should be the result of calling to_object on each entry
-        // in the C++ vector.
-        for (auto [i, cxx_value] : py::enumerate(v)) {
-            auto py_value = py::to_object(cxx_value);
-
-            py::borrowed_ref result = PyList_GetItem(ob.get(), i);
-            ASSERT_TRUE(result) << "Should have had a value at index " << i;
-
-            bool values_equal =
-                PyObject_RichCompareBool(py_value.get(), result.get(), Py_EQ);
-            EXPECT_EQ(values_equal, 1)
-                << "List values at index " << i << " were not equal";
-        }
-    };
-
-    // Check to_object with value, const value, and rvalue reference.
-
-    py::owned_ref<PyObject> result = py::to_object(v);
-    check_python_list(result);
-
-    const V& const_ref = v;
-    py::owned_ref<PyObject> constref_result = py::to_object(const_ref);
-    check_python_list(constref_result);
-
-    V copy = v;  // Make a copy before moving b/c the lambda above uses ``v``.
-    py::owned_ref<PyObject> rvalueref_result = py::to_object(std::move(copy));
-    check_python_list(rvalueref_result);
+    auto map = std::unordered_map<std::string, bool>();
+    py_test::test_map_to_object_impl(map);
 }
 
 TEST_F(to_object, vector_to_object) {
     auto to_vec = [](const auto& arr) { return std::vector(arr.begin(), arr.end()); };
-    auto vectors = std::make_tuple(to_vec(examples<std::string>()),
-                                   to_vec(examples<double>()),
-                                   to_vec(examples<py::owned_ref<>>()));
+    auto vectors = std::make_tuple(to_vec(py_test::examples<std::string>()),
+                                   to_vec(py_test::examples<double>()),
+                                   to_vec(py_test::examples<py::owned_ref<>>()));
     // Call test_sequence_to_object_impl on each entry in `vectors`.
-    std::apply([&](auto... vec) { (test_sequence_to_object_impl(vec), ...); }, vectors);
+    std::apply([&](auto... vec) { (py_test::test_sequence_to_object_impl(vec), ...); }, vectors);
 }
 
 TEST_F(to_object, array_to_object) {
-    auto arrays = std::make_tuple(examples<std::string>(),
-                                  examples<double>(),
-                                  examples<py::owned_ref<>>());
+    auto arrays = std::make_tuple(py_test::examples<std::string>(),
+                                  py_test::examples<double>(),
+                                  py_test::examples<py::owned_ref<>>());
     // Call test_sequence_to_object_impl on each entry in `arrays`.
-    std::apply([&](auto... arr) { (test_sequence_to_object_impl(arr), ...); }, arrays);
+    std::apply([&](auto... arr) { (py_test::test_sequence_to_object_impl(arr), ...); }, arrays);
 }
 
 template<typename R, typename T>
