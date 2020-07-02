@@ -153,7 +153,7 @@ GTEST_FILTER ?= '*'
 TEST_SOURCES := $(wildcard tests/*.cc) $(wildcard tests/library_wrappers/*.cc)
 TEST_DFILES := $(TEST_SOURCES:.cc=.d)
 TEST_OBJECTS := $(TEST_SOURCES:.cc=.o)
-TEST_HEADERS := $(wildcard tests/*.h) $(GTEST_HEADERS)
+TEST_HEADERS := $(wildcard tests/*.h) $(wildcard tests/library_wrappers/*.h) $(GTEST_HEADERS)
 TEST_INCLUDE := -I tests -I $(GTEST_DIR)/include
 TEST_MODULE := tests/_runner$(SO_SUFFIX)
 PYTHON_TESTS := $(wildcard tests/*.py)
