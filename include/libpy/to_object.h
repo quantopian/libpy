@@ -142,7 +142,7 @@ struct to_object<std::filesystem::path> {
     static py::owned_ref<> f(const std::filesystem::path& path) {
         py::owned_ref path_str{
             PyUnicode_FromStringAndSize(path.c_str(), path.native().length())};
-#if PY_VERSION_HEX >= 0x03040000
+
         py::owned_ref pathlib(PyImport_ImportModule("pathlib"));
         if (!pathlib) {
             throw py::exception();
@@ -158,9 +158,6 @@ struct to_object<std::filesystem::path> {
             throw py::exception();
         }
         return path_obj;
-#else
-        return path_str;
-#endif
     }
 };
 
