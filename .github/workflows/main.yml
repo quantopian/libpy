@@ -88,13 +88,13 @@ jobs:
       if: startsWith(matrix.os, 'macos')
       run: |
         ulimit -c unlimited
-        sudo make -j2 test
+        make -j2 test
     - name: Run the tests (ubuntu)
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         ulimit -c unlimited
         sudo chmod -R +rwx /var/crash
-        sudo make -j2 test
+        make -j2 test
     - uses: actions/upload-artifact@master # capture all crashes as build artifacts
       with:
         name: crashes
