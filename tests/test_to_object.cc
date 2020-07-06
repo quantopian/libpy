@@ -145,7 +145,7 @@ TEST_F(to_object, filesystem_path) {
     )");
     ASSERT_TRUE(ns);
 
-    py::owned_ref py_path_ob{PyDict_GetItemString(ns.get(), "py_path")};
+    py::borrowed_ref py_path_ob{PyDict_GetItemString(ns.get(), "py_path")};
     ASSERT_TRUE(py_path_ob);
 #else
     py::owned_ref py_path_ob = py::to_object("/tmp/");
