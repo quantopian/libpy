@@ -84,9 +84,22 @@ jobs:
       run: |
         echo ::set-env name=CC::gcc-8
         echo ::set-env name=CXX::g++-8
-    - name: Run the tests
+    - name: Run the tests (osx)
+      if: startsWith(matrix.os, 'macos')
       run: |
-        make -j2 test
+        ulimit -c unlimited
+        sudo make -j2 test
+    - name: Run the tests (ubuntu)
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        ulimit -c unlimited
+        sudo chmod -R +rwx /var/crash
+        sudo make -j2 test
+    - uses: actions/upload-artifact@master # capture all crashes as build artifacts
+      with:
+        name: crashes
+        path: /var/crash
+
     - name: Check that we can still install
       run: |
         pip install .
