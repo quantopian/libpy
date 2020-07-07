@@ -49,6 +49,8 @@ class LibpyExtension(setuptools.Extension, object):
     ----------
     *args
         All positional arguments forwarded to :class:`setuptools.Extension`.
+    language_std : str, optional
+        The language standard to use. Defaults to ``c++17``.
     optlevel : int, optional
         The optimization level to forward to the C++ compiler.
         Defaults to 0.
@@ -110,7 +112,6 @@ class LibpyExtension(setuptools.Extension, object):
         raise AssertionError('unknown compiler: %s' % _compiler)
 
     _base_flags = [
-        '-std=gnu++17',
         '-pipe',
         '-fvisibility-inlines-hidden',
         '-DPY_MAJOR_VERSION=%d' % sys.version_info.major,
@@ -123,7 +124,10 @@ class LibpyExtension(setuptools.Extension, object):
     def __init__(self, *args, **kwargs):
         kwargs['language'] = 'c++'
 
+        std = kwargs.pop('language_std', 'c++17')
+
         libpy_extra_compile_args = self._base_flags.copy()
+        libpy_extra_compile_args.append('-std=%s' % std)
 
         libpy_extra_link_args = []
 

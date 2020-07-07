@@ -2,15 +2,11 @@
 Appendix
 ========
 
-Python Object References
-========================
-
-.. doxygenclass:: py::owned_ref
-   :members:
-   :undoc-members:
+C++
+===
 
 ``<libpy/abi.h>``
-=================
+-----------------
 
 .. doxygenstruct:: py::abi::abi_version
    :undoc-members:
@@ -22,7 +18,7 @@ Python Object References
 .. doxygenfunction:: py::abi::ensure_compatible_libpy_abi
 
 ``<libpy/any.h>``
-=================
+-----------------
 
 .. doxygenclass:: py::any_vtable
    :members:
@@ -43,14 +39,14 @@ Python Object References
 .. doxygenfunction:: py::dtype_to_vtable
 
 ``<libpy/any_vector.h>``
-========================
+------------------------
 
 .. doxygenclass:: py::any_vector
    :members:
    :undoc-members:
 
 ``<libpy/autoclass.h>``
-=======================
+-----------------------
 
 .. doxygenstruct:: py::autoclass
    :members:
@@ -62,7 +58,7 @@ Python Object References
    :members:
 
 ``<libpy/autofunction.h>``
-==========================
+--------------------------
 
 .. doxygenfunction:: py::autofunction
 
@@ -86,15 +82,21 @@ Python Object References
 .. doxygenclass:: py::dispatch::adapt_argument
    :members:
 
+
+``<libpy/automodule.h>``
+------------------------
+
+.. doxygendefine:: LIBPY_AUTOMODULE
+
 ``<libpy/borrowed_ref.h>``
-==========================
+--------------------------
 
  .. doxygenclass:: py::borrowed_ref
    :members:
    :undoc-members:
 
 ``<libpy/buffer.h>``
-====================
+--------------------
 
 .. doxygentypedef:: py::buffer
 
@@ -107,12 +109,12 @@ Python Object References
 .. doxygenfunction:: py::buffer_type_compatible(const py::buffer&)
 
 ``<libpy/build_tuple.h>``
-=========================
+-------------------------
 
 .. doxygenfunction:: py::build_tuple
 
 ``<libpy/call_function.h>``
-===========================
+---------------------------
 
 .. doxygenfunction:: py::call_function
 
@@ -123,7 +125,7 @@ Python Object References
 .. doxygenfunction:: py::call_method_throws
 
 ``<libpy/char_sequence.h>``
-===========================
+---------------------------
 
 .. doxygentypedef:: py::cs::char_sequence
 
@@ -144,7 +146,7 @@ Python Object References
 .. doxygenfunction:: py::cs::join
 
 ``<libpy/datetime64.h>``
-========================
+------------------------
 
 .. doxygenclass:: py::datetime64
    :members:
@@ -165,7 +167,7 @@ Python Object References
 .. doxygenfunction:: py::chrono::time_since_epoch
 
 ``<libpy/demangle.h>``
-======================
+----------------------
 
 .. doxygenfunction:: py::util::demangle_string(const char*)
 
@@ -176,14 +178,14 @@ Python Object References
 .. doxygenclass:: py::util::demangle_error
 
 ``<libpy/dict_range.h>``
-========================
+------------------------
 
 .. doxygenclass:: py::dict_range
    :members:
    :undoc-members:
 
 ``<libpy/exception.h>``
-=======================
+-----------------------
 
 .. doxygenclass:: py::exception
    :members:
@@ -195,7 +197,7 @@ Python Object References
 .. doxygenstruct:: py::dispatch::raise_format
 
 ``<libpy/from_object.h>``
-=========================
+-------------------------
 
 .. doxygenfunction:: py::from_object
 
@@ -204,7 +206,7 @@ Python Object References
 .. doxygenstruct:: py::dispatch::from_object
 
 ``<libpy/getattr.h>``
-=====================
+---------------------
 
 .. doxygenfunction:: py::getattr
 
@@ -215,13 +217,13 @@ Python Object References
 .. doxygenfunction:: py::nested_getattr_throws
 
 ``<libpy/gil.h>``
-=================
+-----------------
 
 .. doxygenstruct:: py::gil
    :members:
 
 ``<libpy/hash.h>``
-==================
+------------------
 
 .. doxygenfunction:: py::hash_combine(T, Ts...)
 
@@ -232,7 +234,7 @@ Python Object References
 .. doxygenfunction:: py::hash_buffer
 
 ``<libpy/itertools.h>``
-=======================
+-----------------------
 
 .. doxygenfunction:: py::zip
 
@@ -241,7 +243,7 @@ Python Object References
 .. doxygenfunction:: py::imap
 
 ``<libpy/meta.h>``
-==================
+------------------
 
 .. doxygenstruct:: py::meta::print_t
 
@@ -258,7 +260,7 @@ Python Object References
 .. doxygentypedef:: py::meta::set_diff
 
 ``op`` operator function objects
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each of these types implements ``operator()`` to defer to the named operator while attempting to preserve all the observable properties of calling the underlying operator directly.
 
@@ -284,7 +286,7 @@ Each of these types implements ``operator()`` to defer to the named operator whi
 .. doxygenstruct:: py::meta::op::inv
 
 ``<libpy/ndarray_view.h>``
-==========================
+--------------------------
 
 .. doxygenclass:: py::ndarray_view
    :members:
@@ -318,3 +320,17 @@ These partial specializations implement the same protocol as the non type-erased
 .. doxygenclass:: py::ndarray_view< any_ref, 1, false >
    :members:
    :undoc-members:
+
+Python
+======
+
+Miscellaneous
+-------------
+.. autodata:: libpy.version_info
+
+   The ABI version of libpy.
+
+Build
+-----
+
+.. autoclass:: libpy.build.LibpyExtension

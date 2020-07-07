@@ -70,5 +70,9 @@ setup(
             "libpy_tutorial.classes",
             ["libpy_tutorial/classes.cc"],
         ),
+        extension(
+            "libpy_tutorial.function",
+            ["libpy_tutorial/function.cc"],
+        ),
     ],
 )

@@ -7,7 +7,6 @@
 #include <libpy/numpy_utils.h>
 
 namespace libpy_tutorial {
-
 std::int64_t simple_sum(py::array_view<const std::int64_t> values) {
     std::int64_t out = 0;
     for (auto value : values) {
@@ -18,6 +17,13 @@ std::int64_t simple_sum(py::array_view<const std::int64_t> values) {
 
 std::int64_t simple_sum_iterator(py::array_view<const std::int64_t> values) {
     return std::accumulate(values.begin(), values.end(), 0);
+}
+
+void negate_inplace(py::array_view<std::int64_t> values) {
+    std::transform(values.cbegin(),
+                   values.cend(),
+                   values.begin(),
+                   [](std::int64_t v) { return -v; });
 }
 
 bool check_prime(std::int64_t n) {
@@ -46,9 +52,9 @@ LIBPY_AUTOMODULE(libpy_tutorial,
                  arrays,
                  ({py::autofunction<simple_sum>("simple_sum"),
                    py::autofunction<simple_sum_iterator>("simple_sum_iterator"),
+                   py::autofunction<negate_inplace>("negate_inplace"),
                    py::autofunction<is_prime>("is_prime")}))
 (py::borrowed_ref<>) {
     return false;
 }
-
 }  // namespace libpy_tutorial
