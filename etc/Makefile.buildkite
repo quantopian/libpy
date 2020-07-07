@@ -1,7 +1,0 @@
-CXX := g++-8
-CC := gcc-8
-GCOV := gcov-8
-AR := gcc-ar-8
-ASAN_SYMBOLIZER_PATH := llvm-symbolizer-6
-CLANG_TIDY := clang-tidy-6
-CLANG_FORMAT := clang-format-6

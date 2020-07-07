@@ -82,26 +82,11 @@ jobs:
     - name: Set gcc envvars
       if: matrix.compiler == 'gcc'
       run: |
-        echo ::set-env name=CC::gcc-8
-        echo ::set-env name=CXX::g++-8
-    # - name: Write permissions to ubunu
-    #   if: startsWith(matrix.os, 'ubuntu')
-    #   run: |
-    #     sudo chmod -R +rwx /var/crash
+        echo ::set-env name=CC::gcc-9
+        echo ::set-env name=CXX::g++-9
     - name: Run the tests
       run: |
-        ulimit -c unlimited
         make -j2 test
-    - name: Run apport-retrace if we've failed
-      if: startsWith(matrix.os, 'ubuntu') && failure()
-      run: |
-        apport-retrace /var/crash/*.crashes
-    - uses: actions/upload-artifact@v2 # capture all crashes as build artifacts
-      if: failure()
-      with:
-        name: crashes
-        path: /var/crash/
-
     - name: Check that we can still install
       run: |
         pip install .
