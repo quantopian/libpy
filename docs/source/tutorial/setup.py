@@ -1,6 +1,7 @@
 import ast
 import glob
 import os
+import sys
 
 from libpy.build import LibpyExtension
 from setuptools import find_packages, setup
@@ -16,6 +17,10 @@ else:
 
 
 def extension(*args, **kwargs):
+    extra_compile_args = []
+    if sys.platform == 'darwin':
+        extra_compile_args.append('-mmacosx-version-min=10.15')
+
     return LibpyExtension(
         *args,
         optlevel=optlevel,
@@ -23,6 +28,7 @@ def extension(*args, **kwargs):
         werror=True,
         max_errors=max_errors,
         include_dirs=["."] + kwargs.pop("include_dirs", []),
+        extra_compile_args=extra_compile_args,
         depends=glob.glob("**/*.h", recursive=True),
         **kwargs
     )
