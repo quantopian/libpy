@@ -87,10 +87,6 @@ jobs:
       run: |
         pip install .
     - name: Check that docs can be built
-      # note we don't build this on macOS because the GHA python is built with
-      # the wrong version of macOS, confusing clang.
-      # See: https://github.com/actions/virtual-environments/issues/696
-      if: startsWith(matrix.os, 'ubuntu')
       run: |
         pip install sphinx sphinx_rtd_theme breathe ipython
         make docs
