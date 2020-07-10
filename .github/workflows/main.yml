@@ -87,9 +87,10 @@ jobs:
     - name: Run the tests
       run: |
         make -j2 test
-    - name: Check that we can still install
+    - name: Build and install from an sdist
       run: |
-        pip install .
+        python setup.py sdist
+        pip install dist/libpy-*.tar.gz
     - name: Check that docs can be built
       # note we don't build this on macOS because the GHA python is built with
       # the wrong version of macOS, confusing clang.
