@@ -25,11 +25,11 @@ LIBPY_AUTOMODULE(tests,
                  ({py::autofunction<is_42>("is_42"),
                    py::autofunction<is_true>("is_true")}))
 (py::borrowed_ref<> m) {
-    py::owned_ref t = py::autoclass<int_float_pair>("_test_automodule.int_float_pair")
-                          .new_<int, float>()
-                          .comparisons<int_float_pair>()
-                          .def<first>("first")
-                          .def<second>("second")
-                          .type();
-    return PyObject_SetAttrString(m.get(), "int_float_pair", static_cast<PyObject*>(t));
+    py::autoclass<int_float_pair>(m, "int_float_pair")
+        .new_<int, float>()
+        .comparisons<int_float_pair>()
+        .def<first>("first")
+        .def<second>("second")
+        .type();
+    return false;
 }
