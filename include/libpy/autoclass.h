@@ -1157,13 +1157,12 @@ private:
         iter_name += "::iterator";
 
         // create the iterator class and put it in the cache
-        if (!autoclass<iter>(std::move(iter_name), Py_TPFLAGS_HAVE_GC)
-                 .add_slot(Py_tp_iternext, static_cast<iternextfunc>(iternext))
-                 .add_slot(Py_tp_iter, &PyObject_SelfIter)
-                 .template traverse<&iter::traverse>()
-                 .type()) {
-            throw py::exception{};
-        }
+        autoclass<iter>(std::move(iter_name), Py_TPFLAGS_HAVE_GC)
+            .add_slot(Py_tp_iternext, static_cast<iternextfunc>(iternext))
+            .add_slot(Py_tp_iter, &PyObject_SelfIter)
+            .template traverse<&iter::traverse>()
+            .type()
+            .escape();
 
         return [](PyObject* self) -> PyObject* {
             try {
