@@ -89,6 +89,7 @@ private:
     py::owned_ref<PyTypeObject> m_type;
     PyType_Spec m_spec;
     py::owned_ref<PyTypeObject> m_py_basetype;
+    py::owned_ref<> m_module;
 
     /** Check if this type uses the `Py_TPFLAGS_HAVE_GC`, which requires that we implement
         at least `Py_tp_traverse`, and will use `PyObject_GC_New` and `PyObject_GC_Del`.
@@ -153,32 +154,32 @@ private:
 
     // dispatch for free function that accepts as a first argument `T`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(*)(T, Args...), impl>
+    struct free_function_impl<R (*)(T, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for free function that accepts as a first argument `T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(*)(T&, Args...), impl>
+    struct free_function_impl<R (*)(T&, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for free function that accepts as a first argument `const T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(*)(const T&, Args...), impl>
+    struct free_function_impl<R (*)(const T&, Args...), impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for a noexcept free function that accepts as a first argument `T`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(*)(T, Args...) noexcept, impl>
+    struct free_function_impl<R (*)(T, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for noexcept free function that accepts as a first argument `T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(*)(T&, Args...) noexcept, impl>
+    struct free_function_impl<R (*)(T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     // dispatch for a noexcept free function that accepts as a first argument `const T&`
     template<typename R, typename... Args, auto impl>
-    struct free_function_impl<R(*)(const T&, Args...) noexcept, impl>
+    struct free_function_impl<R (*)(const T&, Args...) noexcept, impl>
         : public free_function_base<impl, R, Args...> {};
 
     template<auto impl, typename R, typename... Args>
@@ -336,19 +337,42 @@ private:
         return static_cast<void*>(std::addressof(unbox(ob)));
     }
 
+private:
+    std::string name_in_module(py::borrowed_ref<> module, std::string_view name) {
+        if (!module) {
+            return std::string{name};
+        }
+
+        const char* const module_name = PyModule_GetName(module.get());
+        if (!module_name) {
+            throw py::exception{};
+        }
+        return py::util::format_string(module_name, ".", name);
+    }
+
 public:
-    autoclass_impl(std::string name = util::type_name<T>(),
+    /** Construct the type and add it to a module.
+
+        @param module The module to add the type to.
+        @param name The name of the type as seen from Python.
+        @param extra_flags Extra flags to forward to `tp_flags` field.
+        @param base_type A Python type to subclass.
+     */
+    autoclass_impl(py::borrowed_ref<> module,
+                   std::string name = py::util::type_name<T>(),
                    int extra_flags = 0,
                    py::borrowed_ref<PyTypeObject> base_type = nullptr)
-        : m_storage(std::make_unique<detail::autoclass_storage>(dynamic_unbox,
-                                                                std::move(name))),
+        : m_storage(
+              std::make_unique<detail::autoclass_storage>(dynamic_unbox,
+                                                          name_in_module(module, name))),
           m_type(nullptr),
           m_spec({m_storage->strings.front().data(),
                   static_cast<int>(sizeof(object)),
                   0,
                   flags(extra_flags, base_type),
                   nullptr}),
-          m_py_basetype(py::owned_ref<PyTypeObject>::xnew_reference(base_type)) {
+          m_py_basetype(py::owned_ref<PyTypeObject>::xnew_reference(base_type)),
+          m_module(py::owned_ref<>::xnew_reference(module)) {
         if (base_type) {
             // Check to make sure that the static base type is not obviously
             // wrong. This check does not ensure that the static base type is
@@ -402,9 +426,14 @@ public:
         add_slot(Py_tp_dealloc, py_dealloc);
     }
 
-    // Delete the copy constructor, the intermediate string data points into
-    // storage that is managed by the type until `.type()` is called.
-    // Also, don't try to create 2 versions of the same type.
+    autoclass_impl(std::string name = util::type_name<T>(),
+                   int extra_flags = 0,
+                   py::borrowed_ref<PyTypeObject> base_type = nullptr)
+        : autoclass_impl(nullptr, std::move(name), extra_flags, base_type) {}
+
+    // Delete the copy constructor, the intermediate string data points into storage
+    // that is managed by the type until `.type()` is called. Also, don't try to
+    // create 2 versions of the same type.
     autoclass_impl(const autoclass_impl&) = delete;
     autoclass_impl(autoclass_impl&&) = default;
     autoclass_impl& operator=(autoclass_impl&&) = default;
@@ -412,8 +441,8 @@ public:
     /** Add a `tp_traverse` field to this type. This is only allowed, but required if
         `extra_flags & Py_TPFLAGS_HAVE_GC`.
 
-        @tparam impl The implementation of the traverse function. This should either be an
-                     `int(T&, visitproc, void*)` or `int (T::*)(visitproc, void*)`.
+        @tparam impl The implementation of the traverse function. This should either
+       be an `int(T&, visitproc, void*)` or `int (T::*)(visitproc, void*)`.
      */
     template<auto impl>
     concrete& traverse() {
@@ -441,8 +470,8 @@ public:
     /** Add a `tp_clear` field to this type. This is only allowed if
         `extra_flags & Py_TPFLAGS_HAVE_GC`.
 
-        @tparam impl The implementation of the clear function. This should either be an
-                     `int(T&)` or `int (T::*)()`.
+        @tparam impl The implementation of the clear function. This should either be
+       an `int(T&)` or `int (T::*)()`.
      */
     template<auto impl>
     concrete& clear() {
@@ -1437,6 +1466,16 @@ public:
         release_type_cache.dismiss();
 
         m_type = type;
+
+        if (m_module) {
+            const char* const last_dot = std::strrchr(m_type.get()->tp_name, '.');
+            if (!last_dot) {
+                throw py::exception(PyExc_RuntimeError, "no '.' in type name");
+            }
+            PyObject_SetAttrString(m_module.get(),
+                                   last_dot + 1,
+                                   static_cast<PyObject*>(type));
+        }
         return type;
     }
 
