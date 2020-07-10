@@ -11,8 +11,9 @@ Welcome to libpy's documentation!
    :caption: Contents:
 
    shock-and-awe
-   tutorial
    install
+   tutorial
+   arrays
    appendix
 
 

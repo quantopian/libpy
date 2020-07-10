@@ -6,4 +6,3 @@ Tutorial
    :caption: Contents:
 
    tutorial/functions
-   tutorial/arrays

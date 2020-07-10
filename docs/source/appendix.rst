@@ -298,6 +298,8 @@ Each of these types implements ``operator()`` to defer to the named operator whi
 
 .. doxygentypedef:: py::array_view
 
+.. doxygenfunction:: py::for_each_unordered
+
 Type Erased Views
 -----------------
 
