@@ -11,29 +11,15 @@ lipy supports:
 
 lipy requires:
 
-- gcc>=8 or clang>=10
+- gcc>=9 or clang>=10
 - numpy>=1.11.3
 
-libpy also depends on:
+Optional Requirements
+---------------------
 
-- pcre
+libpy optionally provides wrappers for the following libraries:
+
 - google sparsehash
-
-To install these dependencies:
-
-ubuntu
-~~~~~~
-
-.. code-block:: bash
-
-    $ sudo apt install libpcre2-dev libsparsehash-dev
-
-macOS
-~~~~~
-
-.. code-block:: bash
-
-    $ brew install pcre2 google-sparsehash
 
 Install
 -------

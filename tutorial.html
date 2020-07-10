@@ -199,7 +199,7 @@
 </pre></div>
 </div>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [3]: </span><span class="n">scalar_functions</span><span class="o">.</span><span class="n">monte_carlo_pi</span><span class="p">(</span><span class="mi">10000000</span><span class="p">)</span>
-<span class="gh">Out[3]: </span><span class="go">3.1413156</span>
+<span class="gh">Out[3]: </span><span class="go">3.1423212</span>
 </pre></div>
 </div>
 <p>Of course, we can build C++ functions that support all the features of regular Python functions.</p>
@@ -325,7 +325,7 @@
 <span class="gp">In [20]: </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">img_file</span><span class="p">)</span>
 
 <span class="gp">In [21]: </span><span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
-<span class="gh">Out[21]: </span><span class="go">&lt;matplotlib.image.AxesImage at 0x7f28df3aa670&gt;</span>
+<span class="gh">Out[21]: </span><span class="go">&lt;matplotlib.image.AxesImage at 0x7f233e55faf0&gt;</span>
 </pre></div>
 </div>
 <a class="reference internal image-reference" href="_images/original.png"><img alt="_images/original.png" src="_images/original.png" style="width: 200px;" /></a>
@@ -391,7 +391,7 @@
 <span class="gp">In [25]: </span><span class="n">res</span> <span class="o">=</span> <span class="n">ndarrays</span><span class="o">.</span><span class="n">apply_kernel</span><span class="p">(</span><span class="n">pixels</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
 
 <span class="gp">In [26]: </span><span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
-<span class="gh">Out[26]: </span><span class="go">&lt;matplotlib.image.AxesImage at 0x7f28df3ccdc0&gt;</span>
+<span class="gh">Out[26]: </span><span class="go">&lt;matplotlib.image.AxesImage at 0x7f233e50d760&gt;</span>
 </pre></div>
 </div>
 <a class="reference internal image-reference" href="_images/sharpened.png"><img alt="_images/sharpened.png" src="_images/sharpened.png" style="width: 200px;" /></a>
@@ -557,25 +557,25 @@
 </pre></div>
 </div>
 <p>Next, we must tell <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> to build our module using the <code class="docutils literal notranslate"><span class="pre">LibpyExtension</span></code> helper:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">def</span> <span class="n">extension</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">:</span>
-    <span class="k">return</span> <span class="n">LibpyExtension</span><span class="p">(</span>
-        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
-        <span class="n">optlevel</span><span class="o">=</span><span class="n">optlevel</span><span class="p">,</span>
-        <span class="n">debug_symbols</span><span class="o">=</span><span class="n">debug_symbols</span><span class="p">,</span>
-        <span class="n">werror</span><span class="o">=</span><span class="n">True</span><span class="p">,</span>
-        <span class="n">max_errors</span><span class="o">=</span><span class="n">max_errors</span><span class="p">,</span>
-        <span class="n">include_dirs</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;.&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">kwargs</span><span class="p">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&quot;include_dirs&quot;</span><span class="p">,</span> <span class="p">[]),</span>
-        <span class="n">depends</span><span class="o">=</span><span class="n">glob</span><span class="p">.</span><span class="n">glob</span><span class="p">(</span><span class="s">&quot;**/*.h&quot;</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="n">True</span><span class="p">),</span>
-        <span class="o">**</span><span class="n">kwargs</span>
-    <span class="p">)</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>
+def extension(*args, **kwargs):
+    extra_compile_args = []
+    if sys.platform == &#39;darwin&#39;:
+        extra_compile_args.append(&#39;-mmacosx-version-min=10.15&#39;)
 
-    <span class="n">license</span><span class="o">=</span><span class="s">&quot;Apache 2.0&quot;</span><span class="p">,</span>
-    <span class="n">url</span><span class="o">=</span><span class="s">&quot;https://github.com/quantopian/libpy&quot;</span><span class="p">,</span>
-    <span class="n">ext_modules</span><span class="o">=</span><span class="p">[</span>
-        <span class="n">extension</span><span class="p">(</span>
-            <span class="s">&quot;libpy_tutorial.scalar_functions&quot;</span><span class="p">,</span>
-            <span class="p">[</span><span class="s">&quot;libpy_tutorial/classes.cc&quot;</span><span class="p">],</span>
-        <span class="p">),</span>
+    return LibpyExtension(
+        *args,
+        optlevel=optlevel,
+        debug_symbols=debug_symbols,
+        werror=True,
+install_requires = [
+    packages=find_packages(),
+    package_data={
+        &quot;&quot;: [&quot;*.png&quot;],
+    },
+    include_package_data=True,
+        extension(
+            &quot;libpy_tutorial.exceptions&quot;,
 </pre></div>
 </div>
 <p>Finally, we must ensure that we <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">libpy</span></code> in Python before importing the extension module.</p>

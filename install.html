@@ -87,11 +87,8 @@
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Shock and Awe </a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html#python-extensions">Python Extensions</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Setup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#ubuntu">ubuntu</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#macos">macOS</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#optional-requirements">Optional Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#install">Install</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#tests">Tests</a></li>
 </ul>
@@ -173,27 +170,16 @@
 </ul>
 <p>lipy requires:</p>
 <ul class="simple">
-<li><p>gcc&gt;=8 or clang&gt;=10</p></li>
+<li><p>gcc&gt;=9 or clang&gt;=10</p></li>
 <li><p>numpy&gt;=1.11.3</p></li>
 </ul>
-<p>libpy also depends on:</p>
+</div>
+<div class="section" id="optional-requirements">
+<h2>Optional Requirements<a class="headerlink" href="#optional-requirements" title="Permalink to this headline">¶</a></h2>
+<p>libpy optionally provides wrappers for the following libraries:</p>
 <ul class="simple">
-<li><p>pcre</p></li>
 <li><p>google sparsehash</p></li>
 </ul>
-<p>To install these dependencies:</p>
-<div class="section" id="ubuntu">
-<h3>ubuntu<a class="headerlink" href="#ubuntu" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ sudo apt install libpcre2-dev libsparsehash-dev
-</pre></div>
-</div>
-</div>
-<div class="section" id="macos">
-<h3>macOS<a class="headerlink" href="#macos" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ brew install pcre2 google-sparsehash
-</pre></div>
-</div>
-</div>
 </div>
 <div class="section" id="install">
 <h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
