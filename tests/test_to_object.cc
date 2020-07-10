@@ -138,19 +138,16 @@ TEST_F(to_object, filesystem_path) {
     std::filesystem::path test_path = "/tmp/";
     py::owned_ref ob = py::to_object(test_path);
     ASSERT_TRUE(ob);
-#if PY_VERSION_HEX >= 0x03040000
+
     py::owned_ref ns = RUN_PYTHON(R"(
         from pathlib import Path
         py_path = Path("/tmp/")
     )");
     ASSERT_TRUE(ns);
 
-    py::owned_ref py_path_ob{PyDict_GetItemString(ns.get(), "py_path")};
+    py::borrowed_ref py_path_ob = PyDict_GetItemString(ns.get(), "py_path");
     ASSERT_TRUE(py_path_ob);
-#else
-    py::owned_ref py_path_ob = py::to_object("/tmp/");
 
-#endif
     int eq = PyObject_RichCompareBool(ob.get(), py_path_ob.get(), Py_EQ);
     EXPECT_EQ(eq, 1);
 }

@@ -25,7 +25,7 @@ libpy supports:
 
 libpy requires:
 
-- gcc>=8 or clang>=10
+- gcc>=9 or clang>=10
 - numpy>=1.11.3
 
 Optional Requirements
