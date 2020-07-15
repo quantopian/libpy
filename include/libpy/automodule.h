@@ -54,7 +54,7 @@
             return nullptr;                                                              \
         }                                                                                \
         static std::vector<PyMethodDef> ms methods;                                      \
-        ms.emplace_back({nullptr});                                            \
+        ms.emplace_back(PyMethodDef({nullptr}));                                         \
         static PyModuleDef _libpy_module{                                                \
             PyModuleDef_HEAD_INIT,                                                       \
             _libpy_MODULE_PATH(parent, name),                                            \
