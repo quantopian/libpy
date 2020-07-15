@@ -46,7 +46,8 @@ slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t st
 
     return {static_cast<std::size_t>(start),
             {static_cast<std::size_t>(size)},
-            {static_cast<std::ptrdiff_t>(stride)}};}
+            {static_cast<std::ptrdiff_t>(stride)}};
+}
 }  // namespace detail
 
 /** A struct to wrap an array of type T whose shape is not known until runtime.
