@@ -44,8 +44,9 @@ slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t st
     std::int64_t size = (low >= high) ? 0 : (high - low - 1) / adj_step + 1;
     std::ptrdiff_t stride = view.strides()[0] * step;
 
-    return {static_cast<std::size_t>(start), {static_cast<std::size_t>(size)}, {stride}};
-}
+    return {static_cast<std::size_t>(start),
+            {static_cast<std::size_t>(size)},
+            {static_cast<std::ptrdiff_t>(stride)}};}
 }  // namespace detail
 
 /** A struct to wrap an array of type T whose shape is not known until runtime.
