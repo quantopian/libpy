@@ -37,7 +37,7 @@ Otherwise, ``pip install libpy``, making sure ``CC`` and ``CXX`` environment var
    figure out information about your environment. If you are not using a virtual
    environment or ``python`` does not point to the Python installation you want
    to use (checked with ``which python`` and ``python --version``) you must
-   point to your Python exacutable using the ``PYTHON`` environment variable,
+   point to your Python executable using the ``PYTHON`` environment variable,
    i.e. ``PYTHON=python3 make`` or ``PYTHON=python3 pip3 install libpy``.
 
 Tests
