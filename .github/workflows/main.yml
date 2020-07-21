@@ -95,5 +95,5 @@ jobs:
         pip install dist/libpy-*.tar.gz
     - name: Check that docs can be built
       run: |
-        pip install sphinx sphinx_rtd_theme breathe ipython
+        pip install wheel sphinx sphinx_rtd_theme breathe ipython
         make docs
