@@ -36,7 +36,7 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Shock and Awe" href="tutorial.html" /> 
+    <link rel="next" title="Shock and Awe" href="shock-and-awe.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -83,9 +83,10 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Shock and Awe </a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html#python-extensions">Python Extensions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shock-and-awe.html">Shock and Awe </a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a></li>
 <li class="toctree-l1"><a class="reference internal" href="appendix.html">Appendix</a></li>
 </ul>
 
@@ -161,15 +162,14 @@
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Shock and Awe </a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#simple-scalar-functions">Simple Scalar Functions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#working-with-arrays">Working With Arrays</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#n-dimensional-arrays">N Dimensional Arrays</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#creating-classes">Creating Classes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#exceptions">Exceptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shock-and-awe.html">Shock and Awe </a><ul>
+<li class="toctree-l2"><a class="reference internal" href="shock-and-awe.html#simple-scalar-functions">Simple Scalar Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="shock-and-awe.html#working-with-arrays">Working With Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="shock-and-awe.html#n-dimensional-arrays">N Dimensional Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="shock-and-awe.html#creating-classes">Creating Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="shock-and-awe.html#exceptions">Exceptions</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html#python-extensions">Python Extensions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Setup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="install.html#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="install.html#optional-requirements">Optional Requirements</a></li>
@@ -177,29 +177,22 @@
 <li class="toctree-l2"><a class="reference internal" href="install.html#tests">Tests</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/functions.html">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#py-array-view"><code class="docutils literal notranslate"><span class="pre">py::array_view</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#simple-array-input">Simple Array Input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#shallow-constness">Shallow Constness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#py-array-view-extended-interface"><code class="docutils literal notranslate"><span class="pre">py::array_view</span></code> extended interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#constructing-array-views">Constructing Array Views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#type-erased-views">Type Erased Views</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="appendix.html">Appendix</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#python-object-references">Python Object References</a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-abi-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/abi.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-any-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-any-vector-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any_vector.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-autoclass-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autoclass.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-autofunction-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autofunction.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-borrowed-ref-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/borrowed_ref.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-buffer-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/buffer.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-build-tuple-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/build_tuple.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-call-function-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/call_function.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-char-sequence-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/char_sequence.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-datetime64-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/datetime64.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-demangle-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/demangle.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-dict-range-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/dict_range.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-exception-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/exception.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-from-object-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/from_object.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-getattr-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/getattr.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-gil-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/gil.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-hash-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/hash.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-itertools-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/itertools.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-meta-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/meta.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="appendix.html#libpy-ndarray-view-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/ndarray_view.h&gt;</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="appendix.html#c">C++</a></li>
+<li class="toctree-l2"><a class="reference internal" href="appendix.html#python">Python</a></li>
 </ul>
 </li>
 </ul>
@@ -222,7 +215,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tutorial.html" class="btn btn-neutral float-right" title="Shock and Awe" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="shock-and-awe.html" class="btn btn-neutral float-right" title="Shock and Awe" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
     </div>

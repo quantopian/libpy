@@ -82,9 +82,10 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Shock and Awe </a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html#python-extensions">Python Extensions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shock-and-awe.html">Shock and Awe </a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a></li>
 <li class="toctree-l1"><a class="reference internal" href="appendix.html">Appendix</a></li>
 </ul>
 
@@ -153,9 +154,23 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#P"><strong>P</strong></a>
+ <a href="#L"><strong>L</strong></a>
+ | <a href="#P"><strong>P</strong></a>
+ | <a href="#V"><strong>V</strong></a>
  
 </div>
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="appendix.html#c.LIBPY_AUTOMODULE">LIBPY_AUTOMODULE (C macro)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="appendix.html#libpy.build.LibpyExtension">LibpyExtension (class in libpy.build)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -615,6 +630,8 @@
 </li>
       <li><a href="appendix.html#_CPPv4IDpEN2py9exception9exceptionEN2py12borrowed_refIEEDpRR4Args">py::exception::exception (C++ function)</a>, <a href="appendix.html#_CPPv4N2py9exception9exceptionEv">[1]</a>
 </li>
+      <li><a href="appendix.html#_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction">py::for_each_unordered (C++ function)</a>
+</li>
       <li><a href="appendix.html#_CPPv4I0EN2py11from_objectEDcN2py12borrowed_refIEE">py::from_object (C++ function)</a>
 </li>
       <li><a href="appendix.html#_CPPv4N2py10get_bufferEN2py12borrowed_refIEEi">py::get_buffer (C++ function)</a>
@@ -631,6 +648,8 @@
 </li>
       <li><a href="appendix.html#_CPPv4N2py3gil15ensure_releasedEv">py::gil::ensure_released (C++ function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="appendix.html#_CPPv4N2py3gil4heldEv">py::gil::held (C++ function)</a>
 </li>
       <li><a href="appendix.html#_CPPv4N2py3gil10hold_blockE">py::gil::hold_block (C++ struct)</a>
@@ -647,8 +666,6 @@
 </li>
       <li><a href="appendix.html#_CPPv4N2py11hash_bufferEPKcNSt6size_tE">py::hash_buffer (C++ function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="appendix.html#_CPPv4I0DpEN2py12hash_combineEDa1TDp2Ts">py::hash_combine (C++ function)</a>
 </li>
       <li><a href="appendix.html#_CPPv4IDpEN2py9hash_manyEDaDpRK2Ts">py::hash_many (C++ function)</a>
@@ -1095,38 +1112,6 @@
 </li>
       <li><a href="appendix.html#_CPPv4IDpEN2py21nested_getattr_throwsEN2py9owned_refEDpRK2Ts">py::nested_getattr_throws (C++ function)</a>
 </li>
-      <li><a href="appendix.html#_CPPv4I0EN2py9owned_refE">py::owned_ref (C++ class)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4N2py9owned_ref12element_typeE">py::owned_ref::element_type (C++ type)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NO2py9owned_ref6escapeEv">py::owned_ref::escape (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NK2py9owned_ref3getEv">py::owned_ref::get (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4N2py9owned_ref13new_referenceEN2py12borrowed_refI1TEE">py::owned_ref::new_reference (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NK2py9owned_refcvbEv">py::owned_ref::operator bool (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4I00ENK2py9owned_refcvP8PyObjectEv">py::owned_ref::operator PyObject* (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NK2py9owned_refcvP1TEv">py::owned_ref::operator T* (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NK2py9owned_refneEN2py12borrowed_refI1TEE">py::owned_ref::operator!= (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NK2py9owned_refmlEv">py::owned_ref::operator* (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NK2py9owned_refptEv">py::owned_ref::operator-&gt; (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4N2py9owned_refaSERK9owned_ref">py::owned_ref::operator= (C++ function)</a>, <a href="appendix.html#_CPPv4N2py9owned_refaSERR9owned_ref">[1]</a>
-</li>
-      <li><a href="appendix.html#_CPPv4NK2py9owned_refeqEN2py12borrowed_refI1TEE">py::owned_ref::operator== (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4N2py9owned_ref9owned_refENSt9nullptr_tE">py::owned_ref::owned_ref (C++ function)</a>, <a href="appendix.html#_CPPv4N2py9owned_ref9owned_refEP1T">[1]</a>, <a href="appendix.html#_CPPv4N2py9owned_ref9owned_refERK9owned_ref">[2]</a>, <a href="appendix.html#_CPPv4N2py9owned_ref9owned_refERR9owned_ref">[3]</a>, <a href="appendix.html#_CPPv4N2py9owned_ref9owned_refEv">[4]</a>
-</li>
-      <li><a href="appendix.html#_CPPv4N2py9owned_ref14xnew_referenceEN2py12borrowed_refI1TEE">py::owned_ref::xnew_reference (C++ function)</a>
-</li>
-      <li><a href="appendix.html#_CPPv4N2py9owned_refD0Ev">py::owned_ref::~owned_ref (C++ function)</a>
-</li>
       <li><a href="appendix.html#_CPPv4N2py5raiseEN2py12borrowed_refIEE">py::raise (C++ function)</a>
 </li>
       <li><a href="appendix.html#_CPPv4N2py24raise_from_cxx_exceptionERKNSt9exceptionE">py::raise_from_cxx_exception (C++ function)</a>
@@ -1138,6 +1123,14 @@
       <li><a href="appendix.html#_CPPv4I0EN2py4util9type_nameENSt6stringEv">py::util::type_name (C++ function)</a>
 </li>
       <li><a href="appendix.html#_CPPv4IDpEN2py3zipEDaDpRR2Ts">py::zip (C++ function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="V">V</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="appendix.html#libpy.version_info">version_info (in module libpy)</a>
 </li>
   </ul></td>
 </tr></table>

@@ -1,0 +1,314 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Functions &mdash; libpy 0.1.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Arrays" href="../arrays.html" />
+    <link rel="prev" title="Tutorial" href="../tutorial.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> libpy
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../shock-and-awe.html">Shock and Awe </a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Setup</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorial.html">Tutorial</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#a-simple-c-function">A Simple C++ Function</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adapting-a-function">Adapting a Function</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adding-the-function-to-a-module">Adding the Function to a Module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#building-and-importing-the-module">Building and Importing the Module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../arrays.html">Arrays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix.html">Appendix</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">libpy</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../tutorial.html">Tutorial</a> &raquo;</li>
+        
+      <li>Functions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/tutorial/functions.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="functions">
+<h1>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h1>
+<p>The simplest unit of code that can be exposed to Python from C++ is a function.
+<code class="docutils literal notranslate"><span class="pre">libpy</span></code> supports automatically converting C++ functions into Python functions by adapting the parameter types and return type.</p>
+<p><code class="docutils literal notranslate"><span class="pre">libpy</span></code> uses <a class="reference internal" href="../appendix.html#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="py::autofunction"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::autofunction()</span></code></a> to convert a C++ function into a Python function definition <a class="footnote-reference brackets" href="#f1" id="id1">1</a>.
+The result of <a class="reference internal" href="../appendix.html#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="py::autofunction"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::autofunction()</span></code></a> can be attached to a Python module object and made available to Python.</p>
+<div class="section" id="a-simple-c-function">
+<h2>A Simple C++ Function<a class="headerlink" href="#a-simple-c-function" title="Permalink to this headline">¶</a></h2>
+<p>Let’s start by writing a simple C++ function to expose to Python:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">double</span> <span class="nf">fma</span><span class="p">(</span><span class="kt">double</span> <span class="n">a</span><span class="p">,</span> <span class="kt">double</span> <span class="n">b</span><span class="p">,</span> <span class="kt">double</span> <span class="n">c</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">fma</span></code> is a standard C++ function with no knowledge of Python.</p>
+</div>
+<div class="section" id="adapting-a-function">
+<h2>Adapting a Function<a class="headerlink" href="#adapting-a-function" title="Permalink to this headline">¶</a></h2>
+<p>To adapt <code class="docutils literal notranslate"><span class="pre">fma</span></code> into a Python function, we need to use <a class="reference internal" href="../appendix.html#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="py::autofunction"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::autofunction()</span></code></a>.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">PyMethodDef</span> <span class="n">fma_methoddef</span> <span class="o">=</span> <span class="n">py</span><span class="o">::</span><span class="n">autofunction</span><span class="o">&lt;</span><span class="n">fma</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;fma&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../appendix.html#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="py::autofunction"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::autofunction()</span></code></a> is a template function which takes as a template argument the C++ function to adapt.
+<a class="reference internal" href="../appendix.html#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="py::autofunction"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::autofunction()</span></code></a> also takes a string which is the name of the function as it will be exposed to Python.
+The Python function name does not need to match the C++ name.
+<a class="reference internal" href="../appendix.html#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="py::autofunction"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::autofunction()</span></code></a> takes an optional second argument: a string to use as the Python docstring.
+For example, a docstring could be added to <code class="docutils literal notranslate"><span class="pre">fma</span></code> with:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">PyMethodDef</span> <span class="n">fma_methoddef</span> <span class="o">=</span> <span class="n">py</span><span class="o">::</span><span class="n">autofunction</span><span class="o">&lt;</span><span class="n">fma</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;fma&quot;</span><span class="p">,</span> <span class="s">&quot;Fused Multiply Add&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently the <code class="docutils literal notranslate"><span class="pre">name</span></code> and <code class="docutils literal notranslate"><span class="pre">doc</span></code> string parameters <strong>must outlive</strong> the resulting <code class="xref c c-struct docutils literal notranslate"><span class="pre">PyMethodDef</span></code>.
+In practice, this means it should be a static string, or string literal.</p>
+</div>
+</div>
+<div class="section" id="adding-the-function-to-a-module">
+<h2>Adding the Function to a Module<a class="headerlink" href="#adding-the-function-to-a-module" title="Permalink to this headline">¶</a></h2>
+<p>To use an adapted function from Python, it must be attached to a module so that it may be imported by Python code.
+To create a Python method, we can use <code class="xref c c-macro docutils literal notranslate"><span class="pre">LIBPY_AUTOMETHOD</span></code>.
+<code class="xref c c-macro docutils literal notranslate"><span class="pre">LIBPY_AUTOMETHOD</span></code> is a macro which takes in the package name, the module name, and the set of functions to add.
+Following the call to <code class="xref c c-macro docutils literal notranslate"><span class="pre">LIBPY_AUTOMETHOD</span></code>, we must provide a function which is called when the module is first imported.
+To just add functions, our body can be a simple <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">false</span></code> to indicate that no errors occurred.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">LIBPY_AUTOMODULE</span><span class="p">(</span><span class="n">libpy_tutorial</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="p">({</span><span class="n">fma_methoddef</span><span class="p">}))</span>
+    <span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">borrowed_ref</span><span class="o">&lt;&gt;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="building-and-importing-the-module">
+<h2>Building and Importing the Module<a class="headerlink" href="#building-and-importing-the-module" title="Permalink to this headline">¶</a></h2>
+<p>To build a libpy extension, we can use <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> and libpy’s <a class="reference internal" href="../appendix.html#libpy.build.LibpyExtension" title="libpy.build.LibpyExtension"><code class="xref py py-class docutils literal notranslate"><span class="pre">LibpyExtension</span></code></a> class.</p>
+<p>In the <code class="docutils literal notranslate"><span class="pre">setup.py</span></code>'s <code class="docutils literal notranslate"><span class="pre">setup</span></code> call, we can add a list of <code class="docutils literal notranslate"><span class="pre">ext_modules</span></code> to be built:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libpy.build</span> <span class="kn">import</span> <span class="n">LibpyExtension</span>
+
+<span class="n">setup</span><span class="p">(</span>
+    <span class="c1"># ...</span>
+    <span class="n">ext_modules</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">LibpyExtension</span><span class="p">(</span>
+            <span class="s1">&#39;libpy_tutorial.function&#39;</span><span class="p">,</span>
+            <span class="p">[</span><span class="s1">&#39;libpy_tutorial/function.cc&#39;</span><span class="p">],</span>
+        <span class="p">),</span>
+    <span class="p">],</span>
+    <span class="c1"># ...</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Now, the extension can be built with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python setup.py build_ext --inplace
+</pre></div>
+</div>
+<p>Finally, the function can be imported and used from python:</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="kn">import</span> <span class="nn">libpy</span>  <span class="c1"># we need to ensure we import libpy before importing our extension</span>
+
+<span class="gp">In [2]: </span><span class="kn">from</span> <span class="nn">libpy_tutorial.function</span> <span class="kn">import</span> <span class="n">fma</span>
+
+<span class="gp">In [3]: </span><span class="n">fma</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)</span>
+<span class="gh">Out[3]: </span><span class="go">10.0</span>
+</pre></div>
+</div>
+<p class="rubric">Footnotes</p>
+<dl class="footnote brackets">
+<dt class="label" id="f1"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p><a class="reference internal" href="../appendix.html#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="py::autofunction"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::autofunction()</span></code></a> creates a <code class="xref c c-struct docutils literal notranslate"><span class="pre">PyMethodDef</span></code> instance, which is not yet a Python object.</p>
+</dd>
+</dl>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../arrays.html" class="btn btn-neutral float-right" title="Arrays" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../tutorial.html" class="btn btn-neutral float-left" title="Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Quantopian Inc.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

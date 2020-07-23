@@ -1,0 +1,599 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Shock and Awe &mdash; libpy 0.1.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Setup" href="install.html" />
+    <link rel="prev" title="Welcome to libpy’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> libpy
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Shock and Awe </a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#simple-scalar-functions">Simple Scalar Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#working-with-arrays">Working With Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#n-dimensional-arrays">N Dimensional Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-classes">Creating Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#exceptions">Exceptions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="appendix.html">Appendix</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">libpy</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Shock and Awe </li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/shock-and-awe.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="shock-and-awe">
+<h1>Shock and Awe <a class="footnote-reference brackets" href="#f1" id="id1">1</a><a class="headerlink" href="#shock-and-awe" title="Permalink to this headline">¶</a></h1>
+<p>A <em>concise</em> overview of <code class="docutils literal notranslate"><span class="pre">libpy</span></code>. For an introduction to extending Python with C or C++ please see <a class="reference external" href="https://docs.python.org/3/extending/extending.html">the Python documentation</a> or <a class="reference external" href="https://llllllllll.github.io/c-extension-tutorial/">Joe Jevnik’s C Extension Tutorial</a>.</p>
+<div class="section" id="simple-scalar-functions">
+<h2>Simple Scalar Functions<a class="headerlink" href="#simple-scalar-functions" title="Permalink to this headline">¶</a></h2>
+<p>We start by building simple scalar functions in C++ which we can call from Python.</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="kn">from</span> <span class="nn">libpy_tutorial</span> <span class="kn">import</span> <span class="n">scalar_functions</span>
+</pre></div>
+</div>
+<p>A simple scalar function:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="nf">bool_scalar</span><span class="p">(</span><span class="kt">bool</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">!</span><span class="n">a</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [2]: </span><span class="n">scalar_functions</span><span class="o">.</span><span class="n">bool_scalar</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<span class="gh">Out[2]: </span><span class="go">True</span>
+</pre></div>
+</div>
+<p>A great way to use <code class="docutils literal notranslate"><span class="pre">libpy</span></code> is to write the code that needs to be fast in C++ and expose that code via Python. Let’s estimate <code class="docutils literal notranslate"><span class="pre">pi</span></code> using a monte carlo simulation:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">double</span> <span class="nf">monte_carlo_pi</span><span class="p">(</span><span class="kt">int</span> <span class="n">n_samples</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">accumulator</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">rd</span><span class="p">;</span>   <span class="c1">// Will be used to obtain a seed for the random number engine</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">mt19937</span> <span class="n">gen</span><span class="p">(</span><span class="n">rd</span><span class="p">());</span>  <span class="c1">// Standard mersenne_twister_engine seeded with rd()</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">uniform_real_distribution</span><span class="o">&lt;&gt;</span> <span class="n">dis</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n_samples</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">dis</span><span class="p">(</span><span class="n">gen</span><span class="p">);</span>
+        <span class="k">auto</span> <span class="n">y</span> <span class="o">=</span> <span class="n">dis</span><span class="p">(</span><span class="n">gen</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">accumulator</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">accumulator</span> <span class="o">/</span> <span class="n">n_samples</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [3]: </span><span class="n">scalar_functions</span><span class="o">.</span><span class="n">monte_carlo_pi</span><span class="p">(</span><span class="mi">10000000</span><span class="p">)</span>
+<span class="gh">Out[3]: </span><span class="go">3.14171</span>
+</pre></div>
+</div>
+<p>Of course, we can build C++ functions that support all the features of regular Python functions.</p>
+<p><code class="docutils literal notranslate"><span class="pre">libpy</span></code> supports optional args:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">optional_arg</span><span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">arg</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">opt_arg</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">opt_arg</span><span class="p">.</span><span class="n">get</span><span class="p">().</span><span class="n">value_or</span><span class="p">(</span><span class="s">&quot;default value&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [4]: </span><span class="n">scalar_functions</span><span class="o">.</span><span class="n">optional_arg</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;An argument was passed&quot;</span><span class="p">)</span>
+<span class="gh">Out[4]: </span><span class="go">b&#39;An argument was passed&#39;</span>
+
+<span class="gp">In [5]: </span><span class="n">scalar_functions</span><span class="o">.</span><span class="n">optional_arg</span><span class="p">()</span>
+<span class="gh">Out[5]: </span><span class="go">b&#39;default value&#39;</span>
+</pre></div>
+</div>
+<p>and keyword/optional keyword arguments:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">py</span><span class="o">::</span><span class="n">owned_ref</span><span class="o">&lt;&gt;</span>
+<span class="n">keyword_args</span><span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">arg</span><span class="o">::</span><span class="n">kwd</span><span class="o">&lt;</span><span class="k">decltype</span><span class="p">(</span><span class="s">&quot;kw_arg_kwd&quot;</span><span class="n">_cs</span><span class="p">),</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">kw_arg_kwd</span><span class="p">,</span>
+             <span class="n">py</span><span class="o">::</span><span class="n">arg</span><span class="o">::</span><span class="n">opt_kwd</span><span class="o">&lt;</span><span class="k">decltype</span><span class="p">(</span><span class="s">&quot;opt_kw_arg_kwd&quot;</span><span class="n">_cs</span><span class="p">),</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">opt_kw_arg_kwd</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="k">return</span> <span class="n">py</span><span class="o">::</span><span class="n">build_tuple</span><span class="p">(</span><span class="n">kw_arg_kwd</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span> <span class="n">opt_kw_arg_kwd</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [6]: </span><span class="n">scalar_functions</span><span class="o">.</span><span class="n">keyword_args</span><span class="p">(</span><span class="n">kw_arg_kwd</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gh">Out[6]: </span><span class="go">(1, None)</span>
+
+<span class="gp">In [7]: </span><span class="n">scalar_functions</span><span class="o">.</span><span class="n">keyword_args</span><span class="p">(</span><span class="n">kw_arg_kwd</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">opt_kw_arg_kwd</span><span class="o">=</span><span class="mi">55</span><span class="p">)</span>
+<span class="gh">Out[7]: </span><span class="go">(1, 55)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="working-with-arrays">
+<h2>Working With Arrays<a class="headerlink" href="#working-with-arrays" title="Permalink to this headline">¶</a></h2>
+<p>In order to write performant code it is often useful to write vectorized functions that act on arrays. Thus, libpy has extenstive support for <code class="docutils literal notranslate"><span class="pre">numpy</span></code> arrays.</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [8]: </span><span class="kn">from</span> <span class="nn">libpy_tutorial</span> <span class="kn">import</span> <span class="n">arrays</span>
+
+<span class="gp">In [9]: </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</pre></div>
+</div>
+<p>We can take <code class="docutils literal notranslate"><span class="pre">numpy</span></code> arrays as input:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>    <span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span> <span class="n">out</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">value</span> <span class="p">:</span> <span class="n">values</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">out</span> <span class="o">+=</span> <span class="n">value</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [10]: </span><span class="n">some_numbers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">20000</span><span class="p">)</span>
+
+<span class="gp">In [11]: </span><span class="n">arrays</span><span class="o">.</span><span class="n">simple_sum</span><span class="p">(</span><span class="n">some_numbers</span><span class="p">)</span>
+<span class="gh">Out[11]: </span><span class="go">199990000</span>
+</pre></div>
+</div>
+<p>and return them as output:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>    <span class="n">std</span><span class="o">::</span><span class="n">transform</span><span class="p">(</span><span class="n">values</span><span class="p">.</span><span class="n">cbegin</span><span class="p">(),</span>
+                   <span class="n">values</span><span class="p">.</span><span class="n">cend</span><span class="p">(),</span>
+                   <span class="n">values</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+                   <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="o">-</span><span class="n">v</span><span class="p">;</span> <span class="p">});</span>
+<span class="p">}</span>
+
+<span class="kt">bool</span> <span class="n">check_prime</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span> <span class="o">+=</span> <span class="mi">6</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">%</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">n</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [12]: </span><span class="n">prime_mask</span> <span class="o">=</span> <span class="n">arrays</span><span class="o">.</span><span class="n">is_prime</span><span class="p">(</span><span class="n">some_numbers</span><span class="p">)</span>
+
+<span class="gp">In [13]: </span><span class="n">some_numbers</span><span class="p">[</span><span class="n">prime_mask</span><span class="p">][:</span><span class="mi">100</span><span class="p">]</span>
+<span class="gh">Out[13]: </span><span class="go"></span>
+<span class="go">array([  2,   3,   5,   7,  11,  13,  17,  19,  23,  25,  29,  31,  37,</span>
+<span class="go">        41,  43,  47,  53,  59,  61,  67,  71,  73,  79,  83,  89,  97,</span>
+<span class="go">       101, 103, 107, 109, 113, 121, 127, 131, 137, 139, 149, 151, 157,</span>
+<span class="go">       163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229,</span>
+<span class="go">       233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 289, 293,</span>
+<span class="go">       307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379,</span>
+<span class="go">       383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457,</span>
+<span class="go">       461, 463, 467, 479, 487, 491, 499, 503, 509])</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">numpy</span></code> arrays passed to C++ are <a class="reference external" href="https://en.cppreference.com/w/cpp/ranges/range">ranges</a>.</p>
+</div>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">accumulate</span><span class="p">(</span><span class="n">values</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">values</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [14]: </span><span class="n">arrays</span><span class="o">.</span><span class="n">simple_sum_iterator</span><span class="p">(</span><span class="n">some_numbers</span><span class="p">)</span>
+<span class="gh">Out[14]: </span><span class="go">199990000</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="n-dimensional-arrays">
+<h2>N Dimensional Arrays<a class="headerlink" href="#n-dimensional-arrays" title="Permalink to this headline">¶</a></h2>
+<p>We can also work with n-dimensional arrays. As a motivating example, let’s sharpen an image. Specifically - we will sharpen:</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [15]: </span><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+<span class="gp">In [16]: </span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span> <span class="c1"># to show the image in documenation</span>
+
+<span class="gp">In [17]: </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="gp">In [18]: </span><span class="kn">import</span> <span class="nn">pkg_resources</span>
+
+<span class="gp">In [19]: </span><span class="n">img_file</span> <span class="o">=</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">resource_stream</span><span class="p">(</span><span class="s2">&quot;libpy_tutorial&quot;</span><span class="p">,</span> <span class="s2">&quot;data/original.png&quot;</span><span class="p">)</span>
+
+<span class="gp">In [20]: </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">img_file</span><span class="p">)</span>
+
+<span class="gp">In [21]: </span><span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+<span class="gh">Out[21]: </span><span class="go">&lt;matplotlib.image.AxesImage at 0x7f7deb54c9d0&gt;</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/original.png"><img alt="_images/original.png" src="_images/original.png" style="width: 200px;" /></a>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">py</span><span class="o">::</span><span class="n">owned_ref</span><span class="o">&lt;&gt;</span> <span class="n">apply_kernel</span><span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">ndarray_view</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="kt">uint8_t</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="n">pixels</span><span class="p">,</span>
+                             <span class="n">py</span><span class="o">::</span><span class="n">ndarray_view</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span><span class="p">,</span> <span class="mi">2</span><span class="o">&gt;</span> <span class="n">kernel</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="k">auto</span> <span class="n">n_dimensions</span> <span class="o">=</span> <span class="n">pixels</span><span class="p">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">2</span><span class="p">];</span>
+    <span class="k">auto</span> <span class="n">n_rows</span> <span class="o">=</span> <span class="n">pixels</span><span class="p">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">];</span>
+    <span class="k">auto</span> <span class="n">n_columns</span> <span class="o">=</span> <span class="n">pixels</span><span class="p">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">];</span>
+
+    <span class="k">auto</span> <span class="n">k_rows</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">];</span>
+    <span class="k">auto</span> <span class="n">k_columns</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">];</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">uint8_t</span><span class="o">&gt;</span> <span class="n">out</span><span class="p">(</span><span class="n">n_dimensions</span> <span class="o">*</span> <span class="n">n_rows</span> <span class="o">*</span> <span class="n">n_columns</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">py</span><span class="o">::</span><span class="n">ndarray_view</span> <span class="n">out_view</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span>
+                              <span class="n">pixels</span><span class="p">.</span><span class="n">shape</span><span class="p">(),</span>
+                              <span class="p">{</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n_dimensions</span> <span class="o">*</span> <span class="n">n_rows</span><span class="p">),</span>
+                               <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n_dimensions</span><span class="p">),</span>
+                               <span class="mi">1</span><span class="p">});</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">dim</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">dim</span> <span class="o">&lt;</span> <span class="n">n_dimensions</span><span class="p">;</span> <span class="o">++</span><span class="n">dim</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">row</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">row</span> <span class="o">&lt;</span> <span class="n">n_rows</span><span class="p">;</span> <span class="o">++</span><span class="n">row</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">column</span> <span class="o">&lt;</span> <span class="n">n_columns</span><span class="p">;</span> <span class="o">++</span><span class="n">column</span><span class="p">)</span> <span class="p">{</span>
+
+                <span class="k">auto</span> <span class="n">accumulated_sum</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+
+                <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">k_row</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">k_row</span> <span class="o">&lt;</span> <span class="n">k_rows</span><span class="p">;</span> <span class="o">++</span><span class="n">k_row</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">k_column</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">k_column</span> <span class="o">&lt;</span> <span class="n">k_columns</span><span class="p">;</span> <span class="o">++</span><span class="n">k_column</span><span class="p">)</span> <span class="p">{</span>
+
+                        <span class="k">auto</span> <span class="n">input_row_idx</span> <span class="o">=</span> <span class="n">row</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">k_row</span><span class="p">;</span>
+                        <span class="k">auto</span> <span class="n">input_column_idx</span> <span class="o">=</span> <span class="n">column</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">k_column</span><span class="p">;</span>
+
+                        <span class="k">if</span> <span class="p">(</span><span class="n">input_row_idx</span> <span class="o">&lt;</span> <span class="n">n_rows</span> <span class="o">&amp;&amp;</span> <span class="n">input_column_idx</span> <span class="o">&lt;</span> <span class="n">n_columns</span><span class="p">)</span> <span class="p">{</span>
+                            <span class="n">accumulated_sum</span> <span class="o">+=</span>
+                                <span class="n">pixels</span><span class="p">(</span><span class="n">input_row_idx</span><span class="p">,</span> <span class="n">input_column_idx</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span> <span class="o">*</span>
+                                <span class="n">kernel</span><span class="p">(</span><span class="n">k_row</span><span class="p">,</span> <span class="n">k_column</span><span class="p">);</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">accumulated_sum</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">accumulated_sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+                <span class="p">}</span>
+                <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">accumulated_sum</span> <span class="o">&gt;</span> <span class="mi">255</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">accumulated_sum</span> <span class="o">=</span> <span class="mi">255</span><span class="p">;</span>
+                <span class="p">}</span>
+                <span class="n">out_view</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">column</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span> <span class="o">=</span> <span class="n">accumulated_sum</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">py</span><span class="o">::</span><span class="n">move_to_numpy_array</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">out</span><span class="p">),</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [22]: </span><span class="n">pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+<span class="gp">In [23]: </span><span class="n">kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">   ....: </span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<span class="gp">   ....: </span>    <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+<span class="gp">   ....: </span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="gp">   ....: </span><span class="p">])</span> <span class="c1"># already normalized</span>
+<span class="gp">   ....: </span>
+
+<span class="gp">In [24]: </span><span class="kn">from</span> <span class="nn">libpy_tutorial</span> <span class="kn">import</span> <span class="n">ndarrays</span>
+
+<span class="gp">In [25]: </span><span class="n">res</span> <span class="o">=</span> <span class="n">ndarrays</span><span class="o">.</span><span class="n">apply_kernel</span><span class="p">(</span><span class="n">pixels</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
+
+<span class="gp">In [26]: </span><span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+<span class="gh">Out[26]: </span><span class="go">&lt;matplotlib.image.AxesImage at 0x7f7deb540490&gt;</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/sharpened.png"><img alt="_images/sharpened.png" src="_images/sharpened.png" style="width: 200px;" /></a>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>We are able to pass a shaped n-dimensional array as input and return one as output.</p>
+</div>
+</div>
+<div class="section" id="creating-classes">
+<h2>Creating Classes<a class="headerlink" href="#creating-classes" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">libpy</span></code> also allows you to construct C++ classes and then easily expose them as if they are regular Python classes.</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [27]: </span><span class="kn">from</span> <span class="nn">libpy_tutorial.classes</span> <span class="kn">import</span> <span class="n">Vec3d</span>
+</pre></div>
+</div>
+<p>C++ classes are able to emulate all the features of Python classes:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">libpy_tutorial</span> <span class="p">{</span>
+<span class="k">class</span> <span class="nc">vec3d</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="n">m_values</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">vec3d</span><span class="p">(</span><span class="kt">double</span> <span class="n">x</span><span class="p">,</span> <span class="kt">double</span> <span class="n">y</span><span class="p">,</span> <span class="kt">double</span> <span class="n">z</span><span class="p">)</span> <span class="o">:</span> <span class="n">m_values</span><span class="p">({</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">})</span> <span class="p">{}</span>
+
+    <span class="kt">double</span> <span class="n">x</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">m_values</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+    <span class="p">}</span>
+
+    <span class="kt">double</span> <span class="n">y</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">m_values</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+    <span class="p">}</span>
+
+    <span class="kt">double</span> <span class="n">z</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">m_values</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+    <span class="p">}</span>
+
+    <span class="n">vec3d</span> <span class="k">operator</span><span class="o">+</span><span class="p">(</span><span class="k">const</span> <span class="n">vec3d</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">x</span><span class="p">()</span> <span class="o">+</span> <span class="n">other</span><span class="p">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">y</span><span class="p">()</span> <span class="o">+</span> <span class="n">other</span><span class="p">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">z</span><span class="p">()</span> <span class="o">+</span> <span class="n">other</span><span class="p">.</span><span class="n">z</span><span class="p">()};</span>
+    <span class="p">}</span>
+
+    <span class="n">vec3d</span> <span class="k">operator</span><span class="o">-</span><span class="p">(</span><span class="k">const</span> <span class="n">vec3d</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">x</span><span class="p">()</span> <span class="o">-</span> <span class="n">other</span><span class="p">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">y</span><span class="p">()</span> <span class="o">-</span> <span class="n">other</span><span class="p">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">z</span><span class="p">()</span> <span class="o">-</span> <span class="n">other</span><span class="p">.</span><span class="n">z</span><span class="p">()};</span>
+    <span class="p">}</span>
+
+    <span class="kt">double</span> <span class="k">operator</span><span class="o">*</span><span class="p">(</span><span class="k">const</span> <span class="n">vec3d</span><span class="o">&amp;</span> <span class="n">other</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">inner_product</span><span class="p">(</span><span class="n">m_values</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+                                  <span class="n">m_values</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span>
+                                  <span class="n">other</span><span class="p">.</span><span class="n">m_values</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+                                  <span class="mf">0.0</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="kt">double</span> <span class="n">magnitude</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="o">*</span><span class="k">this</span> <span class="o">*</span> <span class="o">*</span><span class="k">this</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">&lt;&lt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">,</span> <span class="k">const</span> <span class="n">vec3d</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">s</span> <span class="o">&lt;&lt;</span> <span class="sc">&#39;{&#39;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">x</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;, &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">y</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;, &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">z</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="sc">&#39;}&#39;</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// `repr` could also be a member function, but free functions are useful for adding</span>
+<span class="c1">// a Python repr without modifying the methods of the type.</span>
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">repr</span><span class="p">(</span><span class="k">const</span> <span class="n">vec3d</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">stringstream</span> <span class="n">ss</span><span class="p">;</span>
+    <span class="n">ss</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Vec3d(&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">x</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;, &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">y</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;, &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">z</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="sc">&#39;)&#39;</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">ss</span><span class="p">.</span><span class="n">str</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="p">}</span>  <span class="c1">// namespace libpy_tutorial</span>
+
+<span class="k">namespace</span> <span class="n">py</span><span class="o">::</span><span class="n">dispatch</span> <span class="p">{</span>
+<span class="c1">// Make it possible to convert a `vec3d` into a Python object.</span>
+<span class="k">template</span><span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">LIBPY_NO_EXPORT</span> <span class="n">to_object</span><span class="o">&lt;</span><span class="n">libpy_tutorial</span><span class="o">::</span><span class="n">vec3d</span><span class="o">&gt;</span>
+    <span class="o">:</span> <span class="k">public</span> <span class="n">py</span><span class="o">::</span><span class="n">autoclass</span><span class="o">&lt;</span><span class="n">libpy_tutorial</span><span class="o">::</span><span class="n">vec3d</span><span class="o">&gt;::</span><span class="n">to_object</span> <span class="p">{};</span>
+<span class="p">}</span>  <span class="c1">// namespace py::dispatch</span>
+</pre></div>
+</div>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [28]: </span><span class="n">Vec3d</span><span class="o">.</span><span class="vm">__doc__</span>
+<span class="gh">Out[28]: </span><span class="go">&#39;An efficient 3-vector.&#39;</span>
+
+<span class="gp">In [29]: </span><span class="n">v</span> <span class="o">=</span> <span class="n">Vec3d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+<span class="gp">In [30]: </span><span class="n">v</span>
+<span class="gh">Out[30]: </span><span class="go">Vec3d(1, 2, 3)</span>
+
+<span class="gp">In [31]: </span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+<span class="gh">Out[31]: </span><span class="go">&#39;{1, 2, 3}&#39;</span>
+
+<span class="gp">In [32]: </span><span class="n">v</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">v</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">v</span><span class="o">.</span><span class="n">z</span><span class="p">()</span>
+<span class="gh">Out[32]: </span><span class="go">(1.0, 2.0, 3.0)</span>
+
+<span class="gp">In [33]: </span><span class="n">w</span> <span class="o">=</span> <span class="n">Vec3d</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">);</span> <span class="n">w</span>
+<span class="gh">Out[33]: </span><span class="go">Vec3d(4, 5, 6)</span>
+
+<span class="gp">In [34]: </span><span class="n">v</span> <span class="o">+</span> <span class="n">w</span>
+<span class="gh">Out[34]: </span><span class="go">Vec3d(5, 7, 9)</span>
+
+<span class="gp">In [35]: </span><span class="n">v</span> <span class="o">*</span> <span class="n">w</span>
+<span class="gh">Out[35]: </span><span class="go">32.0</span>
+
+<span class="gp">In [36]: </span><span class="n">v</span><span class="o">.</span><span class="n">magnitude</span><span class="p">()</span>
+<span class="gh">Out[36]: </span><span class="go">3.7416573867739413</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="exceptions">
+<h2>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this headline">¶</a></h2>
+<p>Working with exceptions is also important.</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [37]: </span><span class="kn">from</span> <span class="nn">libpy_tutorial</span> <span class="kn">import</span> <span class="n">exceptions</span>
+</pre></div>
+</div>
+<p>We can throw exceptions in C++ that will then be dealt with in Python. Two patterns:</p>
+<ol class="arabic simple">
+<li><p>Throw your own exception: <code class="docutils literal notranslate"><span class="pre">throw</span> <span class="pre">py::exception(type,</span> <span class="pre">msg...)</span></code>, maybe in response to an exception from a C-API function.</p></li>
+<li><p>Throw a C++ exception directly.</p></li>
+</ol>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">throw_value_error</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="n">py</span><span class="o">::</span><span class="n">exception</span><span class="p">(</span><span class="n">PyExc_ValueError</span><span class="p">,</span> <span class="s">&quot;You passed &quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="s">&quot; and this is the exception&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">raise_from_cxx</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">invalid_argument</span><span class="p">(</span><span class="s">&quot;Supposedly a bad argument was used&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">40</span><span class="p">]</span><span class="o">:</span> <span class="n">exceptions</span><span class="p">.</span><span class="n">throw_value_error</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="o">---------------------------------------------------------------------------</span>
+<span class="n">ValueError</span>                                <span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">)</span>
+<span class="o">&lt;</span><span class="n">ipython</span><span class="o">-</span><span class="n">input</span><span class="o">-</span><span class="mi">40</span><span class="o">-</span><span class="mi">6</span><span class="n">cfdcf9a1ea9</span><span class="o">&gt;</span> <span class="n">in</span> <span class="o">&lt;</span><span class="k">module</span><span class="o">&gt;</span>
+<span class="o">----&gt;</span> <span class="mi">1</span> <span class="n">exceptions</span><span class="p">.</span><span class="n">throw_value_error</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="nl">ValueError</span><span class="p">:</span> <span class="n">You</span> <span class="n">passed</span> <span class="mi">4</span> <span class="n">and</span> <span class="k">this</span> <span class="n">is</span> <span class="n">the</span> <span class="n">exception</span>
+
+<span class="n">In</span> <span class="p">[</span><span class="mi">41</span><span class="p">]</span><span class="o">:</span> <span class="n">exceptions</span><span class="p">.</span><span class="n">raise_from_cxx</span><span class="p">()</span>
+<span class="o">---------------------------------------------------------------------------</span>
+<span class="n">RuntimeError</span>                              <span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">)</span>
+<span class="o">&lt;</span><span class="n">ipython</span><span class="o">-</span><span class="n">input</span><span class="o">-</span><span class="mi">41</span><span class="o">-</span><span class="n">ee2345413222</span><span class="o">&gt;</span> <span class="n">in</span> <span class="o">&lt;</span><span class="k">module</span><span class="o">&gt;</span>
+<span class="o">----&gt;</span> <span class="mi">1</span> <span class="n">exceptions</span><span class="p">.</span><span class="n">raise_from_cxx</span><span class="p">()</span>
+
+<span class="nl">RuntimeError</span><span class="p">:</span> <span class="n">a</span> <span class="n">C</span><span class="o">++</span> <span class="n">exception</span> <span class="n">was</span> <span class="nl">raised</span><span class="p">:</span> <span class="n">Supposedly</span> <span class="n">a</span> <span class="n">bad</span> <span class="n">argument</span> <span class="n">was</span> <span class="n">used</span>
+</pre></div>
+</div>
+<p class="rubric">Footnotes</p>
+<dl class="footnote brackets">
+<dt class="label" id="f1"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>With naming credit to the intorduction of <a class="reference external" href="https://code.kx.com/q4m3/1_Q_Shock_and_Awe/">Q for Mortals</a>.</p>
+</dd>
+</dl>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="install.html" class="btn btn-neutral float-right" title="Setup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to libpy’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Quantopian Inc.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

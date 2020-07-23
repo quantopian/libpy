@@ -36,8 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Appendix" href="appendix.html" />
-    <link rel="prev" title="Shock and Awe" href="tutorial.html" /> 
+    <link rel="next" title="Tutorial" href="tutorial.html" />
+    <link rel="prev" title="Shock and Awe" href="shock-and-awe.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -84,8 +84,7 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Shock and Awe </a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html#python-extensions">Python Extensions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shock-and-awe.html">Shock and Awe </a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Setup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#optional-requirements">Optional Requirements</a></li>
@@ -93,6 +92,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#tests">Tests</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a></li>
 <li class="toctree-l1"><a class="reference internal" href="appendix.html">Appendix</a></li>
 </ul>
 
@@ -188,6 +189,15 @@
 </pre></div>
 </div>
 <p>Otherwise, <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">libpy</span></code>, making sure <code class="docutils literal notranslate"><span class="pre">CC</span></code> and <code class="docutils literal notranslate"><span class="pre">CXX</span></code> environment variables are set to the the right compiler.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The installation of <code class="docutils literal notranslate"><span class="pre">libpy</span></code> will use the <code class="docutils literal notranslate"><span class="pre">python</span></code> executable to
+figure out information about your environment. If you are not using a virtual
+environment or <code class="docutils literal notranslate"><span class="pre">python</span></code> does not point to the Python installation you want
+to use (checked with <code class="docutils literal notranslate"><span class="pre">which</span> <span class="pre">python</span></code> and <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">--version</span></code>) you must
+point to your Python executable using the <code class="docutils literal notranslate"><span class="pre">PYTHON</span></code> environment variable,
+i.e. <code class="docutils literal notranslate"><span class="pre">PYTHON=python3</span> <span class="pre">make</span></code> or <code class="docutils literal notranslate"><span class="pre">PYTHON=python3</span> <span class="pre">pip3</span> <span class="pre">install</span> <span class="pre">libpy</span></code>.</p>
+</div>
 </div>
 <div class="section" id="tests">
 <h2>Tests<a class="headerlink" href="#tests" title="Permalink to this headline">¶</a></h2>
@@ -206,10 +216,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="appendix.html" class="btn btn-neutral float-right" title="Appendix" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tutorial.html" class="btn btn-neutral float-right" title="Tutorial" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="tutorial.html" class="btn btn-neutral float-left" title="Shock and Awe" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="shock-and-awe.html" class="btn btn-neutral float-left" title="Shock and Awe" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

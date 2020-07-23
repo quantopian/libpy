@@ -1,0 +1,522 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Arrays &mdash; libpy 0.1.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Appendix" href="appendix.html" />
+    <link rel="prev" title="Functions" href="tutorial/functions.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> libpy
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="shock-and-awe.html">Shock and Awe </a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Arrays</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#py-array-view"><code class="docutils literal notranslate"><span class="pre">py::array_view</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#shape-and-strides">Shape and Strides</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#non-contiguous-views">Non-contiguous views</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#simple-array-input">Simple Array Input</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#from-c">From C++</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#from-python">From Python</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#shallow-constness">Shallow Constness</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#freeze">Freeze</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#py-array-view-extended-interface"><code class="docutils literal notranslate"><span class="pre">py::array_view</span></code> extended interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#constructors">Constructors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extra-member-accessors">Extra Member Accessors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#contiguity">Contiguity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#derived-views">Derived Views</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#free-functions">Free Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#constructing-array-views">Constructing Array Views</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">From C++</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#from-contiguous-c-containers">From Contiguous C++ Containers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#low-level-constructor">Low Level Constructor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#from-buffer-like-objects">From Buffer-like Objects</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#virtual-array-views">Virtual Array Views</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#type-erased-views">Type Erased Views</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#type-casting">Type Casting</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="appendix.html">Appendix</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">libpy</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Arrays</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/arrays.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="arrays">
+<h1>Arrays<a class="headerlink" href="#arrays" title="Permalink to this headline">¶</a></h1>
+<p>To get the full power out of a C++ extension, you will often need to pass arrays of data between Python and C++.
+Libpy has native support for integrating with numpy, the most popular ndarray library for Python.</p>
+<p>Libpy supports receiving arrays as views so that no data needs to be copied.
+Libpy array views can also be const to guarantee that the underlying data isn’t mutated.
+Libpy also supports creating Numpy arrays as views over C++ containers without copying the underlying data.</p>
+<div class="section" id="py-array-view">
+<h2><code class="docutils literal notranslate"><span class="pre">py::array_view</span></code><a class="headerlink" href="#py-array-view" title="Permalink to this headline">¶</a></h2>
+<p>Libpy can accept numpy arrays, or generally any buffer-like object, through a <a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a>.
+<a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> is a template type which takes as a parameter the C++ type of the elements of the array and the number of dimensions.
+For example: <code class="docutils literal notranslate"><span class="pre">py::ndarray_view&lt;std::int32_t,</span> <span class="pre">3&gt;</span></code> is a view of a 3d array of signed 32 bit integers.
+The type of the elements of a <a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> are fixed at compile time, but the shape is determined at runtime.</p>
+<p>As a convenience, <a class="reference internal" href="appendix.html#_CPPv4N2py10array_viewE" title="py::array_view"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">py::array_view</span></code></a> is an alias of <a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> for one dimensional arrays.</p>
+<div class="section" id="shape-and-strides">
+<h3>Shape and Strides<a class="headerlink" href="#shape-and-strides" title="Permalink to this headline">¶</a></h3>
+<p>Like numpy, an array view is composed of three parts:</p>
+<ul class="simple">
+<li><p>shape :: <code class="docutils literal notranslate"><span class="pre">std::array&lt;std::size_t&gt;</span></code></p></li>
+<li><p>strides :: <code class="docutils literal notranslate"><span class="pre">std::array&lt;std::int64_t&gt;</span></code></p></li>
+<li><p>buffer :: <code class="docutils literal notranslate"><span class="pre">(const)</span> <span class="pre">std::byte*</span></code></p></li>
+</ul>
+<p>The shape array contains the number of elements along each axis.
+For example: <code class="docutils literal notranslate"><span class="pre">{2,</span> <span class="pre">3}</span></code> would be an array with 2 rows and 3 columns.</p>
+<p>The strides array contains the number of bytes needed to move one step along each axis.
+For example: given a <code class="docutils literal notranslate"><span class="pre">{2,</span> <span class="pre">3}</span></code> shaped array of 4 byte elements, then strides of <code class="docutils literal notranslate"><span class="pre">{12,</span> <span class="pre">4}</span></code> would be a C-contiguous array because the rows are contiguous.
+Given the same <code class="docutils literal notranslate"><span class="pre">{2,</span> <span class="pre">3}</span></code> shaped array of 4 byte elements, then strides of <code class="docutils literal notranslate"><span class="pre">{4,</span> <span class="pre">8}</span></code> would be a Fortran-contiguous array because the rows are contiguous.</p>
+<p>The buffer must be a <code class="docutils literal notranslate"><span class="pre">(const)</span> <span class="pre">std::byte*</span></code> and not a <code class="docutils literal notranslate"><span class="pre">(const)</span> <span class="pre">T*</span></code></p>
+</div>
+<div class="section" id="non-contiguous-views">
+<h3>Non-contiguous views<a class="headerlink" href="#non-contiguous-views" title="Permalink to this headline">¶</a></h3>
+<p>Array views do not need to view contiguous arrays.
+For example, given a C-contiguous <code class="docutils literal notranslate"><span class="pre">{4,</span> <span class="pre">5}</span></code> array of 2 byte values, we could take a view of first column by producing an array view with strides <code class="docutils literal notranslate"><span class="pre">{10}</span></code>.</p>
+</div>
+</div>
+<div class="section" id="simple-array-input">
+<h2>Simple Array Input<a class="headerlink" href="#simple-array-input" title="Permalink to this headline">¶</a></h2>
+<p>Let’s write function to sum an array:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span> <span class="n">simple_sum</span><span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">array_view</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span><span class="o">&gt;</span> <span class="n">values</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span> <span class="n">out</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">value</span> <span class="p">:</span> <span class="n">values</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">out</span> <span class="o">+=</span> <span class="n">value</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This function has one parameter, <code class="docutils literal notranslate"><span class="pre">values</span></code> which is a view over the data being summed.
+This parameter should be passed by value because it is only a view, and therefore small, like a <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">std::string_view</span></code>.</p>
+<div class="section" id="from-c">
+<h3>From C++<a class="headerlink" href="#from-c" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="appendix.html#_CPPv4N2py10array_viewE" title="py::array_view"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">py::array_view</span></code></a> has an implicit constructor from any type that exposes both <code class="docutils literal notranslate"><span class="pre">data()</span></code> and <code class="docutils literal notranslate"><span class="pre">size()</span></code> member functions, like <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">std::vector</span></code>.
+This means we can call <code class="docutils literal notranslate"><span class="pre">simple_sum</span></code> directly from C++, for example:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span><span class="o">&gt;</span> <span class="n">vs</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span>
+<span class="n">std</span><span class="o">::</span><span class="n">iota</span><span class="p">(</span><span class="n">vs</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">vs</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="kt">int64_t</span> <span class="n">sum</span> <span class="o">=</span> <span class="n">simple_sum</span><span class="p">(</span><span class="n">vs</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="from-python">
+<h3>From Python<a class="headerlink" href="#from-python" title="Permalink to this headline">¶</a></h3>
+<p>To call <code class="docutils literal notranslate"><span class="pre">simple_sum</span></code> from Python, we must first use <a class="reference internal" href="appendix.html#_CPPv4I_Da_iEN2py10automethodE11PyMethodDefPCKcPCKc" title="py::automethod"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::automethod()</span></code></a> to adapt the function and then attach it to a module.
+For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">LIBPY_AUTOMODULE</span><span class="p">(</span><span class="n">libpy_tutorial</span><span class="p">,</span>
+                 <span class="n">arrays</span><span class="p">,</span>
+                 <span class="p">({</span><span class="n">py</span><span class="o">::</span><span class="n">autofunction</span><span class="o">&lt;</span><span class="n">simple_sum</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;simple_sum&quot;</span><span class="p">)}))</span>
+<span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">borrowed_ref</span><span class="o">&lt;&gt;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now, we can import the function and pass it numpy arrays:</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="gp">In [2]: </span><span class="kn">from</span> <span class="nn">libpy_tutorial.arrays</span> <span class="kn">import</span> <span class="n">simple_sum</span>
+
+<span class="gp">In [3]: </span><span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span> <span class="n">arr</span>
+<span class="gh">Out[3]: </span><span class="go">array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])</span>
+
+<span class="gp">In [4]: </span><span class="n">simple_sum</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+<span class="gh">Out[4]: </span><span class="go">45</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="shallow-constness">
+<h2>Shallow Constness<a class="headerlink" href="#shallow-constness" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> implements shallow constness.
+Shallow constness means that a <code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">py::ndarray_view</span></code> allows mutation to the underlying data, but not mutation of what is being pointed to.
+Shallow constness means that <a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> acts like a pointer, not a reference.
+One may have a <code class="docutils literal notranslate"><span class="pre">const</span></code> pointer to non <code class="docutils literal notranslate"><span class="pre">const</span></code> data.</p>
+<p>To create an immutable view, the <code class="docutils literal notranslate"><span class="pre">const</span></code> must be injected into the viewed type.
+Instead of having a <code class="docutils literal notranslate"><span class="pre">const</span></code> view of <code class="docutils literal notranslate"><span class="pre">int</span></code>, have a view of <code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">int</span></code>.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">py</span><span class="o">::</span><span class="n">ndarray_view</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">n</span><span class="o">&gt;</span>        <span class="c1">// mutable elements</span>
+<span class="k">const</span> <span class="n">py</span><span class="o">::</span><span class="n">ndarray_view</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">n</span><span class="o">&gt;</span>  <span class="c1">// mutable elements</span>
+<span class="n">py</span><span class="o">::</span><span class="n">ndarray_view</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">T</span><span class="p">,</span> <span class="n">n</span><span class="o">&gt;</span>  <span class="c1">// immutable elements</span>
+</pre></div>
+</div>
+<div class="section" id="freeze">
+<h3>Freeze<a class="headerlink" href="#freeze" title="Permalink to this headline">¶</a></h3>
+<p>Given a mutable view, the <a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view6freezeEv" title="py::ndarray_view::freeze"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::freeze()</span></code></a> member function returns an immutable view over the same data.
+This is useful for ensuring that a particular component doesn’t mutate a view that is otherwise mutable.
+<a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view6freezeEv" title="py::ndarray_view::freeze"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::freeze()</span></code></a> exists for immutable views, but is a nop.</p>
+</div>
+</div>
+<div class="section" id="py-array-view-extended-interface">
+<h2><code class="docutils literal notranslate"><span class="pre">py::array_view</span></code> extended interface<a class="headerlink" href="#py-array-view-extended-interface" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> has the interface of a standard fixed-size C++ container, like <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">std::array</span></code>.
+<a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> does have a few additions to the standard member functions:</p>
+<div class="section" id="constructors">
+<h3>Constructors<a class="headerlink" href="#constructors" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="appendix.html#_CPPv4I0EN2py12ndarray_view20from_buffer_protocolENSt11enable_if_tIXneN2py13buffer_formatI1UEEc0ENSt5tupleI12ndarray_viewI1T4ndimEN2py6bufferEEEEEN2py12borrowed_refIEE" title="py::ndarray_view::from_buffer_protocol"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::from_buffer_protocol()</span></code></a></p></li>
+<li><p><a class="reference internal" href="appendix.html#_CPPv4N2py12ndarray_view13virtual_arrayER1TRKNSt5arrayINSt6size_tE4ndimEE" title="py::ndarray_view::virtual_array"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::virtual_array()</span></code></a></p></li>
+</ul>
+</div>
+<div class="section" id="extra-member-accessors">
+<h3>Extra Member Accessors<a class="headerlink" href="#extra-member-accessors" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view5shapeEv" title="py::ndarray_view::shape"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::shape()</span></code></a></p></li>
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view7stridesEv" title="py::ndarray_view::strides"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::strides()</span></code></a></p></li>
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view6bufferEv" title="py::ndarray_view::buffer"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::buffer()</span></code></a></p></li>
+<li><p><a class="reference internal" href="appendix.html#_CPPv4N2py12ndarray_view4rankEv" title="py::ndarray_view::rank"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::rank()</span></code></a></p></li>
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view5ssizeEv" title="py::ndarray_view::ssize"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::ssize()</span></code></a></p></li>
+</ul>
+</div>
+<div class="section" id="contiguity">
+<h3>Contiguity<a class="headerlink" href="#contiguity" title="Permalink to this headline">¶</a></h3>
+<p>Member functions that are helpers for checking if a view is over a contiguous array.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view11is_c_contigEv" title="py::ndarray_view::is_c_contig"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::is_c_contig()</span></code></a></p></li>
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view11is_f_contigEv" title="py::ndarray_view::is_f_contig"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::is_f_contig()</span></code></a></p></li>
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view9is_contigEv" title="py::ndarray_view::is_contig"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::is_contig()</span></code></a></p></li>
+</ul>
+</div>
+<div class="section" id="derived-views">
+<h3>Derived Views<a class="headerlink" href="#derived-views" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="appendix.html#_CPPv4NK2py12ndarray_view6freezeEv" title="py::ndarray_view::freeze"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::freeze()</span></code></a></p></li>
+<li><p><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::slice()</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="free-functions">
+<h3>Free Functions<a class="headerlink" href="#free-functions" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction" title="py::for_each_unordered"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::for_each_unordered()</span></code></a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="constructing-array-views">
+<h2>Constructing Array Views<a class="headerlink" href="#constructing-array-views" title="Permalink to this headline">¶</a></h2>
+<p>Ndarray views may be constructed from C++ in a few ways.
+The easiest way to get an ndarray view is to accept one as a parameter from a function which has been <a class="reference internal" href="appendix.html#_CPPv4I_Da_iEN2py10automethodE11PyMethodDefPCKcPCKc" title="py::automethod"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::automethod()</span></code></a> converted.
+Libpy will take care of type and dimensionality checking and extracting the buffer from the underlying Python object.</p>
+<div class="section" id="id1">
+<h3>From C++<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="from-contiguous-c-containers">
+<h4>From Contiguous C++ Containers<a class="headerlink" href="#from-contiguous-c-containers" title="Permalink to this headline">¶</a></h4>
+<p>One dimensional array views, or <a class="reference internal" href="appendix.html#_CPPv4N2py10array_viewE" title="py::array_view"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">py::array_view</span></code></a>, objects may be constructed from any C++ object that exposes both a <code class="docutils literal notranslate"><span class="pre">data()</span></code> and <code class="docutils literal notranslate"><span class="pre">size()</span></code> member functions.
+<code class="docutils literal notranslate"><span class="pre">data()</span></code> must return a <code class="docutils literal notranslate"><span class="pre">T*</span></code> which points to an array of <code class="docutils literal notranslate"><span class="pre">T</span></code> elements of size <code class="docutils literal notranslate"><span class="pre">size()</span></code>.
+Example containers that can be implicitly constructed from are <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">std::vector</span></code> and <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">std::array</span></code>.</p>
+<div class="section" id="example-usage">
+<h5>Example Usage<a class="headerlink" href="#example-usage" title="Permalink to this headline">¶</a></h5>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">from_vector</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span> <span class="n">vec</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">};</span>
+    <span class="n">py</span><span class="o">::</span><span class="n">array_view</span> <span class="n">view</span><span class="p">(</span><span class="n">vec</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">from_array</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">array</span> <span class="n">arr</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">};</span>
+    <span class="n">py</span><span class="o">::</span><span class="n">array_view</span> <span class="n">view</span><span class="p">(</span><span class="n">arr</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="low-level-constructor">
+<h4>Low Level Constructor<a class="headerlink" href="#low-level-constructor" title="Permalink to this headline">¶</a></h4>
+<p>If one wishes to construct a view from C++ directly, the most fundamental constructor takes the buffer as a <code class="docutils literal notranslate"><span class="pre">(const)</span> <span class="pre">std::byte*</span></code>, the shape array, and the strides array.
+It is the user’s responsibility to ensure that the buffer is compatible with the provided shape and strides, no checking will or can be done.</p>
+</div>
+<div class="section" id="from-buffer-like-objects">
+<h4>From Buffer-like Objects<a class="headerlink" href="#from-buffer-like-objects" title="Permalink to this headline">¶</a></h4>
+<p>To construct an array view from a Python object that exports the buffer protocol, like a <code class="xref py py-class docutils literal notranslate"><span class="pre">memoryview</span></code> or numpy array, there is a static member function <a class="reference internal" href="appendix.html#_CPPv4I0EN2py12ndarray_view20from_buffer_protocolENSt11enable_if_tIXneN2py13buffer_formatI1UEEc0ENSt5tupleI12ndarray_viewI1T4ndimEN2py6bufferEEEEEN2py12borrowed_refIEE" title="py::ndarray_view::from_buffer_protocol"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::from_buffer_protocol()</span></code></a>.
+Unlike a normal constructor, <a class="reference internal" href="appendix.html#_CPPv4I0EN2py12ndarray_view20from_buffer_protocolENSt11enable_if_tIXneN2py13buffer_formatI1UEEc0ENSt5tupleI12ndarray_viewI1T4ndimEN2py6bufferEEEEEN2py12borrowed_refIEE" title="py::ndarray_view::from_buffer_protocol"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::from_buffer_protocol()</span></code></a> returns a tuple of two parts: the array view instance and a <a class="reference internal" href="appendix.html#_CPPv4N2py6bufferE" title="py::buffer"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">py::buffer</span></code></a>.
+The <a class="reference internal" href="appendix.html#_CPPv4N2py6bufferE" title="py::buffer"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">py::buffer</span></code></a> is an RAII object which manages the lifetime of the underlying buffer which the view is over.
+The returned view is only valid as long as the paired <a class="reference internal" href="appendix.html#_CPPv4N2py6bufferE" title="py::buffer"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">py::buffer</span></code></a> is alive.
+Accessing through the view outside the lifetime of the :cpp:type:<a href="#id2"><span class="problematic" id="id3">`</span></a>py::buffer`c may trigger a use after free and is undefined behavior.</p>
+<p><a class="reference internal" href="appendix.html#_CPPv4I0EN2py12ndarray_view20from_buffer_protocolENSt11enable_if_tIXneN2py13buffer_formatI1UEEc0ENSt5tupleI12ndarray_viewI1T4ndimEN2py6bufferEEEEEN2py12borrowed_refIEE" title="py::ndarray_view::from_buffer_protocol"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::from_buffer_protocol()</span></code></a> will check that the runtime type of the Python buffer matches the static type of the C++ array view.
+<a class="reference internal" href="appendix.html#_CPPv4I0EN2py12ndarray_view20from_buffer_protocolENSt11enable_if_tIXneN2py13buffer_formatI1UEEc0ENSt5tupleI12ndarray_viewI1T4ndimEN2py6bufferEEEEEN2py12borrowed_refIEE" title="py::ndarray_view::from_buffer_protocol"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::from_buffer_protocol()</span></code></a> will also check that the runtime dimensionality of the Python buffer matches the static dimensionality of the C++ array view.</p>
+</div>
+<div class="section" id="virtual-array-views">
+<h4>Virtual Array Views<a class="headerlink" href="#virtual-array-views" title="Permalink to this headline">¶</a></h4>
+<p>A virtual array view is a scalar which is broadcasted to present as an array view.
+Concretely, a virtual array uses the <code class="docutils literal notranslate"><span class="pre">buffer</span></code> member to hold a pointer to a single value, and has strides of all zeros.
+By setting all of the strides to zero, this means that the single scalar can satisfy any shape.</p>
+<p>A virtual array view is useful when one must satisfy and interface that requires an array view but would like to pass a constant value.
+A virtual array view is considerably more efficient than allocating an array and filling it with a constant.
+No memory must be allocated, and each access will go to the same cache line.</p>
+<p>Because all elements of the view share the same underlying memory, mutable virtual arrays can have unexpected results.
+If any value in the array view is mutated, all of the elements would change.
+This can have unexpected consequences when passing the views to functions that are not prepared for that behavior.
+For this reason, it is recommended to only use const virtual array views.</p>
+<p>Virtual array views do not copy nor move from the element being viewed.
+For that reason, the view must not outlive the element being broadcasted.</p>
+<div class="section" id="id4">
+<h5>Example Usage<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h5>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Library code</span>
+
+<span class="cm">/** A function which adds two array views, storing the result in the first</span>
+<span class="cm">    array view.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">add_inplace</span><span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">array_view</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">a</span><span class="p">,</span> <span class="n">py</span><span class="o">::</span><span class="n">array_view</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">transform</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">cbegin</span><span class="p">(),</span> <span class="n">a</span><span class="p">.</span><span class="n">cend</span><span class="p">(),</span> <span class="n">b</span><span class="p">.</span><span class="n">cbegin</span><span class="p">(),</span> <span class="n">a</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">std</span><span class="o">::</span><span class="n">plus</span><span class="o">&lt;&gt;</span><span class="p">{});</span>
+<span class="p">}</span>
+
+<span class="c1">// User code</span>
+
+<span class="cm">/** The user defined function which wants to call `add_inplace` with a</span>
+<span class="cm">    scalar.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">f</span><span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">array_view</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">rhs</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="k">auto</span> <span class="n">rhs_view</span> <span class="o">=</span> <span class="n">py</span><span class="o">::</span><span class="n">array_view</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">int</span><span class="o">&gt;::</span><span class="n">virtual_array</span><span class="p">(</span><span class="n">rhs</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="n">shape</span><span class="p">());</span>
+
+    <span class="c1">// `rhs_view` points to the same data as `rhs`</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">rhs_view</span><span class="p">.</span><span class="n">buffer</span><span class="p">()</span> <span class="o">==</span> <span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">*&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rhs</span><span class="p">));</span>
+
+    <span class="n">add_inplace</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">rhs_view</span><span class="p">);</span>
+
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Here, it is critical not to use <code class="docutils literal notranslate"><span class="pre">rhs_view</span></code> after <code class="docutils literal notranslate"><span class="pre">rhs</span></code> has gone out of scope because the buffer points to the memory owned by <code class="docutils literal notranslate"><span class="pre">rhs</span></code>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="type-erased-views">
+<h2>Type Erased Views<a class="headerlink" href="#type-erased-views" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="appendix.html#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray_view</span></code></a> normally have a static type for the elements; however, Python users of numpy arrays might not always think of arrays in this way.
+Libpy currently only supports exporting a single overload of a function, so some functions which could be written generically need to have a single signature which can accept arrays of any type.
+In addition to the restriction of having a single overload exposed, for some functions, adding a lot of template expansions to have static types doesn’t meaningfully improve the performance to justify the increased compile times.</p>
+<p>To provide static type-erased values, there are types <a class="reference internal" href="appendix.html#_CPPv4N2py7any_refE" title="py::any_ref"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_ref</span></code></a> and <a class="reference internal" href="appendix.html#_CPPv4N2py8any_crefE" title="py::any_cref"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_cref</span></code></a>.
+<a class="reference internal" href="appendix.html#_CPPv4N2py7any_refE" title="py::any_ref"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_ref</span></code></a> values act like references, and <a class="reference internal" href="appendix.html#_CPPv4N2py8any_crefE" title="py::any_cref"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_cref</span></code></a> act like <code class="docutils literal notranslate"><span class="pre">const</span></code> references.
+Unlike a <code class="docutils literal notranslate"><span class="pre">void*</span></code>, <a class="reference internal" href="appendix.html#_CPPv4N2py7any_refE" title="py::any_ref"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_ref</span></code></a> and <a class="reference internal" href="appendix.html#_CPPv4N2py8any_crefE" title="py::any_cref"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_cref</span></code></a> hold a virtual method table which implements some basic functionality.
+The vtable for both type-erased reference types is a <a class="reference internal" href="appendix.html#_CPPv4N2py10any_vtableE" title="py::any_vtable"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_vtable</span></code></a>.
+<a class="reference internal" href="appendix.html#_CPPv4N2py10any_vtableE" title="py::any_vtable"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_vtable</span></code></a> supports constructing new values, copying, moving, checking equality, and getting the numpy dtype for the type.
+<a class="reference internal" href="appendix.html#_CPPv4N2py10any_vtableE" title="py::any_vtable"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_vtable</span></code></a> can also provide information about the type like the size and alignment.</p>
+<p><code class="docutils literal notranslate"><span class="pre">py::array_view&lt;py::any_ref&gt;</span></code> and <code class="docutils literal notranslate"><span class="pre">py::array_view&lt;py::any_cref&gt;</span></code> have more specific meaning than “view of an array of any ref objects”.
+Instead, <code class="docutils literal notranslate"><span class="pre">py::array_view&lt;py::any_ref&gt;</span></code> and <code class="docutils literal notranslate"><span class="pre">py::array_view&lt;py::any_cref&gt;</span></code> are always homogeneous, meaning all of the elements are the same type.
+<code class="docutils literal notranslate"><span class="pre">py::array_view&lt;py::any_ref&gt;</span></code> and <code class="docutils literal notranslate"><span class="pre">py::array_view&lt;py::any_cref&gt;</span></code> have the following members:</p>
+<ul class="simple">
+<li><p>shape :: <code class="docutils literal notranslate"><span class="pre">std::array&lt;std::size_t&gt;</span></code></p></li>
+<li><p>strides :: <code class="docutils literal notranslate"><span class="pre">std::array&lt;std::int64_t&gt;</span></code></p></li>
+<li><p>buffer :: <code class="docutils literal notranslate"><span class="pre">(const)</span> <span class="pre">std::byte*</span></code></p></li>
+<li><p>vtable :: <a class="reference internal" href="appendix.html#_CPPv4N2py10any_vtableE" title="py::any_vtable"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_vtable</span></code></a></p></li>
+</ul>
+<p>The shape and strides are the same as a normal <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::ndarray</span></code>.
+The buffer is now a pointer to an untyped block of data which should be interpreted based on the vtable.
+The vtable member encodes the type of the elements in the array and provides access to the operations on the elements.</p>
+<div class="section" id="type-casting">
+<h3>Type Casting<a class="headerlink" href="#type-casting" title="Permalink to this headline">¶</a></h3>
+<p>For performance reasons, it is still useful to convert to a statically typed array view sometimes.
+There is a <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">py::ndarray_view::cast()</span></code> template member function which</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="appendix.html" class="btn btn-neutral float-right" title="Appendix" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="tutorial/functions.html" class="btn btn-neutral float-left" title="Functions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Quantopian Inc.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

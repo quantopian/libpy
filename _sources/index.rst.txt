@@ -10,8 +10,10 @@ Welcome to libpy's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   tutorial
+   shock-and-awe
    install
+   tutorial
+   arrays
    appendix
 
 

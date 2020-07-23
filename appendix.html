@@ -36,7 +36,7 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Setup" href="install.html" /> 
+    <link rel="prev" title="Arrays" href="arrays.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -83,36 +83,43 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Shock and Awe </a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html#python-extensions">Python Extensions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shock-and-awe.html">Shock and Awe </a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Appendix</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#python-object-references">Python Object References</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-abi-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/abi.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-any-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-any-vector-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any_vector.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-autoclass-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autoclass.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-autofunction-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autofunction.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-borrowed-ref-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/borrowed_ref.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-buffer-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/buffer.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-build-tuple-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/build_tuple.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-call-function-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/call_function.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-char-sequence-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/char_sequence.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-datetime64-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/datetime64.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-demangle-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/demangle.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-dict-range-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/dict_range.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-exception-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/exception.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-from-object-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/from_object.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-getattr-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/getattr.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-gil-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/gil.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-hash-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/hash.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-itertools-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/itertools.h&gt;</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-meta-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/meta.h&gt;</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#op-operator-function-objects"><code class="docutils literal notranslate"><span class="pre">op</span></code> operator function objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#c">C++</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-abi-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/abi.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-any-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-any-vector-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any_vector.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-autoclass-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autoclass.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-autofunction-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autofunction.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-automodule-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/automodule.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-borrowed-ref-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/borrowed_ref.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-buffer-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/buffer.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-build-tuple-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/build_tuple.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-call-function-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/call_function.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-char-sequence-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/char_sequence.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-datetime64-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/datetime64.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-demangle-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/demangle.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-dict-range-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/dict_range.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-exception-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/exception.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-from-object-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/from_object.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-getattr-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/getattr.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-gil-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/gil.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-hash-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/hash.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-itertools-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/itertools.h&gt;</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-meta-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/meta.h&gt;</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#op-operator-function-objects"><code class="docutils literal notranslate"><span class="pre">op</span></code> operator function objects</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#libpy-ndarray-view-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/ndarray_view.h&gt;</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpy-ndarray-view-h"><code class="docutils literal notranslate"><span class="pre">&lt;libpy/ndarray_view.h&gt;</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#type-erased-views">Type Erased Views</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#python">Python</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#build">Build</a></li>
 </ul>
 </li>
 </ul>
@@ -184,197 +191,10 @@
             
   <div class="section" id="appendix">
 <h1>Appendix<a class="headerlink" href="#appendix" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="python-object-references">
-<h2>Python Object References<a class="headerlink" href="#python-object-references" title="Permalink to this headline">¶</a></h2>
-<dl class="cpp class">
-<dt id="_CPPv4I0EN2py9owned_refE">
-<span id="_CPPv3I0EN2py9owned_refE"></span><span id="_CPPv2I0EN2py9owned_refE"></span>template&lt;typename <code class="sig-name descname">T</code> = PyObject&gt;<br /><span class="target" id="classpy_1_1owned__ref"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">owned_ref</code><a class="headerlink" href="#_CPPv4I0EN2py9owned_refE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>A type that explicitly indicates that a Python object is an owned reference. This type should be used to hold Python objects in containers or local variables.</p>
-<p><code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1borrowed__ref"><span class="std std-ref"><span class="pre">py::borrowed_ref</span></span></a><span class="pre">&lt;&gt;</span></code> should be used instead of <code class="docutils literal notranslate"><span class="pre">PyObject*</span></code> wherever possible to avoid reference counting issues.</p>
-<p><dl class="simple">
-<dt><strong>Note</strong></dt><dd><p>An <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref"><span class="std std-ref"><span class="pre">owned_ref</span></span></a></code> may hold a value of <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>. </p>
-</dd>
-</dl>
-</p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric">Public Types</p>
-<dl class="cpp type">
-<dt id="_CPPv4N2py9owned_ref12element_typeE">
-<span id="_CPPv3N2py9owned_ref12element_typeE"></span><span id="_CPPv2N2py9owned_ref12element_typeE"></span><span class="target" id="classpy_1_1owned__ref_1ab884c95419c85b969aeff2d5ede0284d"></span><em class="property">using </em><code class="sig-name descname">element_type</code> = <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a><a class="headerlink" href="#_CPPv4N2py9owned_ref12element_typeE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>The type of the underlying pointer. </p>
-</dd></dl>
-
-</div>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric">Public Functions</p>
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_ref9owned_refEv">
-<span id="_CPPv3N2py9owned_ref9owned_refEv"></span><span id="_CPPv2N2py9owned_ref9owned_refEv"></span><span id="py::owned_ref::owned_refCE"></span><span class="target" id="classpy_1_1owned__ref_1a6eb5917f5cfa64833b16d37d22643a32"></span><em class="property">constexpr</em> <code class="sig-name descname">owned_ref</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_ref9owned_refEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Default construct an owned ref to a <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_ref9owned_refENSt9nullptr_tE">
-<span id="_CPPv3N2py9owned_ref9owned_refENSt9nullptr_tE"></span><span id="_CPPv2N2py9owned_ref9owned_refENSt9nullptr_tE"></span><span id="py::owned_ref::owned_ref__std::nullptr_tCE"></span><span class="target" id="classpy_1_1owned__ref_1a56da97ec7c5cad1418f7375851281579"></span><em class="property">constexpr</em> <code class="sig-name descname">owned_ref</code><span class="sig-paren">(</span>std::nullptr_t<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_ref9owned_refENSt9nullptr_tE" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_ref9owned_refEP1T">
-<span id="_CPPv3N2py9owned_ref9owned_refEP1T"></span><span id="_CPPv2N2py9owned_ref9owned_refEP1T"></span><span id="py::owned_ref::owned_ref__TPCE"></span><span class="target" id="classpy_1_1owned__ref_1a824802a10534b5016579c8351fc38dca"></span><em class="property">constexpr</em> <code class="sig-name descname">owned_ref</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a> *<em>ref</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_ref9owned_refEP1T" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Claim ownership of a new reference. <code class="docutils literal notranslate"><span class="pre">ref</span></code> should not be used outside of the <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref"><span class="std std-ref"><span class="pre">owned_ref</span></span></a></code>. This constructor should be used when calling CPython C API functions which return new references. For example:</p>
-<p><div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// PyDict_New() returns a new owned reference or nullptr on failure.</span>
-<span class="n">py</span><span class="o">::</span><span class="n">scoped_ref</span> <span class="n">ob</span><span class="p">{</span><span class="n">PyDict_New</span><span class="p">()};</span>
-<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">ob</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">throw</span> <span class="n">py</span><span class="o">::</span><span class="n">exception</span><span class="p">{};</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ref</span></code>: The reference to manage </p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_ref9owned_refERK9owned_ref">
-<span id="_CPPv3N2py9owned_ref9owned_refERK9owned_ref"></span><span id="_CPPv2N2py9owned_ref9owned_refERK9owned_ref"></span><span id="py::owned_ref::owned_ref__owned_refCRCE"></span><span class="target" id="classpy_1_1owned__ref_1ae254c82435c211afea01d0c1434ca85e"></span><em class="property">constexpr</em> <code class="sig-name descname">owned_ref</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N2py9owned_ref9owned_refERK9owned_ref" title="py::owned_ref::owned_ref">owned_ref</a> &amp;<em>cpfrom</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_ref9owned_refERK9owned_ref" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_ref9owned_refERR9owned_ref">
-<span id="_CPPv3N2py9owned_ref9owned_refERR9owned_ref"></span><span id="_CPPv2N2py9owned_ref9owned_refERR9owned_ref"></span><span id="py::owned_ref::owned_ref__owned_refRRCE"></span><span class="target" id="classpy_1_1owned__ref_1af887a4bdd06cc1b4b58aa09daf81d4ee"></span><em class="property">constexpr</em> <code class="sig-name descname">owned_ref</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2py9owned_ref9owned_refERR9owned_ref" title="py::owned_ref::owned_ref">owned_ref</a> &amp;&amp;<em>mvfrom</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N2py9owned_ref9owned_refERR9owned_ref" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_refaSERK9owned_ref">
-<span id="_CPPv3N2py9owned_refaSERK9owned_ref"></span><span id="_CPPv2N2py9owned_refaSERK9owned_ref"></span><span id="py::owned_ref::assign-operator__owned_refCRCE"></span><span class="target" id="classpy_1_1owned__ref_1a8362be80536ace55042a15abb59b7bc3"></span><em class="property">constexpr</em> <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> &amp;<em>cpfrom</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_refaSERK9owned_ref" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_refaSERR9owned_ref">
-<span id="_CPPv3N2py9owned_refaSERR9owned_ref"></span><span id="_CPPv2N2py9owned_refaSERR9owned_ref"></span><span id="py::owned_ref::assign-operator__owned_refRRCE"></span><span class="target" id="classpy_1_1owned__ref_1acd09d16e0d0b224995dc8850e96e7882"></span><em class="property">constexpr</em> <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> &amp;&amp;<em>mvfrom</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N2py9owned_refaSERR9owned_ref" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_refD0Ev">
-<span id="_CPPv3N2py9owned_refD0Ev"></span><span id="_CPPv2N2py9owned_refD0Ev"></span><span id="py::owned_ref::~owned_ref"></span><span class="target" id="classpy_1_1owned__ref_1a9bb59ea9723b64dcca0e0668e096787b"></span><code class="sig-name descname">~owned_ref</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_refD0Ev" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Decref the managed pointer if it is not <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NO2py9owned_ref6escapeEv">
-<span id="_CPPv3NO2py9owned_ref6escapeEv"></span><span id="_CPPv2NO2py9owned_ref6escapeEv"></span><span id="py::owned_ref::escapeO"></span><span class="target" id="classpy_1_1owned__ref_1a56d9614b8969860bdbdbb2abd3133276"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a> *<code class="sig-name descname">escape</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &amp;&amp;<a class="headerlink" href="#_CPPv4NO2py9owned_ref6escapeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Return the underlying pointer and invalidate the <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref"><span class="std std-ref"><span class="pre">owned_ref</span></span></a></code>.</p>
-<p>This allows the reference to “escape” the current scope.</p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>The underlying pointer. </p>
-</dd>
-<dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classpy_1_1owned__ref_1a7936492b714cb564136c4b58909ade0b"><span class="std std-ref">get</span></a> </p>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK2py9owned_ref3getEv">
-<span id="_CPPv3NK2py9owned_ref3getEv"></span><span id="_CPPv2NK2py9owned_ref3getEv"></span><span id="py::owned_ref::getCCE"></span><span class="target" id="classpy_1_1owned__ref_1a7936492b714cb564136c4b58909ade0b"></span><em class="property">constexpr</em> <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a> *<code class="sig-name descname">get</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py9owned_ref3getEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Get the underlying managed pointer.</p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>The pointer managed by this <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref"><span class="std std-ref"><span class="pre">owned_ref</span></span></a></code>. </p>
-</dd>
-<dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classpy_1_1owned__ref_1a56d9614b8969860bdbdbb2abd3133276"><span class="std std-ref">escape</span></a> </p>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK2py9owned_refcvP1TEv">
-<span id="_CPPv3NK2py9owned_refcvP1TEv"></span><span id="_CPPv2NK2py9owned_refcvP1TEv"></span><span id="py::owned_ref::castto-TP-operatorC"></span><span class="target" id="classpy_1_1owned__ref_1aef2925b167898f1a209acacdeb0791be"></span><code class="sig-name descname">operator T*</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py9owned_refcvP1TEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4I00ENK2py9owned_refcvP8PyObjectEv">
-<span id="_CPPv3I00ENK2py9owned_refcvP8PyObjectEv"></span><span id="_CPPv2I00ENK2py9owned_refcvP8PyObjectEv"></span>template&lt;typename <code class="sig-name descname">U</code> = <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a>, typename = std::enable_if_t&lt;!std::is_same&lt;<a class="reference internal" href="#_CPPv4I00ENK2py9owned_refcvP8PyObjectEv" title="py::owned_ref::operator PyObject*::U">U</a>, PyObject&gt;::value&gt;&gt;<br /><span class="target" id="classpy_1_1owned__ref_1a0d1467807ff01634d048957eeec2271a"></span><code class="sig-name descname">operator PyObject*</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4I00ENK2py9owned_refcvP8PyObjectEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK2py9owned_refmlEv">
-<span id="_CPPv3NK2py9owned_refmlEv"></span><span id="_CPPv2NK2py9owned_refmlEv"></span><span id="py::owned_ref::mul-operatorC"></span><span class="target" id="classpy_1_1owned__ref_1aaad804c610080d8e0fa87ba73c1c4ecf"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a> &amp;<code class="sig-name descname">operator*</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py9owned_refmlEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK2py9owned_refptEv">
-<span id="_CPPv3NK2py9owned_refptEv"></span><span id="_CPPv2NK2py9owned_refptEv"></span><span id="py::owned_ref::pointer-operatorC"></span><span class="target" id="classpy_1_1owned__ref_1a5ff0c93107bde6551f8d9adb34f8c9ba"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a> *<code class="sig-name descname">operator-&gt;</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py9owned_refptEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK2py9owned_refcvbEv">
-<span id="_CPPv3NK2py9owned_refcvbEv"></span><span id="_CPPv2NK2py9owned_refcvbEv"></span><span id="py::owned_ref::castto-b-operatorC"></span><span class="target" id="classpy_1_1owned__ref_1ab9daeab58e7b852ff7592acf1eaac779"></span><code class="sig-name descname">operator bool</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py9owned_refcvbEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Returns True if the underlying pointer is non-null. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK2py9owned_refeqEN2py12borrowed_refI1TEE">
-<span id="_CPPv3NK2py9owned_refeqEN2py12borrowed_refI1TEE"></span><span id="_CPPv2NK2py9owned_refeqEN2py12borrowed_refI1TEE"></span><span id="py::owned_ref::eq-operator__py::borrowed_ref:T:C"></span><span class="target" id="classpy_1_1owned__ref_1a8ddfa5a3e5066d613f213510b662642d"></span>bool <code class="sig-name descname">operator==</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a>&gt; <em>other</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py9owned_refeqEN2py12borrowed_refI1TEE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Object identity comparison.</p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref_1a7936492b714cb564136c4b58909ade0b"><span class="std std-ref"><span class="pre">get()</span></span></a> <span class="pre">==</span> <span class="pre">other.get()</span></code>. </p>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4NK2py9owned_refneEN2py12borrowed_refI1TEE">
-<span id="_CPPv3NK2py9owned_refneEN2py12borrowed_refI1TEE"></span><span id="_CPPv2NK2py9owned_refneEN2py12borrowed_refI1TEE"></span><span id="py::owned_ref::neq-operator__py::borrowed_ref:T:C"></span><span class="target" id="classpy_1_1owned__ref_1a17ed0d02c2a20844c0363dfabb41309a"></span>bool <code class="sig-name descname">operator!=</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a>&gt; <em>other</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py9owned_refneEN2py12borrowed_refI1TEE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Object identity comparison.</p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref_1a7936492b714cb564136c4b58909ade0b"><span class="std std-ref"><span class="pre">get()</span></span></a> <span class="pre">!=</span> <span class="pre">other.get()</span></code>. </p>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-</div>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_ref13new_referenceEN2py12borrowed_refI1TEE">
-<span id="_CPPv3N2py9owned_ref13new_referenceEN2py12borrowed_refI1TEE"></span><span id="_CPPv2N2py9owned_ref13new_referenceEN2py12borrowed_refI1TEE"></span><span id="py::owned_ref::new_reference__py::borrowed_ref:T:CE"></span><span class="target" id="classpy_1_1owned__ref_1a44586032bf0c21cbc820eefb2129410d"></span><em class="property">constexpr</em> <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-name descname">new_reference</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a>&gt; <em>ref</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_ref13new_referenceEN2py12borrowed_refI1TEE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Create a scoped ref that is a new reference to <code class="docutils literal notranslate"><span class="pre">ref</span></code>.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ref</span></code>: The Python object to create a new managed reference to. </p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt id="_CPPv4N2py9owned_ref14xnew_referenceEN2py12borrowed_refI1TEE">
-<span id="_CPPv3N2py9owned_ref14xnew_referenceEN2py12borrowed_refI1TEE"></span><span id="_CPPv2N2py9owned_ref14xnew_referenceEN2py12borrowed_refI1TEE"></span><span id="py::owned_ref::xnew_reference__py::borrowed_ref:T:CE"></span><span class="target" id="classpy_1_1owned__ref_1ad1c6ec99bb5ecce65007dadd9192c0a7"></span><em class="property">constexpr</em> <a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-name descname">xnew_reference</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref::T">T</a>&gt; <em>ref</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9owned_ref14xnew_referenceEN2py12borrowed_refI1TEE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Create a scoped ref that is a new reference to <code class="docutils literal notranslate"><span class="pre">ref</span></code> if <code class="docutils literal notranslate"><span class="pre">ref</span></code> is non-null.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ref</span></code>: The Python object to create a new managed reference to. If <code class="docutils literal notranslate"><span class="pre">ref</span></code> is <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>, then the resulting object just holds <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> also. </p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-</div>
-</dd></dl>
-
-</div>
+<div class="section" id="c">
+<h2>C++<a class="headerlink" href="#c" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="libpy-abi-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/abi.h&gt;</span></code><a class="headerlink" href="#libpy-abi-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/abi.h&gt;</span></code><a class="headerlink" href="#libpy-abi-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp struct">
 <dt id="_CPPv4N2py3abi11abi_versionE">
 <span id="_CPPv3N2py3abi11abi_versionE"></span><span id="_CPPv2N2py3abi11abi_versionE"></span><span id="py::abi::abi_version"></span><span class="target" id="structpy_1_1abi_1_1abi__version"></span><em class="property">struct </em><code class="sig-name descname">abi_version</code><a class="headerlink" href="#_CPPv4N2py3abi11abi_versionE" title="Permalink to this definition">¶</a><br /></dt>
@@ -419,7 +239,7 @@
 
 </div>
 <div class="section" id="libpy-any-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any.h&gt;</span></code><a class="headerlink" href="#libpy-any-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any.h&gt;</span></code><a class="headerlink" href="#libpy-any-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp class">
 <dt id="_CPPv4N2py10any_vtableE">
 <span id="_CPPv3N2py10any_vtableE"></span><span id="_CPPv2N2py10any_vtableE"></span><span id="py::any_vtable"></span><span class="target" id="classpy_1_1any__vtable"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">any_vtable</code><a class="headerlink" href="#_CPPv4N2py10any_vtableE" title="Permalink to this definition">¶</a><br /></dt>
@@ -530,12 +350,12 @@
 
 <dl class="cpp function">
 <dt id="_CPPv4NK2py10any_vtable9to_objectEPKv">
-<span id="_CPPv3NK2py10any_vtable9to_objectEPKv"></span><span id="_CPPv2NK2py10any_vtable9to_objectEPKv"></span><span id="py::any_vtable::to_object__voidCPC"></span><span class="target" id="classpy_1_1any__vtable_1af14b1c2f2a924cfcc9ba9a17d2382fc8"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-name descname">to_object</code><span class="sig-paren">(</span><em class="property">const</em> void *<em>addr</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py10any_vtable9to_objectEPKv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3NK2py10any_vtable9to_objectEPKv"></span><span id="_CPPv2NK2py10any_vtable9to_objectEPKv"></span><span id="py::any_vtable::to_object__voidCPC"></span><span class="target" id="classpy_1_1any__vtable_1af14b1c2f2a924cfcc9ba9a17d2382fc8"></span>owned_ref <code class="sig-name descname">to_object</code><span class="sig-paren">(</span><em class="property">const</em> void *<em>addr</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py10any_vtable9to_objectEPKv" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4NK2py10any_vtable9new_dtypeEv">
-<span id="_CPPv3NK2py10any_vtable9new_dtypeEv"></span><span id="_CPPv2NK2py10any_vtable9new_dtypeEv"></span><span id="py::any_vtable::new_dtypeC"></span><span class="target" id="classpy_1_1any__vtable_1a7b181ec3ff2cd9a11c3244bfbae16005"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;PyArray_Descr&gt; <code class="sig-name descname">new_dtype</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py10any_vtable9new_dtypeEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3NK2py10any_vtable9new_dtypeEv"></span><span id="_CPPv2NK2py10any_vtable9new_dtypeEv"></span><span id="py::any_vtable::new_dtypeC"></span><span class="target" id="classpy_1_1any__vtable_1a7b181ec3ff2cd9a11c3244bfbae16005"></span>owned_ref&lt;PyArray_Descr&gt; <code class="sig-name descname">new_dtype</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py10any_vtable9new_dtypeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp function">
@@ -800,7 +620,7 @@
 
 </div>
 <div class="section" id="libpy-any-vector-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any_vector.h&gt;</span></code><a class="headerlink" href="#libpy-any-vector-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/any_vector.h&gt;</span></code><a class="headerlink" href="#libpy-any-vector-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp class">
 <dt id="_CPPv4N2py10any_vectorE">
 <span id="_CPPv3N2py10any_vectorE"></span><span id="_CPPv2N2py10any_vectorE"></span><span id="py::any_vector"></span><span class="target" id="classpy_1_1any__vector"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">any_vector</code><a class="headerlink" href="#_CPPv4N2py10any_vectorE" title="Permalink to this definition">¶</a><br /></dt>
@@ -1183,7 +1003,7 @@
 
 </div>
 <div class="section" id="libpy-autoclass-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autoclass.h&gt;</span></code><a class="headerlink" href="#libpy-autoclass-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autoclass.h&gt;</span></code><a class="headerlink" href="#libpy-autoclass-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp struct">
 <dt id="_CPPv4I00_Da_DaEN2py9autoclassE">
 <span id="_CPPv3I00_Da_DaEN2py9autoclassE"></span><span id="_CPPv2I00_Da_DaEN2py9autoclassE"></span>template&lt;typename <code class="sig-name descname">T</code>, typename <code class="sig-name descname">base</code>, auto <code class="sig-name descname">initialize_base</code>, auto <code class="sig-name descname">clear_base</code>&gt;<br /><span class="target" id="structpy_1_1autoclass"></span><em class="property">struct </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">autoclass</code> : <em class="property">public</em> py::detail::autoclass_impl&lt;<a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass">autoclass</a>&lt;<a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::T">T</a>, <a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::base">base</a>, <a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::initialize_base">initialize_base</a>, <a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::clear_base">clear_base</a>&gt;, <a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::T">T</a>, detail::autoclass_object&lt;<a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::T">T</a>, <a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::base">base</a>&gt;, <a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::initialize_base">initialize_base</a>, <a class="reference internal" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="py::autoclass::clear_base">clear_base</a>&gt;<a class="headerlink" href="#_CPPv4I00_Da_DaEN2py9autoclassE" title="Permalink to this definition">¶</a><br /></dt>
@@ -1468,7 +1288,7 @@
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py9autoclass4typeEv">
-<span id="_CPPv3N2py9autoclass4typeEv"></span><span id="_CPPv2N2py9autoclass4typeEv"></span><span id="py::autoclass::type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a25dd05b98b9e2ea09552a8096897d8ba"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;PyTypeObject&gt; <code class="sig-name descname">type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9autoclass4typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py9autoclass4typeEv"></span><span id="_CPPv2N2py9autoclass4typeEv"></span><span id="py::autoclass::type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a25dd05b98b9e2ea09552a8096897d8ba"></span>owned_ref&lt;PyTypeObject&gt; <code class="sig-name descname">type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9autoclass4typeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get a reference to the Python type that represents a boxed <code class="docutils literal notranslate"><span class="pre">T</span></code>.</p>
 <p>This function always returns a non-null pointer, but may throw an exception.</p>
 <p><dl class="simple">
@@ -1483,7 +1303,7 @@
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="cpp function">
 <dt id="_CPPv4N2py9autoclass11lookup_typeEv">
-<span id="_CPPv3N2py9autoclass11lookup_typeEv"></span><span id="_CPPv2N2py9autoclass11lookup_typeEv"></span><span id="py::autoclass::lookup_type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a957a67ba23c35f57cf084acb0c81765d"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;PyTypeObject&gt; <code class="sig-name descname">lookup_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9autoclass11lookup_typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py9autoclass11lookup_typeEv"></span><span id="_CPPv2N2py9autoclass11lookup_typeEv"></span><span id="py::autoclass::lookup_type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a957a67ba23c35f57cf084acb0c81765d"></span>py::owned_ref&lt;PyTypeObject&gt; <code class="sig-name descname">lookup_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9autoclass11lookup_typeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Look up an already created type.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>The already created type, or <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> if the type wasn’t yet created. </p>
@@ -1494,7 +1314,7 @@
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py9autoclass9constructEDpRR4Args">
-<span id="_CPPv3N2py9autoclass9constructEDpRR4Args"></span><span id="_CPPv2N2py9autoclass9constructEDpRR4Args"></span><span id="py::autoclass::construct__ArgsRRDp"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a9d1ccc41f4aae6f2cd21ea5245553c53"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-name descname">construct</code><span class="sig-paren">(</span>Args&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9autoclass9constructEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py9autoclass9constructEDpRR4Args"></span><span id="_CPPv2N2py9autoclass9constructEDpRR4Args"></span><span id="py::autoclass::construct__ArgsRRDp"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a9d1ccc41f4aae6f2cd21ea5245553c53"></span>py::owned_ref <code class="sig-name descname">construct</code><span class="sig-paren">(</span>Args&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py9autoclass9constructEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Construct a new Python object that wraps a <code class="docutils literal notranslate"><span class="pre">T</span></code> without boxing/unboxing the constructor arguments.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>A new reference to a Python wrapped version of <code class="docutils literal notranslate"><span class="pre">T</span></code>, or nullptr on failure. </p>
@@ -1830,7 +1650,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py19autoclass_interface4typeEv">
-<span id="_CPPv3N2py19autoclass_interface4typeEv"></span><span id="_CPPv2N2py19autoclass_interface4typeEv"></span><span id="py::autoclass_interface::type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a25dd05b98b9e2ea09552a8096897d8ba"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;PyTypeObject&gt; <code class="sig-name descname">type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py19autoclass_interface4typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py19autoclass_interface4typeEv"></span><span id="_CPPv2N2py19autoclass_interface4typeEv"></span><span id="py::autoclass_interface::type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a25dd05b98b9e2ea09552a8096897d8ba"></span>owned_ref&lt;PyTypeObject&gt; <code class="sig-name descname">type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py19autoclass_interface4typeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get a reference to the Python type that represents a boxed <code class="docutils literal notranslate"><span class="pre">T</span></code>.</p>
 <p>This function always returns a non-null pointer, but may throw an exception.</p>
 <p><dl class="simple">
@@ -1845,7 +1665,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="cpp function">
 <dt id="_CPPv4N2py19autoclass_interface11lookup_typeEv">
-<span id="_CPPv3N2py19autoclass_interface11lookup_typeEv"></span><span id="_CPPv2N2py19autoclass_interface11lookup_typeEv"></span><span id="py::autoclass_interface::lookup_type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a957a67ba23c35f57cf084acb0c81765d"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;PyTypeObject&gt; <code class="sig-name descname">lookup_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py19autoclass_interface11lookup_typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py19autoclass_interface11lookup_typeEv"></span><span id="_CPPv2N2py19autoclass_interface11lookup_typeEv"></span><span id="py::autoclass_interface::lookup_type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a957a67ba23c35f57cf084acb0c81765d"></span>py::owned_ref&lt;PyTypeObject&gt; <code class="sig-name descname">lookup_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py19autoclass_interface11lookup_typeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Look up an already created type.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>The already created type, or <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> if the type wasn’t yet created. </p>
@@ -1856,7 +1676,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py19autoclass_interface9constructEDpRR4Args">
-<span id="_CPPv3N2py19autoclass_interface9constructEDpRR4Args"></span><span id="_CPPv2N2py19autoclass_interface9constructEDpRR4Args"></span><span id="py::autoclass_interface::construct__ArgsRRDp"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a9d1ccc41f4aae6f2cd21ea5245553c53"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-name descname">construct</code><span class="sig-paren">(</span>Args&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py19autoclass_interface9constructEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py19autoclass_interface9constructEDpRR4Args"></span><span id="_CPPv2N2py19autoclass_interface9constructEDpRR4Args"></span><span id="py::autoclass_interface::construct__ArgsRRDp"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a9d1ccc41f4aae6f2cd21ea5245553c53"></span>py::owned_ref <code class="sig-name descname">construct</code><span class="sig-paren">(</span>Args&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py19autoclass_interface9constructEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Construct a new Python object that wraps a <code class="docutils literal notranslate"><span class="pre">T</span></code> without boxing/unboxing the constructor arguments.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>A new reference to a Python wrapped version of <code class="docutils literal notranslate"><span class="pre">T</span></code>, or nullptr on failure. </p>
@@ -2127,7 +1947,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py28autoclass_interface_instance4typeEv">
-<span id="_CPPv3N2py28autoclass_interface_instance4typeEv"></span><span id="_CPPv2N2py28autoclass_interface_instance4typeEv"></span><span id="py::autoclass_interface_instance::type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a25dd05b98b9e2ea09552a8096897d8ba"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;PyTypeObject&gt; <code class="sig-name descname">type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py28autoclass_interface_instance4typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py28autoclass_interface_instance4typeEv"></span><span id="_CPPv2N2py28autoclass_interface_instance4typeEv"></span><span id="py::autoclass_interface_instance::type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a25dd05b98b9e2ea09552a8096897d8ba"></span>owned_ref&lt;PyTypeObject&gt; <code class="sig-name descname">type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py28autoclass_interface_instance4typeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get a reference to the Python type that represents a boxed <code class="docutils literal notranslate"><span class="pre">T</span></code>.</p>
 <p>This function always returns a non-null pointer, but may throw an exception.</p>
 <p><dl class="simple">
@@ -2142,7 +1962,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="cpp function">
 <dt id="_CPPv4N2py28autoclass_interface_instance11lookup_typeEv">
-<span id="_CPPv3N2py28autoclass_interface_instance11lookup_typeEv"></span><span id="_CPPv2N2py28autoclass_interface_instance11lookup_typeEv"></span><span id="py::autoclass_interface_instance::lookup_type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a957a67ba23c35f57cf084acb0c81765d"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;PyTypeObject&gt; <code class="sig-name descname">lookup_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py28autoclass_interface_instance11lookup_typeEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py28autoclass_interface_instance11lookup_typeEv"></span><span id="_CPPv2N2py28autoclass_interface_instance11lookup_typeEv"></span><span id="py::autoclass_interface_instance::lookup_type"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a957a67ba23c35f57cf084acb0c81765d"></span>py::owned_ref&lt;PyTypeObject&gt; <code class="sig-name descname">lookup_type</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py28autoclass_interface_instance11lookup_typeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Look up an already created type.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>The already created type, or <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> if the type wasn’t yet created. </p>
@@ -2153,7 +1973,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py28autoclass_interface_instance9constructEDpRR4Args">
-<span id="_CPPv3N2py28autoclass_interface_instance9constructEDpRR4Args"></span><span id="_CPPv2N2py28autoclass_interface_instance9constructEDpRR4Args"></span><span id="py::autoclass_interface_instance::construct__ArgsRRDp"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a9d1ccc41f4aae6f2cd21ea5245553c53"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-name descname">construct</code><span class="sig-paren">(</span>Args&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py28autoclass_interface_instance9constructEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py28autoclass_interface_instance9constructEDpRR4Args"></span><span id="_CPPv2N2py28autoclass_interface_instance9constructEDpRR4Args"></span><span id="py::autoclass_interface_instance::construct__ArgsRRDp"></span><span class="target" id="classpy_1_1detail_1_1autoclass__impl_1a9d1ccc41f4aae6f2cd21ea5245553c53"></span>py::owned_ref <code class="sig-name descname">construct</code><span class="sig-paren">(</span>Args&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py28autoclass_interface_instance9constructEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Construct a new Python object that wraps a <code class="docutils literal notranslate"><span class="pre">T</span></code> without boxing/unboxing the constructor arguments.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>A new reference to a Python wrapped version of <code class="docutils literal notranslate"><span class="pre">T</span></code>, or nullptr on failure. </p>
@@ -2186,7 +2006,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 
 </div>
 <div class="section" id="libpy-autofunction-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autofunction.h&gt;</span></code><a class="headerlink" href="#libpy-autofunction-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/autofunction.h&gt;</span></code><a class="headerlink" href="#libpy-autofunction-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc">
 <span id="_CPPv3I_Da_iEN2py12autofunctionEPCKcPCKc"></span><span id="_CPPv2I_Da_iEN2py12autofunctionEPCKcPCKc"></span>template&lt;auto <code class="sig-name descname">impl</code>, int <code class="sig-name descname">flags</code> = 0&gt;<br /><span class="target" id="namespacepy_1af7eabfa4eb937eafc451f69f86c8c84f"></span><em class="property">constexpr</em> PyMethodDef <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">autofunction</code><span class="sig-paren">(</span><em class="property">const</em> char *<em class="property">const</em> <em>name</em>, <em class="property">const</em> char *<em class="property">const</em> <em>doc</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I_Da_iEN2py12autofunctionE11PyMethodDefPCKcPCKc" title="Permalink to this definition">¶</a><br /></dt>
@@ -2393,18 +2213,48 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 </dd></dl>
 
 </div>
+<div class="section" id="libpy-automodule-h">
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/automodule.h&gt;</span></code><a class="headerlink" href="#libpy-automodule-h" title="Permalink to this headline">¶</a></h3>
+<dl class="cpp macro">
+<dt id="c.LIBPY_AUTOMODULE">
+<span class="target" id="automodule_8h_1a91481c3dc38bad442217766555b7b25f"></span><code class="sig-name descname">LIBPY_AUTOMODULE</code><span class="sig-paren">(</span><em>parent</em>, <em>name</em>, <em>methods</em><span class="sig-paren">)</span><a class="headerlink" href="#c.LIBPY_AUTOMODULE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Define a Python module.</p>
+<p>For example, to create a module <code class="docutils literal notranslate"><span class="pre">my_package.submodule.my_module</span></code> with two functions <code class="docutils literal notranslate"><span class="pre">f</span></code> and <code class="docutils literal notranslate"><span class="pre">g</span></code> and one type <code class="docutils literal notranslate"><span class="pre">T</span></code>:</p>
+<p><div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">LIBPY_AUTOMODULE</span><span class="p">(</span><span class="n">my_package</span><span class="p">.</span><span class="n">submodule</span><span class="p">,</span>
+                 <span class="n">my_module</span><span class="p">,</span>
+                 <span class="p">({</span><span class="n">py</span><span class="o">::</span><span class="n">autofunction</span><span class="o">&lt;</span><span class="n">f</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;f&quot;</span><span class="p">),</span>
+                   <span class="n">py</span><span class="o">::</span><span class="n">autofunction</span><span class="o">&lt;</span><span class="n">g</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;g&quot;</span><span class="p">)}))</span>
+<span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">borrowed_ref</span><span class="o">&lt;&gt;</span> <span class="n">m</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">py</span><span class="o">::</span><span class="n">borrowed_ref</span> <span class="n">t</span> <span class="o">=</span> <span class="n">py</span><span class="o">::</span><span class="n">autoclass</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;T&quot;</span><span class="p">).</span><span class="n">new_</span><span class="p">().</span><span class="n">type</span><span class="p">();</span>
+    <span class="k">return</span> <span class="nf">PyObject_SetAttrString</span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span> <span class="s">&quot;T&quot;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">PyObject</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="simple">
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">parent</span></code>: A symbol indicating the parent module. </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>: The leaf name of the module. </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">methods</span></code>: <code class="docutils literal notranslate"><span class="pre">({...})</span></code> list of objects representing the functions to add to the module. Note this list must be surrounded by parentheses. </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
 <div class="section" id="libpy-borrowed-ref-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/borrowed_ref.h&gt;</span></code><a class="headerlink" href="#libpy-borrowed-ref-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/borrowed_ref.h&gt;</span></code><a class="headerlink" href="#libpy-borrowed-ref-h" title="Permalink to this headline">¶</a></h3>
 <blockquote>
 <div><dl class="cpp class">
 <dt id="_CPPv4I0EN2py12borrowed_refE">
 <span id="_CPPv3I0EN2py12borrowed_refE"></span><span id="_CPPv2I0EN2py12borrowed_refE"></span>template&lt;typename <code class="sig-name descname">T</code> = PyObject&gt;<br /><span class="target" id="classpy_1_1borrowed__ref"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">borrowed_ref</code><a class="headerlink" href="#_CPPv4I0EN2py12borrowed_refE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>A type that explicitly indicates that a Python object is a borrowed reference. This is implicitly convertible from a regular <code class="docutils literal notranslate"><span class="pre">PyObject*</span></code> or a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref"><span class="std std-ref"><span class="pre">py::owned_ref</span></span></a></code>. This type should be used to accept Python object parameters like:</p>
+<dd><p>A type that explicitly indicates that a Python object is a borrowed reference. This is implicitly convertible from a regular <code class="docutils literal notranslate"><span class="pre">PyObject*</span></code> or a <code class="docutils literal notranslate"><span class="pre">py::owned_ref</span></code>. This type should be used to accept Python object parameters like:</p>
 <p><div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">f</span><span class="p">(</span><span class="n">py</span><span class="o">::</span><span class="n">borrowed_ref</span><span class="o">&lt;&gt;</span> <span class="n">a</span><span class="p">,</span> <span class="n">py</span><span class="o">::</span><span class="n">borrowed_ref</span><span class="o">&lt;&gt;</span> <span class="n">b</span><span class="p">);</span>
 </pre></div>
 </div>
 </p>
-<p>This allows calling this function with a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1owned__ref"><span class="std std-ref"><span class="pre">py::owned_ref</span></span></a></code>, <code class="docutils literal notranslate"><span class="pre">PyObject*</span></code>, or a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1borrowed__ref"><span class="std std-ref"><span class="pre">py::borrowed_ref</span></span></a></code>.</p>
+<p>This allows calling this function with a <code class="docutils literal notranslate"><span class="pre">py::owned_ref</span></code>, <code class="docutils literal notranslate"><span class="pre">PyObject*</span></code>, or a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1borrowed__ref"><span class="std std-ref"><span class="pre">py::borrowed_ref</span></span></a></code>.</p>
 <p><code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1borrowed__ref"><span class="std std-ref"><span class="pre">py::borrowed_ref</span></span></a><span class="pre">&lt;&gt;</span></code> should be used instead of <code class="docutils literal notranslate"><span class="pre">PyObject*</span></code> wherever possible to avoid ambiguity.</p>
 <p><dl class="simple">
 <dt><strong>Note</strong></dt><dd><p>A <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1borrowed__ref"><span class="std std-ref"><span class="pre">borrowed_ref</span></span></a></code> may hold a value of <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>. </p>
@@ -2440,7 +2290,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py12borrowed_ref12borrowed_refERKN2py9owned_refI1TEE">
-<span id="_CPPv3N2py12borrowed_ref12borrowed_refERKN2py9owned_refI1TEE"></span><span id="_CPPv2N2py12borrowed_ref12borrowed_refERKN2py9owned_refI1TEE"></span><span id="py::borrowed_ref::borrowed_ref__py::owned_ref:T:CRCE"></span><span class="target" id="classpy_1_1borrowed__ref_1a0c6d5fcc57e233316a7c69e90c10d80e"></span><em class="property">constexpr</em> <code class="sig-name descname">borrowed_ref</code><span class="sig-paren">(</span><em class="property">const</em> py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a>&lt;<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref::T">T</a>&gt; &amp;<em>ref</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py12borrowed_ref12borrowed_refERKN2py9owned_refI1TEE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py12borrowed_ref12borrowed_refERKN2py9owned_refI1TEE"></span><span id="_CPPv2N2py12borrowed_ref12borrowed_refERKN2py9owned_refI1TEE"></span><span id="py::borrowed_ref::borrowed_ref__py::owned_ref:T:CRCE"></span><span class="target" id="classpy_1_1borrowed__ref_1a0c6d5fcc57e233316a7c69e90c10d80e"></span><em class="property">constexpr</em> <code class="sig-name descname">borrowed_ref</code><span class="sig-paren">(</span><em class="property">const</em> py::owned_ref&lt;<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref::T">T</a>&gt; &amp;<em>ref</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py12borrowed_ref12borrowed_refERKN2py9owned_refI1TEE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp function">
@@ -2517,7 +2367,7 @@ which_f(b)  # b&#39;called: concrete_b::f() state&#39;
 </div></blockquote>
 </div>
 <div class="section" id="libpy-buffer-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/buffer.h&gt;</span></code><a class="headerlink" href="#libpy-buffer-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/buffer.h&gt;</span></code><a class="headerlink" href="#libpy-buffer-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp type">
 <dt id="_CPPv4N2py6bufferE">
 <span id="_CPPv3N2py6bufferE"></span><span id="_CPPv2N2py6bufferE"></span><span class="target" id="namespacepy_1a7926f9b2214eaa4ffcf1aecc8a47076e"></span><em class="property">using </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">buffer</code> = std::unique_ptr&lt;Py_buffer, detail::buffer_free&gt;<a class="headerlink" href="#_CPPv4N2py6bufferE" title="Permalink to this definition">¶</a><br /></dt>
@@ -2572,10 +2422,10 @@ Potential matches:
 </div>
 </div>
 <div class="section" id="libpy-build-tuple-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/build_tuple.h&gt;</span></code><a class="headerlink" href="#libpy-build-tuple-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/build_tuple.h&gt;</span></code><a class="headerlink" href="#libpy-build-tuple-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4IDpEN2py11build_tupleEN2py9owned_refEDpRK4Args">
-<span id="_CPPv3IDpEN2py11build_tupleEDpRK4Args"></span><span id="_CPPv2IDpEN2py11build_tupleEDpRK4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1a3f73b9946a788fd19254678a32467008"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">build_tuple</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4IDpEN2py11build_tupleEN2py9owned_refEDpRK4Args" title="py::build_tuple::Args">Args</a>&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py11build_tupleEN2py9owned_refEDpRK4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3IDpEN2py11build_tupleEDpRK4Args"></span><span id="_CPPv2IDpEN2py11build_tupleEDpRK4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1a3f73b9946a788fd19254678a32467008"></span>py::owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">build_tuple</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4IDpEN2py11build_tupleEN2py9owned_refEDpRK4Args" title="py::build_tuple::Args">Args</a>&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py11build_tupleEN2py9owned_refEDpRK4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Build a Python tuple from a variadic amount of arguments.</p>
 <p>All parameters are adapted using <code class="docutils literal notranslate"><span class="pre">py::to_object</span></code>.</p>
 <p><dl class="simple">
@@ -2593,10 +2443,10 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-call-function-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/call_function.h&gt;</span></code><a class="headerlink" href="#libpy-call-function-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/call_function.h&gt;</span></code><a class="headerlink" href="#libpy-call-function-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4IDpEN2py13call_functionE9owned_refN2py12borrowed_refIEEDpRR4Args">
-<span id="_CPPv3IDpEN2py13call_functionEN2py12borrowed_refIEEDpRR4Args"></span><span id="_CPPv2IDpEN2py13call_functionEN2py12borrowed_refIEEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1af781d65ab9cd62fb759d5531cbc8521b"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_function</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>function</em>, <a class="reference internal" href="#_CPPv4IDpEN2py13call_functionE9owned_refN2py12borrowed_refIEEDpRR4Args" title="py::call_function::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py13call_functionE9owned_refN2py12borrowed_refIEEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3IDpEN2py13call_functionEN2py12borrowed_refIEEDpRR4Args"></span><span id="_CPPv2IDpEN2py13call_functionEN2py12borrowed_refIEEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1af781d65ab9cd62fb759d5531cbc8521b"></span>owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_function</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>function</em>, <a class="reference internal" href="#_CPPv4IDpEN2py13call_functionE9owned_refN2py12borrowed_refIEEDpRR4Args" title="py::call_function::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py13call_functionE9owned_refN2py12borrowed_refIEEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Call a python function on C++ data.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>The result of the function call or nullptr if an error occurred. </p>
@@ -2612,7 +2462,7 @@ Potential matches:
 
 <dl class="cpp function">
 <dt id="_CPPv4IDpEN2py20call_function_throwsE9owned_refN2py12borrowed_refIEEDpRR4Args">
-<span id="_CPPv3IDpEN2py20call_function_throwsEN2py12borrowed_refIEEDpRR4Args"></span><span id="_CPPv2IDpEN2py20call_function_throwsEN2py12borrowed_refIEEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1aa69dcdb697dd5afac078ccc365bdd733"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_function_throws</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>function</em>, <a class="reference internal" href="#_CPPv4IDpEN2py20call_function_throwsE9owned_refN2py12borrowed_refIEEDpRR4Args" title="py::call_function_throws::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py20call_function_throwsE9owned_refN2py12borrowed_refIEEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3IDpEN2py20call_function_throwsEN2py12borrowed_refIEEDpRR4Args"></span><span id="_CPPv2IDpEN2py20call_function_throwsEN2py12borrowed_refIEEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1aa69dcdb697dd5afac078ccc365bdd733"></span>owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_function_throws</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>function</em>, <a class="reference internal" href="#_CPPv4IDpEN2py20call_function_throwsE9owned_refN2py12borrowed_refIEEDpRR4Args" title="py::call_function_throws::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py20call_function_throwsE9owned_refN2py12borrowed_refIEEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Call a python function on C++ data.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>The result of the function call. If the function throws a Python exception, a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1exception"><span class="std std-ref"><span class="pre">py::exception</span></span></a></code> will be thrown. </p>
@@ -2628,7 +2478,7 @@ Potential matches:
 
 <dl class="cpp function">
 <dt id="_CPPv4IDpEN2py11call_methodE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args">
-<span id="_CPPv3IDpEN2py11call_methodEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span><span id="_CPPv2IDpEN2py11call_methodEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1ae1a3fb7073659304b36f7d91a670e4ac"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_method</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>method</em>, <a class="reference internal" href="#_CPPv4IDpEN2py11call_methodE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="py::call_method::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py11call_methodE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3IDpEN2py11call_methodEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span><span id="_CPPv2IDpEN2py11call_methodEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1ae1a3fb7073659304b36f7d91a670e4ac"></span>owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_method</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>method</em>, <a class="reference internal" href="#_CPPv4IDpEN2py11call_methodE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="py::call_method::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py11call_methodE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Call a python method on C++ data.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>The result of the method call or nullptr if an error occurred. </p>
@@ -2645,7 +2495,7 @@ Potential matches:
 
 <dl class="cpp function">
 <dt id="_CPPv4IDpEN2py18call_method_throwsE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args">
-<span id="_CPPv3IDpEN2py18call_method_throwsEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span><span id="_CPPv2IDpEN2py18call_method_throwsEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1a4e539f22ebe894ea7bd7af1bd1e0fc72"></span><a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_method_throws</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>method</em>, <a class="reference internal" href="#_CPPv4IDpEN2py18call_method_throwsE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="py::call_method_throws::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py18call_method_throwsE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3IDpEN2py18call_method_throwsEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span><span id="_CPPv2IDpEN2py18call_method_throwsEN2py12borrowed_refIEERKNSt6stringEDpRR4Args"></span>template&lt;typename ...<code class="sig-name descname">Args</code>&gt;<br /><span class="target" id="namespacepy_1a4e539f22ebe894ea7bd7af1bd1e0fc72"></span>owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">call_method_throws</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>method</em>, <a class="reference internal" href="#_CPPv4IDpEN2py18call_method_throwsE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="py::call_method_throws::Args">Args</a>&amp;&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py18call_method_throwsE9owned_refN2py12borrowed_refIEERKNSt6stringEDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Call a python method on C++ data.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>The result of the method call or nullptr. If the method throws a Python exception, a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1exception"><span class="std std-ref"><span class="pre">py::exception</span></span></a></code> will be thrown. </p>
@@ -2662,7 +2512,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-char-sequence-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/char_sequence.h&gt;</span></code><a class="headerlink" href="#libpy-char-sequence-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/char_sequence.h&gt;</span></code><a class="headerlink" href="#libpy-char-sequence-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp type">
 <dt id="_CPPv4N2py2cs13char_sequenceE">
 <span id="_CPPv3N2py2cs13char_sequenceE"></span><span id="_CPPv2N2py2cs13char_sequenceE"></span><span class="target" id="namespacepy_1_1cs_1a5b8e89f2b40b8cce22863d7f15053c25"></span><em class="property">using </em><code class="sig-prename descclassname">py::cs<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">char_sequence</code> = std::integer_sequence&lt;char, cs...&gt;<a class="headerlink" href="#_CPPv4N2py2cs13char_sequenceE" title="Permalink to this definition">¶</a><br /></dt>
@@ -2776,7 +2626,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-datetime64-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/datetime64.h&gt;</span></code><a class="headerlink" href="#libpy-datetime64-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/datetime64.h&gt;</span></code><a class="headerlink" href="#libpy-datetime64-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp class">
 <dt id="_CPPv4I0EN2py10datetime64E">
 <span id="_CPPv3I0EN2py10datetime64E"></span><span id="_CPPv2I0EN2py10datetime64E"></span>template&lt;typename <code class="sig-name descname">Unit</code>&gt;<br /><span class="target" id="classpy_1_1datetime64"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">datetime64</code><a class="headerlink" href="#_CPPv4I0EN2py10datetime64E" title="Permalink to this definition">¶</a><br /></dt>
@@ -3038,7 +2888,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-demangle-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/demangle.h&gt;</span></code><a class="headerlink" href="#libpy-demangle-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/demangle.h&gt;</span></code><a class="headerlink" href="#libpy-demangle-h" title="Permalink to this headline">¶</a></h3>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>doxygenfunction: Unable to resolve multiple matches for function “py::util::demangle_string” with arguments (const char*) in doxygen xml output for project “libpy” from directory: ../doxygen-build/xml.
@@ -3083,7 +2933,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-dict-range-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/dict_range.h&gt;</span></code><a class="headerlink" href="#libpy-dict-range-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/dict_range.h&gt;</span></code><a class="headerlink" href="#libpy-dict-range-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp class">
 <dt id="_CPPv4N2py10dict_rangeE">
 <span id="_CPPv3N2py10dict_rangeE"></span><span id="_CPPv2N2py10dict_rangeE"></span><span id="py::dict_range"></span><span class="target" id="classpy_1_1dict__range"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">dict_range</code><a class="headerlink" href="#_CPPv4N2py10dict_rangeE" title="Permalink to this definition">¶</a><br /></dt>
@@ -3138,7 +2988,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-exception-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/exception.h&gt;</span></code><a class="headerlink" href="#libpy-exception-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/exception.h&gt;</span></code><a class="headerlink" href="#libpy-exception-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp class">
 <dt id="_CPPv4N2py9exceptionE">
 <span id="_CPPv3N2py9exceptionE"></span><span id="_CPPv2N2py9exceptionE"></span><span id="py::exception"></span><span class="target" id="classpy_1_1exception"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">exception</code> : <em class="property">public</em> <a class="reference internal" href="#_CPPv4N2py9exceptionE" title="py::exception">exception</a><a class="headerlink" href="#_CPPv4N2py9exceptionE" title="Permalink to this definition">¶</a><br /></dt>
@@ -3219,7 +3069,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-from-object-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/from_object.h&gt;</span></code><a class="headerlink" href="#libpy-from-object-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/from_object.h&gt;</span></code><a class="headerlink" href="#libpy-from-object-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4I0EN2py11from_objectEDcN2py12borrowed_refIEE">
 <span id="_CPPv3I0EN2py11from_objectEN2py12borrowed_refIEE"></span><span id="_CPPv2I0EN2py11from_objectEN2py12borrowed_refIEE"></span>template&lt;typename <code class="sig-name descname">T</code>&gt;<br /><span class="target" id="namespacepy_1ac602305626de9ec4d0a445c9272bff99"></span>decltype(auto) <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">from_object</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN2py11from_objectEDcN2py12borrowed_refIEE" title="Permalink to this definition">¶</a><br /></dt>
@@ -3252,10 +3102,10 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-getattr-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/getattr.h&gt;</span></code><a class="headerlink" href="#libpy-getattr-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/getattr.h&gt;</span></code><a class="headerlink" href="#libpy-getattr-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4N2py7getattrEN2py12borrowed_refIEERKNSt6stringE">
-<span id="_CPPv3N2py7getattrEN2py12borrowed_refIEERKNSt6stringE"></span><span id="_CPPv2N2py7getattrEN2py12borrowed_refIEERKNSt6stringE"></span><span id="py::getattr__py::borrowed_ref::.ssCR"></span><span class="target" id="namespacepy_1a983eebb72eebb6d5be713f8fea07b685"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">getattr</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>attr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py7getattrEN2py12borrowed_refIEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py7getattrEN2py12borrowed_refIEERKNSt6stringE"></span><span id="_CPPv2N2py7getattrEN2py12borrowed_refIEERKNSt6stringE"></span><span id="py::getattr__py::borrowed_ref::.ssCR"></span><span class="target" id="namespacepy_1a983eebb72eebb6d5be713f8fea07b685"></span>py::owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">getattr</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>attr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py7getattrEN2py12borrowed_refIEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Look up an attribute on a Python object and return a new owning reference.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>A new reference to <code class="docutils literal notranslate"><span class="pre">gettattr(ob,</span> <span class="pre">attr)</span></code> or <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> with a Python exception set on failure. </p>
@@ -3271,7 +3121,7 @@ Potential matches:
 
 <dl class="cpp function">
 <dt id="_CPPv4N2py14getattr_throwsEN2py12borrowed_refIEERKNSt6stringE">
-<span id="_CPPv3N2py14getattr_throwsEN2py12borrowed_refIEERKNSt6stringE"></span><span id="_CPPv2N2py14getattr_throwsEN2py12borrowed_refIEERKNSt6stringE"></span><span id="py::getattr_throws__py::borrowed_ref::.ssCR"></span><span class="target" id="namespacepy_1aa51b14ec043b49ca6399b28dca109d1f"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">getattr_throws</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>attr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py14getattr_throwsEN2py12borrowed_refIEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N2py14getattr_throwsEN2py12borrowed_refIEERKNSt6stringE"></span><span id="_CPPv2N2py14getattr_throwsEN2py12borrowed_refIEERKNSt6stringE"></span><span id="py::getattr_throws__py::borrowed_ref::.ssCR"></span><span class="target" id="namespacepy_1aa51b14ec043b49ca6399b28dca109d1f"></span>py::owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">getattr_throws</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0EN2py12borrowed_refE" title="py::borrowed_ref">borrowed_ref</a>&lt;&gt; <em>ob</em>, <em class="property">const</em> std::string &amp;<em>attr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2py14getattr_throwsEN2py12borrowed_refIEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Look up an attribute on a Python object and return a new owning reference.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>A new reference to <code class="docutils literal notranslate"><span class="pre">gettattr(ob,</span> <span class="pre">attr)</span></code>. If the attribute doesn’t exist, a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1exception"><span class="std std-ref"><span class="pre">py::exception</span></span></a></code> will be thrown. </p>
@@ -3297,7 +3147,7 @@ Potential matches:
 </div>
 <dl class="cpp function">
 <dt id="_CPPv4IDpEN2py21nested_getattr_throwsEN2py9owned_refEDpRK2Ts">
-<span id="_CPPv3IDpEN2py21nested_getattr_throwsEDpRK2Ts"></span><span id="_CPPv2IDpEN2py21nested_getattr_throwsEDpRK2Ts"></span>template&lt;typename ...<code class="sig-name descname">Ts</code>&gt;<br /><span class="target" id="namespacepy_1aaaa5d05493e736d75d6c9ae7e9cbe236"></span>py::<a class="reference internal" href="#_CPPv4I0EN2py9owned_refE" title="py::owned_ref">owned_ref</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">nested_getattr_throws</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4IDpEN2py21nested_getattr_throwsEN2py9owned_refEDpRK2Ts" title="py::nested_getattr_throws::Ts">Ts</a>&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py21nested_getattr_throwsEN2py9owned_refEDpRK2Ts" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3IDpEN2py21nested_getattr_throwsEDpRK2Ts"></span><span id="_CPPv2IDpEN2py21nested_getattr_throwsEDpRK2Ts"></span>template&lt;typename ...<code class="sig-name descname">Ts</code>&gt;<br /><span class="target" id="namespacepy_1aaaa5d05493e736d75d6c9ae7e9cbe236"></span>py::owned_ref <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">nested_getattr_throws</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4IDpEN2py21nested_getattr_throwsEN2py9owned_refEDpRK2Ts" title="py::nested_getattr_throws::Ts">Ts</a>&amp;... <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py21nested_getattr_throwsEN2py9owned_refEDpRK2Ts" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Perform nested getattr calls with intermediate error checking.</p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>A new reference to <code class="docutils literal notranslate"><span class="pre">getattr(gettattr(ob,</span> <span class="pre">attrs[0]),</span> <span class="pre">attrs[1]),</span> <span class="pre">...</span></code>. If an attribute in the chain doesn’t exist, a <code class="docutils literal notranslate"><a class="reference internal" href="#classpy_1_1exception"><span class="std std-ref"><span class="pre">py::exception</span></span></a></code> will be thrown. </p>
@@ -3313,7 +3163,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-gil-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/gil.h&gt;</span></code><a class="headerlink" href="#libpy-gil-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/gil.h&gt;</span></code><a class="headerlink" href="#libpy-gil-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp struct">
 <dt id="_CPPv4N2py3gilE">
 <span id="_CPPv3N2py3gilE"></span><span id="_CPPv2N2py3gilE"></span><span id="py::gil"></span><span class="target" id="structpy_1_1gil"></span><em class="property">struct </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">gil</code><a class="headerlink" href="#_CPPv4N2py3gilE" title="Permalink to this definition">¶</a><br /></dt>
@@ -3425,7 +3275,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-hash-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/hash.h&gt;</span></code><a class="headerlink" href="#libpy-hash-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/hash.h&gt;</span></code><a class="headerlink" href="#libpy-hash-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4I0DpEN2py12hash_combineEDa1TDp2Ts">
 <span id="_CPPv3I0DpEN2py12hash_combineE1TDp2Ts"></span><span id="_CPPv2I0DpEN2py12hash_combineE1TDp2Ts"></span>template&lt;typename <code class="sig-name descname">T</code>, typename ...<code class="sig-name descname">Ts</code>&gt;<br /><span class="target" id="namespacepy_1ac61a1e5cc028f0492f33786b1c566b7c"></span>auto <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">hash_combine</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0DpEN2py12hash_combineEDa1TDp2Ts" title="py::hash_combine::T">T</a> <em>head</em>, <a class="reference internal" href="#_CPPv4I0DpEN2py12hash_combineEDa1TDp2Ts" title="py::hash_combine::Ts">Ts</a>... <em>tail</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0DpEN2py12hash_combineEDa1TDp2Ts" title="Permalink to this definition">¶</a><br /></dt>
@@ -3462,7 +3312,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-itertools-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/itertools.h&gt;</span></code><a class="headerlink" href="#libpy-itertools-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/itertools.h&gt;</span></code><a class="headerlink" href="#libpy-itertools-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4IDpEN2py3zipEDaDpRR2Ts">
 <span id="_CPPv3IDpEN2py3zipEDpRR2Ts"></span><span id="_CPPv2IDpEN2py3zipEDpRR2Ts"></span>template&lt;typename ...<code class="sig-name descname">Ts</code>&gt;<br /><span class="target" id="namespacepy_1a2be3e2038aeaa9124162eb364cf75075"></span>auto <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">zip</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpEN2py3zipEDaDpRR2Ts" title="py::zip::Ts">Ts</a>&amp;&amp;... <em>iterables</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN2py3zipEDaDpRR2Ts" title="Permalink to this definition">¶</a><br /></dt>
@@ -3506,7 +3356,7 @@ Potential matches:
 
 </div>
 <div class="section" id="libpy-meta-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/meta.h&gt;</span></code><a class="headerlink" href="#libpy-meta-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/meta.h&gt;</span></code><a class="headerlink" href="#libpy-meta-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp struct">
 <dt id="_CPPv4I0EN2py4meta7print_tE">
 <span id="_CPPv3I0EN2py4meta7print_tE"></span><span id="_CPPv2I0EN2py4meta7print_tE"></span>template&lt;typename&gt;<br /><span class="target" id="structpy_1_1meta_1_1print__t"></span><em class="property">struct </em><code class="sig-name descname">print_t</code><a class="headerlink" href="#_CPPv4I0EN2py4meta7print_tE" title="Permalink to this definition">¶</a><br /></dt>
@@ -3653,7 +3503,7 @@ Potential matches:
 </dd></dl>
 
 <div class="section" id="op-operator-function-objects">
-<h3><code class="docutils literal notranslate"><span class="pre">op</span></code> operator function objects<a class="headerlink" href="#op-operator-function-objects" title="Permalink to this headline">¶</a></h3>
+<h4><code class="docutils literal notranslate"><span class="pre">op</span></code> operator function objects<a class="headerlink" href="#op-operator-function-objects" title="Permalink to this headline">¶</a></h4>
 <p>Each of these types implements <code class="docutils literal notranslate"><span class="pre">operator()</span></code> to defer to the named operator while attempting to preserve all the observable properties of calling the underlying operator directly.</p>
 <dl class="cpp struct">
 <dt id="_CPPv4N2py4meta2op3addE">
@@ -3753,7 +3603,7 @@ Potential matches:
 </div>
 </div>
 <div class="section" id="libpy-ndarray-view-h">
-<h2><code class="docutils literal notranslate"><span class="pre">&lt;libpy/ndarray_view.h&gt;</span></code><a class="headerlink" href="#libpy-ndarray-view-h" title="Permalink to this headline">¶</a></h2>
+<h3><code class="docutils literal notranslate"><span class="pre">&lt;libpy/ndarray_view.h&gt;</span></code><a class="headerlink" href="#libpy-ndarray-view-h" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp class">
 <dt id="_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE">
 <span id="_CPPv3I0_NSt6size_tE_bEN2py12ndarray_viewE"></span><span id="_CPPv2I0_NSt6size_tE_bEN2py12ndarray_viewE"></span>template&lt;typename <code class="sig-name descname">T</code>, std::size_t <code class="sig-name descname">ndim</code>, bool = <a class="reference internal" href="#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view::ndim">ndim</a> != 1&gt;<br /><span class="target" id="classpy_1_1ndarray__view"></span><em class="property">class </em><code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">ndarray_view</code><a class="headerlink" href="#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="Permalink to this definition">¶</a><br /></dt>
@@ -3927,7 +3777,7 @@ Potential matches:
 <dl class="cpp function">
 <dt id="_CPPv4NK2py12ndarray_view6bufferEv">
 <span id="_CPPv3NK2py12ndarray_view6bufferEv"></span><span id="_CPPv2NK2py12ndarray_view6bufferEv"></span><span id="py::ndarray_view::bufferC"></span><span class="target" id="classpy_1_1ndarray__view_1a6e069a78806fa764724e273650a7fa57"></span><a class="reference internal" href="#_CPPv4N2py12ndarray_view11buffer_typeE" title="py::ndarray_view::buffer_type">buffer_type</a> <code class="sig-name descname">buffer</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py12ndarray_view6bufferEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>The underlying buffer of characters for this string array. </p>
+<dd><p>Get the underlying buffer for this view. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -4272,7 +4122,7 @@ Potential matches:
 <dl class="cpp function">
 <dt id="_CPPv4NK2py12ndarray_viewI1TXL1EEXL0EEE6bufferEv">
 <span id="_CPPv3NK2py12ndarray_viewI1TXL1EEXL0EEE6bufferEv"></span><span id="_CPPv2NK2py12ndarray_viewI1TX1EXfalseEE6bufferEv"></span><span id="py::ndarray_view:T.1.false:::bufferC"></span><span class="target" id="classpy_1_1ndarray__view_1a6e069a78806fa764724e273650a7fa57"></span><a class="reference internal" href="#_CPPv4N2py12ndarray_viewI1TXL1EEXL0EEE11buffer_typeE" title="py::ndarray_view&lt;T, 1, false&gt;::buffer_type">buffer_type</a> <code class="sig-name descname">buffer</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py12ndarray_viewI1TXL1EEXL0EEE6bufferEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>The underlying buffer of characters for this string array. </p>
+<dd><p>Get the underlying buffer for this view. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -4404,6 +4254,21 @@ Potential matches:
 </p>
 </dd></dl>
 
+<dl class="cpp function">
+<dt id="_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction">
+<span id="_CPPv3I0_NSt6size_tE0EN2py18for_each_unorderedEN2py12ndarray_viewI1T4ndimEE13UnaryFunction"></span><span id="_CPPv2I0_NSt6size_tE0EN2py18for_each_unorderedEN2py12ndarray_viewI1T4ndimEE13UnaryFunction"></span>template&lt;typename <code class="sig-name descname">T</code>, std::size_t <code class="sig-name descname">ndim</code>, typename <code class="sig-name descname">UnaryFunction</code>&gt;<br /><span class="target" id="namespacepy_1a5583518b35fa521810a7acffed7bf03c"></span><a class="reference internal" href="#_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction" title="py::for_each_unordered::UnaryFunction">UnaryFunction</a> <code class="sig-prename descclassname">py<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">for_each_unordered</code><span class="sig-paren">(</span>py::<a class="reference internal" href="#_CPPv4I0_NSt6size_tE_bEN2py12ndarray_viewE" title="py::ndarray_view">ndarray_view</a>&lt;<a class="reference internal" href="#_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction" title="py::for_each_unordered::T">T</a>, <a class="reference internal" href="#_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction" title="py::for_each_unordered::ndim">ndim</a>&gt; <em>view</em>, <a class="reference internal" href="#_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction" title="py::for_each_unordered::UnaryFunction">UnaryFunction</a> <em>f</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0_NSt6size_tE0EN2py18for_each_unorderedE13UnaryFunctionN2py12ndarray_viewI1T4ndimEE13UnaryFunction" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Apply a function to each element of an ndarray view in an unspecified order.</p>
+<p><dl class="simple">
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">view</span></code>: The view to traverse. </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">f</span></code>: The function to apply. </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
 <div class="section" id="type-erased-views">
 <h3>Type Erased Views<a class="headerlink" href="#type-erased-views" title="Permalink to this headline">¶</a></h3>
 <p>These views use a <a class="reference internal" href="#_CPPv4N2py10any_vtableE" title="py::any_vtable"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">py::any_vtable</span></code></a> object to view a type-erased buffer of data.
@@ -4561,7 +4426,7 @@ These partial specializations implement the same protocol as the non type-erased
 <dl class="cpp function">
 <dt id="_CPPv4NK2py12ndarray_viewI8any_cref4ndim18higher_dimensionalE6bufferEv">
 <span id="_CPPv3NK2py12ndarray_viewI8any_cref4ndim18higher_dimensionalE6bufferEv"></span><span id="_CPPv2NK2py12ndarray_viewI8any_cref4ndim18higher_dimensionalE6bufferEv"></span><span id="py::ndarray_view:any_cref.ndim.higher_dimensional:::bufferC"></span><span class="target" id="classpy_1_1detail_1_1any__ref__ndarray__view_1a64af08cded75f072bd4aa401a0d826c8"></span>auto <code class="sig-name descname">buffer</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py12ndarray_viewI8any_cref4ndim18higher_dimensionalE6bufferEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>The underlying buffer of characters for this string array. </p>
+<dd><p>Get the underlying buffer for this view. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -4822,7 +4687,7 @@ These partial specializations implement the same protocol as the non type-erased
 <dl class="cpp function">
 <dt id="_CPPv4NK2py12ndarray_viewI7any_ref4ndim18higher_dimensionalE6bufferEv">
 <span id="_CPPv3NK2py12ndarray_viewI7any_ref4ndim18higher_dimensionalE6bufferEv"></span><span id="_CPPv2NK2py12ndarray_viewI7any_ref4ndim18higher_dimensionalE6bufferEv"></span><span id="py::ndarray_view:any_ref.ndim.higher_dimensional:::bufferC"></span><span class="target" id="classpy_1_1detail_1_1any__ref__ndarray__view_1a64af08cded75f072bd4aa401a0d826c8"></span>auto <code class="sig-name descname">buffer</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py12ndarray_viewI7any_ref4ndim18higher_dimensionalE6bufferEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>The underlying buffer of characters for this string array. </p>
+<dd><p>Get the underlying buffer for this view. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -5092,7 +4957,7 @@ These partial specializations implement the same protocol as the non type-erased
 <dl class="cpp function">
 <dt id="_CPPv4NK2py12ndarray_viewI8any_crefXL1EEXL0EEE6bufferEv">
 <span id="_CPPv3NK2py12ndarray_viewI8any_crefXL1EEXL0EEE6bufferEv"></span><span id="_CPPv2NK2py12ndarray_viewI8any_crefX1EXfalseEE6bufferEv"></span><span id="py::ndarray_view:any_cref.1.false:::bufferC"></span><span class="target" id="classpy_1_1detail_1_1any__ref__ndarray__view_1a64af08cded75f072bd4aa401a0d826c8"></span>auto <code class="sig-name descname">buffer</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py12ndarray_viewI8any_crefXL1EEXL0EEE6bufferEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>The underlying buffer of characters for this string array. </p>
+<dd><p>Get the underlying buffer for this view. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -5375,7 +5240,7 @@ These partial specializations implement the same protocol as the non type-erased
 <dl class="cpp function">
 <dt id="_CPPv4NK2py12ndarray_viewI7any_refXL1EEXL0EEE6bufferEv">
 <span id="_CPPv3NK2py12ndarray_viewI7any_refXL1EEXL0EEE6bufferEv"></span><span id="_CPPv2NK2py12ndarray_viewI7any_refX1EXfalseEE6bufferEv"></span><span id="py::ndarray_view:any_ref.1.false:::bufferC"></span><span class="target" id="classpy_1_1detail_1_1any__ref__ndarray__view_1a64af08cded75f072bd4aa401a0d826c8"></span>auto <code class="sig-name descname">buffer</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK2py12ndarray_viewI7any_refXL1EEXL0EEE6bufferEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>The underlying buffer of characters for this string array. </p>
+<dd><p>Get the underlying buffer for this view. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -5491,6 +5356,59 @@ These partial specializations implement the same protocol as the non type-erased
 
 </div>
 </div>
+<div class="section" id="python">
+<h2>Python<a class="headerlink" href="#python" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="miscellaneous">
+<h3>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h3>
+<dl class="py data">
+<dt id="libpy.version_info">
+<code class="sig-prename descclassname">libpy.</code><code class="sig-name descname">version_info</code><em class="property"> = VersionInfo(major=0, minor=2, patch=3)</em><a class="headerlink" href="#libpy.version_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>The ABI version of libpy.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="build">
+<h3>Build<a class="headerlink" href="#build" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="libpy.build.LibpyExtension">
+<em class="property">class </em><code class="sig-prename descclassname">libpy.build.</code><code class="sig-name descname">LibpyExtension</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpy.build.LibpyExtension" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">setuptools.Extension</span></code> replacement for libpy based extensions.</p>
+<dl class="simple">
+<dt><a href="#id1"><span class="problematic" id="id2">*</span></a>args</dt><dd><p>All positional arguments forwarded to <code class="xref py py-class docutils literal notranslate"><span class="pre">setuptools.Extension</span></code>.</p>
+</dd>
+<dt>optlevel<span class="classifier">int, optional</span></dt><dd><p>The optimization level to forward to the C++ compiler.
+Defaults to 0.</p>
+</dd>
+<dt>debug_symbols<span class="classifier">bool, optional</span></dt><dd><p>Should debug symbols be generated?
+Defaults to True.</p>
+</dd>
+<dt>use_libpy_suggested_warnings<span class="classifier">bool, optional</span></dt><dd><p>Should libpy add it’s default set of warnings to the compiler flags.
+This set is picked to aid code clarity and attempt to common mistakes.
+Defaults to True.</p>
+</dd>
+<dt>werror<span class="classifier">bool, optional</span></dt><dd><p>Treat warnings as errors. The libpy developers believe that most
+compiler warnings indicate serious problems and should fail the build.
+Defaults to True.</p>
+</dd>
+<dt>max_errors<span class="classifier">int or None, optional</span></dt><dd><p>Limit the number of error messages that are shown.
+Defaults to None, showing all error messages.</p>
+</dd>
+<dt>ubsan<span class="classifier">bool, optional</span></dt><dd><p>Compile with ubsan? Implies optlevel=0.</p>
+</dd>
+<dt><a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs</dt><dd><p>All other keyword arguments forwarded to <code class="xref py py-class docutils literal notranslate"><span class="pre">setuptools.Extension</span></code>.</p>
+</dd>
+</dl>
+<p>This class sets the <cite>language</cite> field to <cite>c++</cite> because libpy only works with
+C++.</p>
+<p>This class also passes <cite>-std=gnu++17</cite> which is the minimum language
+standard required by libpy.</p>
+<p>Any compiler flags added by libpy will appear <em>before</em>
+<cite>extra_compile_args</cite>. This gives the user the ability to override any of
+libpy’s options.</p>
+</dd></dl>
+
+</div>
+</div>
 </div>
 
 
@@ -5502,7 +5420,7 @@ These partial specializations implement the same protocol as the non type-erased
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="install.html" class="btn btn-neutral float-left" title="Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="arrays.html" class="btn btn-neutral float-left" title="Arrays" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
