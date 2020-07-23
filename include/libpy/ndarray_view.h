@@ -265,7 +265,7 @@ public:
         return is_c_contig() || is_f_contig();
     }
 
-    /** The underlying buffer of characters for this string array.
+    /** Get the underlying buffer for this view.
      */
     buffer_type buffer() const {
         return m_buffer;
@@ -875,7 +875,7 @@ public:
         return {m_buffer, m_shape, m_strides};
     }
 
-    /** The underlying buffer of characters for this string array.
+    /** Get the underlying buffer for this view.
      */
     auto buffer() const {
         return m_buffer;

@@ -24,15 +24,8 @@
 
 /** Define a Python module.
 
-    @param parent A symbol indicating the parent module.
-    @param name The leaf name of the module.
-    @param methods ({...}) list of  objects representing the functions to add to the
-                    module. Note this list must be surrounded by parentheses.
-
-    ## Examples
-
-    Create a module `my_package.submodule.my_module` with two functions `f` and
-    `g` and one type `T`.
+    For example, to create a module `my_package.submodule.my_module` with two functions
+    `f` and `g` and one type `T`:
 
     \code
     LIBPY_AUTOMODULE(my_package.submodule,
@@ -43,7 +36,12 @@
         py::borrowed_ref t = py::autoclass<T>("T").new_().type();
         return PyObject_SetAttrString(m.get(), "T", static_cast<PyObject*>(t));
     }
-    /endcode
+    \endcode
+
+    @param parent A symbol indicating the parent module.
+    @param name The leaf name of the module.
+    @param methods `({...})` list of  objects representing the functions to add to the
+                    module. Note this list must be surrounded by parentheses.
  */
 #define LIBPY_AUTOMODULE(parent, name, methods)                                          \
     bool _libpy_user_mod_init(py::borrowed_ref<>);                                       \
