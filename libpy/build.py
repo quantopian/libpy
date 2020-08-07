@@ -70,8 +70,8 @@ class LibpyExtension(setuptools.Extension, object):
         Defaults to None, showing all error messages.
     ubsan : bool, optional
         Compile with ubsan? Implies optlevel=0.
-    use_unsafe_api : bool, optional
-        Whether to allow the usage of the unsafe libpy
+    use_autoclass_unsafe_api : bool, optional
+        Whether to allow the usage of the unsafe libpy api in autoclass
     **kwargs
         All other keyword arguments forwarded to :class:`setuptools.Extension`.
 
@@ -163,7 +163,7 @@ class LibpyExtension(setuptools.Extension, object):
             else:
                 raise AssertionError('unknown compiler: %s' % self._compiler)
 
-        if kwargs.pop('use_unsafe_api', False):
+        if kwargs.pop('use_autoclass_unsafe_api', False):
             libpy_extra_compile_args.append('-DLIBPY_AUTOCLASS_UNSAFE_API')
 
         kwargs['extra_compile_args'] = (
