@@ -164,7 +164,7 @@ class LibpyExtension(setuptools.Extension, object):
                 raise AssertionError('unknown compiler: %s' % self._compiler)
 
         if kwargs.pop('use_unsafe_api', False):
-            libpy_extra_compile_args.append('DLIBPY_AUTOCLASS_UNSAFE_API')
+            libpy_extra_compile_args.append('-DLIBPY_AUTOCLASS_UNSAFE_API')
 
         kwargs['extra_compile_args'] = (
             libpy_extra_compile_args +
