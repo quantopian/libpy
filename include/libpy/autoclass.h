@@ -1784,16 +1784,22 @@ private:
     }
 
 public:
-    autoclass_interface(std::string name = util::type_name<I>(), int extra_flags = 0)
+    autoclass_interface(py::borrowed_ref<> module,
+                        std::string name = util::type_name<I>(),
+                        int extra_flags = 0)
         : detail::autoclass_impl<autoclass_interface<I>,
                                  I,
                                  detail::autoclass_interface_object<I>>(
+              module,
               std::move(name),
               extra_flags | Py_TPFLAGS_BASETYPE) {
 
         // explicitly disable the new, `new_()` cannot be called to overwrite this
         this->add_slot(Py_tp_new, disabled_new);
     }
+
+    autoclass_interface(std::string name = util::type_name<I>(), int extra_flags = 0)
+        : autoclass_interface(nullptr, std::move(name), extra_flags) {}
 
     template<auto impl, typename U = I>
     [[noreturn]] autoclass_interface& new_() {
@@ -1836,16 +1842,22 @@ private:
     }
 
 public:
-    autoclass_interface_instance(std::string name = util::type_name<T>(),
+    autoclass_interface_instance(py::borrowed_ref<> module,
+                                 std::string name = util::type_name<T>(),
                                  int extra_flags = 0)
         : detail::autoclass_impl<autoclass_interface_instance,
                                  T,
                                  detail::autoclass_interface_instance_object<T, I>,
                                  detail::initialize_interface_type<
                                      detail::autoclass_interface_instance_object<T, I>>>(
+              module,
               std::move(name),
               extra_flags,
               resolve_pybase()) {}
+
+    autoclass_interface_instance(std::string name = util::type_name<T>(),
+                                 int extra_flags = 0)
+        : autoclass_interface_instance(nullptr, name, extra_flags) {}
 };
 
 template<typename T>
