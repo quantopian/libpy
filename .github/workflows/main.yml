@@ -28,7 +28,7 @@ jobs:
             numpy: 1.19
           - python-version: 3.8
             numpy: 1.19
-          - python-version: 3.9.0-alpha - 3.9.0
+          - python-version: 3.9
             numpy: 1.19
     steps:
     - uses: actions/checkout@v2
