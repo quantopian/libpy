@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04, ubuntu-18.04, macos-10.15]
-        python-version: [3.5, 3.6, 3.8]
+        python-version: [3.5, 3.6, 3.8, 3.9]
         compiler: [gcc, clang]
         exclude:
           - os: macos-10.15
@@ -25,9 +25,11 @@ jobs:
           - python-version: 3.5
             numpy: 1.11.3
           - python-version: 3.6
-            numpy: 1.19
+            numpy: 1.19.3
           - python-version: 3.8
-            numpy: 1.19
+            numpy: 1.19.3
+          - python-version: 3.9
+            numpy: 1.19.3
     steps:
     - uses: actions/checkout@v2
       with:
@@ -93,5 +95,5 @@ jobs:
         pip install dist/libpy-*.tar.gz
     - name: Check that docs can be built
       run: |
-        pip install sphinx sphinx_rtd_theme breathe ipython
+        pip install wheel sphinx sphinx_rtd_theme breathe ipython
         make docs

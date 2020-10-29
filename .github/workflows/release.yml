@@ -59,7 +59,7 @@ jobs:
 
     - name: Build the docs
       run: |
-        pip install sphinx sphinx_rtd_theme breathe ipython
+        pip install wheel sphinx sphinx_rtd_theme breathe ipython
         make docs
 
     - name: Deploy the docs
