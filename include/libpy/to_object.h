@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "libpy/char_sequence.h"
@@ -331,6 +332,16 @@ public:
         }
 
         return out;
+    }
+};
+
+template<typename T, typename U>
+struct to_object<std::pair<T, U>> {
+public:
+    static PyObject* f(const std::pair<T, U>& p) {
+        // Delegate to std::tuple dispatch.
+        return std::move(py::to_object(std::make_tuple(std::get<0>(p), std::get<1>(p))))
+            .escape();
     }
 };
 
