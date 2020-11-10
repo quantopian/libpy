@@ -42,9 +42,11 @@ slice_impl(const T& view, std::int64_t start, std::int64_t stop, std::int64_t st
     }
 
     std::int64_t size = (low >= high) ? 0 : (high - low - 1) / adj_step + 1;
-    std::int64_t stride = view.strides()[0] * step;
+    std::ptrdiff_t stride = view.strides()[0] * step;
 
-    return {static_cast<std::size_t>(start), {static_cast<std::size_t>(size)}, {stride}};
+    return {static_cast<std::size_t>(start),
+            {static_cast<std::size_t>(size)},
+            {static_cast<std::ptrdiff_t>(stride)}};
 }
 }  // namespace detail
 
@@ -66,7 +68,7 @@ protected:
     friend class ndarray_view;
 
     std::array<std::size_t, ndim> m_shape;
-    std::array<std::int64_t, ndim> m_strides;
+    std::array<std::ptrdiff_t, ndim> m_strides;
     buffer_type m_buffer;
 
     std::ptrdiff_t pos_to_index(const std::array<std::size_t, ndim>& pos) const {
@@ -79,7 +81,7 @@ protected:
 
     ndarray_view(buffer_type buffer,
                  const std::array<std::size_t, ndim> shape,
-                 const std::array<std::int64_t, ndim>& strides)
+                 const std::array<std::ptrdiff_t, ndim>& strides)
         : m_shape(shape), m_strides(strides), m_buffer(buffer) {}
 
 public:
@@ -120,7 +122,7 @@ public:
         }
 
         std::array<std::size_t, ndim> shape;
-        std::array<std::int64_t, ndim> strides;
+        std::array<std::ptrdiff_t, ndim> strides;
         for (int ix = 0; ix < buf->ndim; ++ix) {
             shape[ix] = static_cast<std::size_t>(buf->shape[ix]);
             strides[ix] = static_cast<std::int64_t>(buf->strides[ix]);
@@ -167,7 +169,7 @@ public:
      */
     ndarray_view(T* buffer,
                  const std::array<std::size_t, ndim> shape,
-                 const std::array<std::int64_t, ndim>& strides)
+                 const std::array<std::ptrdiff_t, ndim>& strides)
         : ndarray_view(reinterpret_cast<buffer_type>(buffer), shape, strides) {}
 
     /** Access the element at the given index with bounds checking.
@@ -228,7 +230,7 @@ public:
 
     /** The number of bytes to go from one element to the next.
      */
-    const std::array<std::int64_t, ndim>& strides() const {
+    const std::array<std::ptrdiff_t, ndim>& strides() const {
         return m_strides;
     }
 
@@ -591,7 +593,7 @@ protected:
     friend class any_ref_ndarray_view;
 
     std::array<std::size_t, ndim> m_shape;
-    std::array<std::int64_t, ndim> m_strides;
+    std::array<std::ptrdiff_t, ndim> m_strides;
     buffer_type m_buffer;
     any_vtable m_vtable;
 
@@ -697,10 +699,10 @@ public:
         }
 
         std::array<std::size_t, ndim> shape;
-        std::array<std::int64_t, ndim> strides;
+        std::array<std::ptrdiff_t, ndim> strides;
         for (int ix = 0; ix < buf->ndim; ++ix) {
             shape[ix] = static_cast<std::size_t>(buf->shape[ix]);
-            strides[ix] = static_cast<std::int64_t>(buf->strides[ix]);
+            strides[ix] = static_cast<std::ptrdiff_t>(buf->strides[ix]);
         }
 
         return {ndarray_view<T, ndim>{static_cast<buffer_type>(buf->buf),
@@ -746,7 +748,7 @@ public:
 
     any_ref_ndarray_view(buffer_type buffer,
                          const std::array<std::size_t, ndim> shape,
-                         const std::array<std::int64_t, ndim>& strides,
+                         const std::array<std::ptrdiff_t, ndim>& strides,
                          const py::any_vtable& vtable)
         : m_shape(shape), m_strides(strides), m_buffer(buffer), m_vtable(vtable) {}
 
@@ -763,7 +765,7 @@ public:
     template<typename U>
     any_ref_ndarray_view(U* buffer,
                          const std::array<std::size_t, ndim> shape,
-                         const std::array<std::int64_t, ndim>& strides)
+                         const std::array<std::ptrdiff_t, ndim>& strides)
         : any_ref_ndarray_view(reinterpret_cast<buffer_type>(buffer),
                                shape,
                                strides,
@@ -827,7 +829,7 @@ public:
 
     /** The number of bytes to go from one element to the next.
      */
-    const std::array<std::int64_t, ndim>& strides() const {
+    const std::array<std::ptrdiff_t, ndim>& strides() const {
         return m_strides;
     }
 
@@ -1410,7 +1412,7 @@ struct from_object<ndarray_view<T, ndim>> {
         }
 
         std::array<std::size_t, ndim> shape{0};
-        std::array<std::int64_t, ndim> strides{0};
+        std::array<std::ptrdiff_t, ndim> strides{0};
 
         std::copy_n(PyArray_SHAPE(array), ndim, shape.begin());
         std::copy_n(PyArray_STRIDES(array), ndim, strides.begin());
